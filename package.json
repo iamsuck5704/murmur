@@ -1,6 +1,6 @@
 {
   "name": "murmur-native-preview",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "private": true,
   "description": "Murmur full first/second playthrough and perpetrator CMD archive, Android/iOS Capacitor build",
   "scripts": {
@@ -12,7 +12,9 @@
     "build:web": "node scripts/build-web.cjs",
     "build:native": "node scripts/check-native.cjs",
     "build:cloudflare": "node scripts/build-web.cjs",
-    "test:platform": "node scripts/test-platform.cjs"
+    "test:platform": "node scripts/test-platform.cjs",
+    "test:release": "node scripts/test-release.cjs",
+    "check:release": "node scripts/release-check.cjs"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",

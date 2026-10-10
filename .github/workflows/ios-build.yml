@@ -13,7 +13,20 @@ jobs:
         with:
           node-version: '22'
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: |
+          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Build public website and check store links
+        run: |
+          npm run build:web
+          npm run test:release
+      - name: Run platform, journey, forensic and Meta Horror tests
+        run: |
+          node scripts/test-platform.cjs
+          node scripts/test-transfer.cjs
+          node scripts/test-journey.cjs
+          node scripts/test-forensics.cjs
+          node scripts/test-meta-horror.cjs
+          python3 scripts/test-native-patches.py
       - name: Generate iOS native project and copy assets
         run: |
           npx cap add ios
@@ -23,6 +36,7 @@ jobs:
         run: xcodebuild -version
       - name: Build unsigned simulator app (always)
         run: |
+          set -o pipefail
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -n 65
       - name: Import distribution signing assets (optional)
         if: ${{ vars.ENABLE_IOS_SIGNED == 'true' }}

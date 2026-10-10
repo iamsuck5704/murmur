@@ -1,4 +1,4 @@
-name: Android - debug APK and unsigned AAB
+name: Android - debug APK and optional signed AAB
 on:
   workflow_dispatch:
   push:
@@ -17,22 +17,66 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
-      - run: npm install --no-audit --no-fund
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Build public website and check store links
+        run: |
+          npm run build:web
+          npm run test:release
+      - name: Run platform, journey, forensic and Meta Horror tests
+        run: |
+          node scripts/test-platform.cjs
+          node scripts/test-transfer.cjs
+          node scripts/test-journey.cjs
+          node scripts/test-forensics.cjs
+          node scripts/test-meta-horror.cjs
+          python3 scripts/test-native-patches.py
       - name: Generate native Android project
         run: |
           npx cap add android
           npx cap sync android
           python3 scripts/patch_android.py
+          python3 scripts/patch_android_release.py
+      - name: Prepare optional Android signing keystore
+        if: ${{ vars.ENABLE_ANDROID_SIGNED == 'true' }}
+        env:
+          MURMUR_KEYSTORE_BASE64: ${{ secrets.MURMUR_KEYSTORE_BASE64 }}
+          MURMUR_KEYSTORE_PASSWORD: ${{ secrets.MURMUR_KEYSTORE_PASSWORD }}
+          MURMUR_KEY_ALIAS: ${{ secrets.MURMUR_KEY_ALIAS }}
+          MURMUR_KEY_PASSWORD: ${{ secrets.MURMUR_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$MURMUR_KEYSTORE_BASE64"
+          test -n "$MURMUR_KEYSTORE_PASSWORD"
+          test -n "$MURMUR_KEY_ALIAS"
+          test -n "$MURMUR_KEY_PASSWORD"
+          printf '%s' "$MURMUR_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/murmur-upload.jks"
+          test -s "$RUNNER_TEMP/murmur-upload.jks"
+          echo "MURMUR_KEYSTORE_PATH=$RUNNER_TEMP/murmur-upload.jks" >> "$GITHUB_ENV"
       - name: Build APK and AAB
+        env:
+          MURMUR_KEYSTORE_PASSWORD: ${{ vars.ENABLE_ANDROID_SIGNED == 'true' && secrets.MURMUR_KEYSTORE_PASSWORD || '' }}
+          MURMUR_KEY_ALIAS: ${{ vars.ENABLE_ANDROID_SIGNED == 'true' && secrets.MURMUR_KEY_ALIAS || '' }}
+          MURMUR_KEY_PASSWORD: ${{ vars.ENABLE_ANDROID_SIGNED == 'true' && secrets.MURMUR_KEY_PASSWORD || '' }}
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug bundleRelease --no-daemon
+      - name: Verify signed bundle when signing is enabled
+        if: ${{ vars.ENABLE_ANDROID_SIGNED == 'true' }}
+        working-directory: android
+        run: |
+          set -euo pipefail
+          BUNDLE=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -print -quit)
+          test -n "$BUNDLE"
+          jarsigner -verify -verbose -certs "$BUNDLE" > "$RUNNER_TEMP/murmur-signature-report.txt"
+          grep -q 'jar verified' "$RUNNER_TEMP/murmur-signature-report.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: Murmur-Android-debug-APK
           path: android/app/build/outputs/apk/debug/*.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Murmur-Android-unsigned-AAB
+          name: Murmur-Android-release-AAB-check-signature-before-upload
           path: android/app/build/outputs/bundle/release/*.aab

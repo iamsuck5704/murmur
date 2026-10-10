@@ -22,7 +22,17 @@ fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 let html = index;
 for (const tag of nativeAssets) html = html.replace(tag, '');
+// Strip obsolete inline third-playthrough archive from the public artifact.
+// The native app keeps this legacy block for old-save compatibility.
+const startMarker = '    /* BEGIN_NATIVE_LEGACY_ARCHIVE: excluded from public web build */';
+const endMarker = '    /* END_NATIVE_LEGACY_ARCHIVE */';
+const first = html.indexOf(startMarker), last = html.indexOf(endMarker);
+if (first < 0 || last < first || html.indexOf(startMarker, first + 1) >= 0) {
+  throw new Error('Missing or duplicate native-only inline archive markers');
+}
+html = html.slice(0, first) + '    /* App-only archive excluded from public build */\n' + html.slice(last + endMarker.length);
 fs.writeFileSync(path.join(out, 'index.html'), html, 'utf8');
+fs.copyFileSync(path.join(src, 'store-links.js'), path.join(out, 'store-links.js'));
 const legalDir = path.join(root, 'legal');
 fs.mkdirSync(path.join(out, 'legal'), { recursive: true });
 for (const name of ['privacy.html', 'terms.html', 'disclaimer.html']) {
@@ -35,7 +45,7 @@ for (const file of fs.readdirSync(out)) {
     throw new Error(`Private native-only asset leaked to web build: ${file}`);
   }
 }
-if (/perpetrator\.js|meta-horror\.js|perpetrator\.css/.test(html)) {
+if (/perpetrator\.js|meta-horror\.js|perpetrator\.css|BEGIN_NATIVE_LEGACY_ARCHIVE/.test(html)) {
   throw new Error('Native-only references leaked into web HTML');
 }
 console.log('Web P1/P2 ready:', out);

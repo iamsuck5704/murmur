@@ -300,3 +300,21 @@ body.murmur-backup-active{overflow:hidden}
 
 /* v1.5.1: stable viewport CRT animation on all file types. */
 #backupRoot .bp-document.bp-crt-boot{will-change:clip-path,filter,transform}
+
+/* v1.6.4: forensic reconstruction; mobile-first, no answer cards. */
+#backupRoot .bp-diff-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin:14px 0}
+#backupRoot .bp-diff-column{border:1px solid #3e6248;background:#08120c;padding:12px;display:grid;gap:8px;min-width:0}
+#backupRoot .bp-diff-column>strong{color:#9bd3a8;font-size:13px;padding-bottom:8px;border-bottom:1px solid #34523d}
+#backupRoot .bp-diff-column>div{color:#b4c6b8;font-size:13px;line-height:1.8;overflow-wrap:anywhere}
+#backupRoot .bp-diff-column>button{display:block;width:100%;text-align:left;min-height:58px;padding:12px;background:#102017;color:#cfe7d4;border:1px solid #3e6248;font:13px/1.7 var(--term-font),monospace;white-space:normal;overflow-wrap:anywhere}
+#backupRoot .bp-diff-column>button.bp-diff-retained{color:#8aa492;border-color:#294335}
+#backupRoot .bp-diff-column>button:focus-visible{outline:2px solid #b1f3c2;outline-offset:2px}
+#backupRoot .bp-correlation{display:grid;gap:14px;margin:16px 0}
+#backupRoot .bp-correlation label{display:grid;gap:8px;color:#c4dfcc;font-size:14px;line-height:1.6}
+#backupRoot .bp-correlation input{width:100%;min-width:0;min-height:56px;background:#09170e;color:#e2f5e6;border:1px solid #54775e;padding:12px;font:16px var(--term-font),monospace;border-radius:0}
+#backupRoot .bp-correlation input:focus-visible{outline:2px solid #b1f3c2;outline-offset:2px}
+#backupRoot .bp-integrity-warning{border:1px solid #9a5553;border-left:3px solid #b55b58;background:#1c1111;padding:16px;margin:18px 0;display:grid;gap:12px;line-height:1.85;color:#e5b3b0;animation:bp-integrity-in .9s steps(3,end) both}
+#backupRoot .bp-integrity-warning strong{font-size:15px;letter-spacing:.06em}
+@keyframes bp-integrity-in{0%{opacity:0;filter:blur(2px)}40%{opacity:.8;filter:none}60%{opacity:.2}100%{opacity:1}}
+@media(min-width:760px){#backupRoot .bp-diff-grid{grid-template-columns:1fr 1.5fr}}
+@media(prefers-reduced-motion:reduce){#backupRoot .bp-integrity-warning{animation:none}}

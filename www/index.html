@@ -222,6 +222,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 </style>
 <link rel="stylesheet" href="perpetrator.css">
 <link rel="stylesheet" href="meta-horror.css">
+<script src="store-links.js"></script>
 </head>
 <body>
 
@@ -1885,6 +1886,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
     ['04-18 23:55', 'D', '明天要去哪']
   ];
 
+  // Store URLs are configured separately; unreleased platforms remain text only.
+  function storeLinksMarkup() {
+    const cfg = window.MURMUR_STORES || {};
+    const valid = (raw, platform) => {
+      if (typeof raw !== 'string') return null;
+      try {
+        const u = new URL(raw);
+        if (u.protocol !== 'https:' || u.username || u.password) return null;
+        if (platform === 'android' && u.hostname === 'play.google.com' && u.pathname === '/store/apps/details' && u.searchParams.get('id') === 'app.murmur.story') return u.href;
+        if (platform === 'ios' && u.hostname === 'apps.apple.com' && /^\/(?:[a-z]{2}\/)?app\/[^/]+\/id\d+$/.test(u.pathname)) return u.href;
+      } catch (_) {}
+      return null;
+    };
+    const a = valid(cfg.android, 'android'), i = valid(cfg.ios, 'ios');
+    const link = (url, name) => url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${name} 下載 App</a>` : `<span class="note">${name}：尚未上架</span>`;
+    return `<div class="row-actions">${link(a, 'Google Play')}${link(i, 'App Store')}</div>`;
+  }
+
   const DOCS = {
     'README': () => head('說明', '檔案檢視器說明') +
       `<div class="doc-body"><p>這裡可以做的事：</p><ol>
@@ -2743,16 +2762,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
     'APPCODE': () => {
       const flag = S.cleared2 ? 2 : 1;
-      if (APP) return head('原始資料', 'participant_7f3 · 手機備份') + `<div class="doc-body"><p>這份唯讀手機備份已收錄在 Murmur App。</p><button type="button" class="btn" id="openNativeArchive">開啟手機備份</button></div>`;
+      if (APP) return head('原始資料', 'participant_7f3 · 手機備份') + (S.cleared2 ? `<div class="doc-body"><p>這份唯讀手機備份已收錄在 Murmur App。</p><button type="button" class="btn" id="openNativeArchive">開啟手機備份</button></div>` : `<div class="doc-body"><p>原始資料尚未解鎖。請先完成第二周目。</p></div>`);
       return head('原始資料 · 不在這裡', 'participant_7f3 · 手機備份') +
         `<div class="doc-body"><p>她的手機備份沒有存在這個網站。</p><p>你可以在 Murmur App 裡打開它。App 裡也有這裡的全部內容；如果你已經在這裡走到結局，輸入下面的分支授權碼，就能直接接著看。</p></div>` +
         meta([['分支授權碼', `<span id="codeTxt">${makeCode(flag)}</span>`], ['包含', flag === 2 ? '第一周目、第二周目' : '第一周目']]) +
         `<div class="row-actions"><button class="btn" type="button" id="copyCode">複製授權碼</button></div><p class="docnote" id="copyMsg" hidden></p>` +
-        `<p class="note">Google Play：尚未上架　·　App Store：尚未上架</p>`;
+        storeLinksMarkup();
     },
     'IMPORT': () => head('App', '輸入分支授權碼') + `<p class="note">在網頁版走到結局的人，會拿到一組分支授權碼。</p>` +
       `<form class="lockform" data-code="1" autocomplete="off"><input id="codeIn" type="text" placeholder="MRM-XXXXXX-0XX" aria-label="分支授權碼"><button type="submit">匯入</button></form><p class="docnote" id="codeMsg" hidden></p>`,
 
+    /* BEGIN_NATIVE_LEGACY_ARCHIVE: excluded from public web build */
     'E-ROOT': () => head('原始資料 · 未知使用者', 'participant_7f3') +
       `<div class="doc-body"><p>這些是 participant_7f3 的私人資料，從她的手機備份還原。</p><p>你可以閱讀，不能修改。發生過的事不會改變。</p></div>` +
       meta([['訊息統計', L('E-FREQ')], ['日記', L('E-DIARY', 'E-DIARY（受保護）')]]),
@@ -2789,6 +2809,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       (isDone('e4')
         ? `<div class="section"><div class="content doc-body"><p>他看到我的時候，表情跟那天說不要的時候一樣。</p><p>我還是走過去了。</p><p class="dim">（以下紀錄已由檢方扣押。）</p></div></div><p class="note">REFERENCE_000 不會改變。</p>`
         : `<p class="note">照實際發生的順序排列（例：ABCDEF）。</p><form class="lockform" data-order="1" autocomplete="off"><input id="orderIn" type="text" aria-label="順序"><button type="submit">確認</button></form><p class="docnote" id="orderMsg" hidden></p>`)
+    /* END_NATIVE_LEGACY_ARCHIVE */
   });
 
   INDEX.push(
@@ -3003,6 +3024,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (f.dataset.code) {
       const r = parseCode($('#codeIn').value), msg = $('#codeMsg');
       if (!r) { msg.textContent = '授權碼格式不正確，或驗證碼不符。'; msg.hidden = false; return; }
+      if (S.cleared2 && r.flag < 2) { msg.textContent = '此裝置已完成第二周目，無需匯入較早的進度。'; msg.hidden = false; return; }
       applyImport(r.flag, r.ts); msg.textContent = `匯入完成：第 ${r.flag} 周目。`; msg.hidden = false;
       return;
     }
@@ -3210,7 +3232,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     $('#mHelp').hidden = false;
     $('#mNG').hidden = !(S.cleared && !(S.ng && S.ng.on));
     $('#mCode').hidden = !S.cleared;
-    $('#mE').hidden = !(APP && (S.cleared || S.imported));
+    $('#mE').hidden = !(APP && S.cleared2);
     $('#mImport').hidden = !APP;
     $('#dbg').hidden = !DEV_MODE;
   }
@@ -3221,7 +3243,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   $('#mNG').addEventListener('click', () => { menu.hidden = true; startNG(); });
   $('#mCode').addEventListener('click', () => { menu.hidden = true; openViewer('APPCODE'); });
   $('#mImport').addEventListener('click', () => { menu.hidden = true; openViewer('IMPORT'); });
-  $('#mE').addEventListener('click', () => { menu.hidden = true; if (!pz('e1').seed) seedPZ('e1'); openViewer('E-ROOT'); horror('e'); });
+  $('#mE').addEventListener('click', () => { menu.hidden = true; if (!APP || !S.cleared2) return; if (!pz('e1').seed) seedPZ('e1'); openViewer('E-ROOT'); horror('e'); });
   let clearArm = 0;
   $('#mClear').addEventListener('click', (e) => {
     e.stopPropagation();

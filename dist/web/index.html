@@ -222,6 +222,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 </style>
 
 
+<script src="store-links.js"></script>
 </head>
 <body>
 
@@ -1885,6 +1886,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
     ['04-18 23:55', 'D', '明天要去哪']
   ];
 
+  // Store URLs are configured separately; unreleased platforms remain text only.
+  function storeLinksMarkup() {
+    const cfg = window.MURMUR_STORES || {};
+    const valid = (raw, platform) => {
+      if (typeof raw !== 'string') return null;
+      try {
+        const u = new URL(raw);
+        if (u.protocol !== 'https:' || u.username || u.password) return null;
+        if (platform === 'android' && u.hostname === 'play.google.com' && u.pathname === '/store/apps/details' && u.searchParams.get('id') === 'app.murmur.story') return u.href;
+        if (platform === 'ios' && u.hostname === 'apps.apple.com' && /^\/(?:[a-z]{2}\/)?app\/[^/]+\/id\d+$/.test(u.pathname)) return u.href;
+      } catch (_) {}
+      return null;
+    };
+    const a = valid(cfg.android, 'android'), i = valid(cfg.ios, 'ios');
+    const link = (url, name) => url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${name} 下載 App</a>` : `<span class="note">${name}：尚未上架</span>`;
+    return `<div class="row-actions">${link(a, 'Google Play')}${link(i, 'App Store')}</div>`;
+  }
+
   const DOCS = {
     'README': () => head('說明', '檔案檢視器說明') +
       `<div class="doc-body"><p>這裡可以做的事：</p><ol>
@@ -2743,52 +2762,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
     'APPCODE': () => {
       const flag = S.cleared2 ? 2 : 1;
-      if (APP) return head('原始資料', 'participant_7f3 · 手機備份') + `<div class="doc-body"><p>這份唯讀手機備份已收錄在 Murmur App。</p><button type="button" class="btn" id="openNativeArchive">開啟手機備份</button></div>`;
+      if (APP) return head('原始資料', 'participant_7f3 · 手機備份') + (S.cleared2 ? `<div class="doc-body"><p>這份唯讀手機備份已收錄在 Murmur App。</p><button type="button" class="btn" id="openNativeArchive">開啟手機備份</button></div>` : `<div class="doc-body"><p>原始資料尚未解鎖。請先完成第二周目。</p></div>`);
       return head('原始資料 · 不在這裡', 'participant_7f3 · 手機備份') +
         `<div class="doc-body"><p>她的手機備份沒有存在這個網站。</p><p>你可以在 Murmur App 裡打開它。App 裡也有這裡的全部內容；如果你已經在這裡走到結局，輸入下面的分支授權碼，就能直接接著看。</p></div>` +
         meta([['分支授權碼', `<span id="codeTxt">${makeCode(flag)}</span>`], ['包含', flag === 2 ? '第一周目、第二周目' : '第一周目']]) +
         `<div class="row-actions"><button class="btn" type="button" id="copyCode">複製授權碼</button></div><p class="docnote" id="copyMsg" hidden></p>` +
-        `<p class="note">Google Play：尚未上架　·　App Store：尚未上架</p>`;
+        storeLinksMarkup();
     },
     'IMPORT': () => head('App', '輸入分支授權碼') + `<p class="note">在網頁版走到結局的人，會拿到一組分支授權碼。</p>` +
       `<form class="lockform" data-code="1" autocomplete="off"><input id="codeIn" type="text" placeholder="MRM-XXXXXX-0XX" aria-label="分支授權碼"><button type="submit">匯入</button></form><p class="docnote" id="codeMsg" hidden></p>`,
 
-    'E-ROOT': () => head('原始資料 · 未知使用者', 'participant_7f3') +
-      `<div class="doc-body"><p>這些是 participant_7f3 的私人資料，從她的手機備份還原。</p><p>你可以閱讀，不能修改。發生過的事不會改變。</p></div>` +
-      meta([['訊息統計', L('E-FREQ')], ['日記', L('E-DIARY', 'E-DIARY（受保護）')]]),
-    'E-FREQ': () => head('stats · participant_7f3', '訊息統計') + meta([['範圍', 'participant_7f3 與 participant_A 的所有對話']]) +
-      `<div class="section compare"><table><tr><th>月份</th><th>她傳出</th><th>A 回覆</th></tr>` +
-      [['2020-11', 42, 38], ['2020-12', 56, 41], ['2021-01', 88, 35], ['2021-02', 143, 27], ['2021-03', 311, 19], ['2021-04', 402, 6]]
-        .map(([m, a, b]) => `<tr><td>${m}</td><td>${a}</td><td>${b}</td></tr>`).join('') + `</table></div>`,
-    'E-DIARY': () => S.unlocked.ediary
-      ? head('diary · participant_7f3', '日記') + `<div class="section"><div class="content notebook">` + [
-          ['2020-11', '她今天跟我說謝謝。她記得我不吃香菜。'],
-          ['2021-01', '一月開始，她回我的話變短了。我知道那是因為她不用多說，我就懂。'],
-          ['2021-02', '她說最近很忙。忙的人還是會回我，所以我是特別的。'],
-          ['2021-03', '她穿了一件我沒看過的外套。她沒有跟我說要買新衣服。'],
-          ['2021-04-11', '他說不討厭我。']
-        ].map(([d, x]) => `<div class="nb-entry"><time>${d}</time><p>${esc(x)}</p></div>`).join('') + `</div></div>` + meta([['手機備份', L('E-BACKUP')]])
-      : lockDoc('ediary', 'diary · participant_7f3', '日記'),
-    'E-BACKUP': () => head('backup · participant_7f3', 'E-BACKUP') + meta([['內容', '2021-04-10 的對話'], ['版本', 'v2（2021-04-11 修改）· 共 2 個版本']]) +
-      `<div class="section"><div class="content transcript">
-        <div class="tline"><time>21:31</time><span class="mid"></span><span class="who">participant_A</span><span>咱沒有討厭你</span></div>
-        <div class="tline"><time>21:40</time><span class="mid"></span><span class="who">participant_7f3</span><span>好</span></div></div></div>`,
-    'E-BACKUP@V1': () => head('backup · participant_7f3 · v1', 'E-BACKUP@v1') + meta([['版本', 'v1（原始）']]) +
-      `<div class="section"><div class="content transcript">` + DAY_MSGS['04-10'].map(([t, w, x]) => `<div class="tline"><time>${t}</time><span class="mid"></span><span class="who">participant_${PN(w)}</span><span>${esc(x)}</span></div>`).join('') + `</div></div>` +
-      `<p class="note">v2 刪掉了 21:31 之後的兩句，和她最後那句話。</p>` + meta([['下一份', L('E-0419')]]),
-    'E-0419': () => head('diary · participant_7f3', '2021-04-19') +
-      `<div class="section"><div class="excerpt"><div>我們那天一起待在那裡。</div><div>靠窗的位子。他點的還是一樣。</div><div>他穿了那件新的外套。不適合他。</div></div></div>` +
-      `<div class="section compare"><table><tr><th>紀錄</th><th>內容</th></tr>
-        <tr><td>訂位紀錄</td><td>窗邊咖啡 和平店 · 04-19 14:00 · 2 位 · 靠窗 · 訂位人 participant_B</td></tr>
-        <tr><td>電子發票（她的）</td><td>店號 042 · 04-19 14:05 · 熱美式</td></tr></table></div>` +
-      (S.unlocked.ewin
-        ? `<div class="section"><div class="content doc-body"><p>她在對面的便利商店。靠窗坐在 A 旁邊的，是 yoru。</p></div></div>` + meta([['最後一份', L('E-LAST')]])
-        : `${meta([['存取碼提示', esc(LOCKS.ewin.hint)]])}<form class="lockform" data-lock="ewin" autocomplete="off"><input id="lockIn" type="text" aria-label="存取碼"><button type="submit">開啟</button></form><p class="docnote" id="lockMsg" hidden></p>`),
-    'E-LAST': () => head('diary · participant_7f3', '2021-04-23') +
-      `<div class="section"><div class="content shard">` + ORDER_EVENTS.map(([k, x]) => `<div class="shard-row"><div class="shard-meta"><span>${k}</span></div><div>${esc(x)}</div></div>`).join('') + `</div></div>` +
-      (isDone('e4')
-        ? `<div class="section"><div class="content doc-body"><p>他看到我的時候，表情跟那天說不要的時候一樣。</p><p>我還是走過去了。</p><p class="dim">（以下紀錄已由檢方扣押。）</p></div></div><p class="note">REFERENCE_000 不會改變。</p>`
-        : `<p class="note">照實際發生的順序排列（例：ABCDEF）。</p><form class="lockform" data-order="1" autocomplete="off"><input id="orderIn" type="text" aria-label="順序"><button type="submit">確認</button></form><p class="docnote" id="orderMsg" hidden></p>`)
+    /* App-only archive excluded from public build */
+
   });
 
   INDEX.push(
@@ -3003,6 +2988,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (f.dataset.code) {
       const r = parseCode($('#codeIn').value), msg = $('#codeMsg');
       if (!r) { msg.textContent = '授權碼格式不正確，或驗證碼不符。'; msg.hidden = false; return; }
+      if (S.cleared2 && r.flag < 2) { msg.textContent = '此裝置已完成第二周目，無需匯入較早的進度。'; msg.hidden = false; return; }
       applyImport(r.flag, r.ts); msg.textContent = `匯入完成：第 ${r.flag} 周目。`; msg.hidden = false;
       return;
     }
@@ -3210,7 +3196,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     $('#mHelp').hidden = false;
     $('#mNG').hidden = !(S.cleared && !(S.ng && S.ng.on));
     $('#mCode').hidden = !S.cleared;
-    $('#mE').hidden = !(APP && (S.cleared || S.imported));
+    $('#mE').hidden = !(APP && S.cleared2);
     $('#mImport').hidden = !APP;
     $('#dbg').hidden = !DEV_MODE;
   }
@@ -3221,7 +3207,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   $('#mNG').addEventListener('click', () => { menu.hidden = true; startNG(); });
   $('#mCode').addEventListener('click', () => { menu.hidden = true; openViewer('APPCODE'); });
   $('#mImport').addEventListener('click', () => { menu.hidden = true; openViewer('IMPORT'); });
-  $('#mE').addEventListener('click', () => { menu.hidden = true; if (!pz('e1').seed) seedPZ('e1'); openViewer('E-ROOT'); horror('e'); });
+  $('#mE').addEventListener('click', () => { menu.hidden = true; if (!APP || !S.cleared2) return; if (!pz('e1').seed) seedPZ('e1'); openViewer('E-ROOT'); horror('e'); });
   let clearArm = 0;
   $('#mClear').addEventListener('click', (e) => {
     e.stopPropagation();

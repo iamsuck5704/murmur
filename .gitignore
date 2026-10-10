@@ -1,0 +1,17 @@
+node_modules/
+android/
+ios/
+.gradle/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+*.ipa
+*.apk
+*.aab
+.env
+.env.*
+!.env.example
+.DS_Store
+__pycache__/
+*.pyc

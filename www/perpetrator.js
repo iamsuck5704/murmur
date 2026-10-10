@@ -22,33 +22,10 @@
   const FINAL_SORT_ID = 'diary_75';
   // E4: verification of *archived evidence*, not a diagnosis or assertion of motive.
   const E4_REQUIRED_RECORDS=['stories_1','searches_1','drafts_2'];
-  const E4_QUESTIONS=[
-    {title:'01 / 觀看紀錄', prompt:'04/22 18:55 的限動，在備份中記錄了多少次觀看？',
-      choices:[['4','4 次'],['11','11 次'],['23','23 次']], answer:'23',
-      success:'已核對：04/22 18:55 的限動紀錄為 23 次。'},
-    {title:'02 / 搜尋索引', prompt:'04/20 搜尋紀錄中，哪一組詞確實出現過？',
-      choices:[['station','和平路／公車亭／路燈'],['office','辦公室／門禁卡／會議室'],['park','公園／長椅／腳踏車']], answer:'station',
-      success:'已核對：備份出現「和平路 公車亭 路燈 壞」等搜尋。'},
-    {title:'03 / 草稿語氣', prompt:'PLAN-7F3 草稿中的「咱」與「他叫我去的」，最直接支持哪個觀察？',
-      choices:[['fact','A 已明確邀請 7f3 到場'],['mimic','7f3 嘗試模仿 A 的說話方式，並把想像寫成邀請'],['none','草稿能證明 7f3 從未打算靠近']], answer:'mimic',
-      success:'已核對：草稿的語氣與主張來自 7f3 的文字，不能當成 A 的邀請證據。'}
-  ];
   // Confirm facts from original backup entries before choosing an interpretation.
   const E12_EVIDENCE={
     0:['diary_18','diary_20','notes_1'],
     1:['notes_2','notes_3','drafts_1']
-  };
-  const E12_QUESTIONS={
-    0:[
-      {title:'01 / 被選中',prompt:'11/12 凌晨掛睡時，A 實際說的是哪一句？',choices:[['promise','我會永遠在妳身邊'],['thanks','有你真好。'],['love','我只喜歡妳']],answer:'thanks',success:'原文為「有你真好」。它沒有直接承諾戀愛關係。'},
-      {title:'02 / 第一個',prompt:'11/19 的「你是第一個」，在日記裡具體指什麼？',choices:[['secret','A 首次向公司裡的人談及自己的性別身分'],['date','A 第一次向 7f3 告白'],['move','A 答應與 7f3 同居']],answer:'secret',success:'「第一個」是分享秘密的對象，不是交往承諾。'},
-      {title:'03 / 備忘錄',prompt:'將備忘錄和日記對照後，哪個結論最能區分紀錄與推測？',choices:[['proof','記住偏好就能證明 A 只喜歡 7f3'],['uncertain','備忘錄記下細節與主觀解讀，但無法證明 A 想與 7f3 交往'],['false','日記所有溫暖互動都是捏造']],answer:'uncertain',success:'互動可以是真實的，7f3 對關係的認定仍是她自己的解讀。'}
-    ],
-    1:[
-      {title:'01 / 回覆紀錄',prompt:'回覆紀錄把哪些東西整理成可比較的數據？',choices:[['counts','回覆字數與訊息間隔'],['gps','A 的精確 GPS 座標'],['photos','A 私人相簿的照片']],answer:'counts',success:'表格記錄的是字數與間隔，沒有直接記錄 A 的感情。'},
-      {title:'02 / 上線紀錄',prompt:'從上線紀錄推斷「A 故意不回 7f3」時，最重要的缺口是什麼？',choices:[['intent','上線時間無法直接證明 A 當時看到訊息或有意不回'],['time','時間表沒有任何日期'],['system','表格顯示 A 已刪除帳號']],answer:'intent',success:'上線和已讀、意圖是不同的事情，不能直接畫上等號。'},
-      {title:'03 / 草稿匣',prompt:'未送出的多個版本，最能支持哪項觀察？',choices:[['sent','這些訊息全部已經送給 A'],['rewrite','7f3 在傳送前反覆修改措辭、猶豫與懷疑'],['invite','A 親自寫了這些草稿']],answer:'rewrite',success:'草稿證明 7f3 的猶豫和反覆修訂，不代表 A 看過它們。'}
-    ]
   };
   // v1.5: proof-backed reconstruction. The document names are not an answer key;
   // players archive individual records, then pair them with evidence slots.
@@ -73,6 +50,44 @@
       {name:'未發送計畫',question:'找出 PLAN-7F3 草稿。',id:'drafts_2',note:'草稿中的宣稱並非 A 的真實邀請。'}
     ]
   };
+  // E2 chronology is a reconstruction, not a claim about why A replied less.
+  const E2_TIMELINE = [
+    {id:'reply',label:'01-14｜回覆紀錄：506 字訊息，收到「你好認真www」',source:'notes_2'},
+    {id:'online',label:'02-05｜上線紀錄：00:44～01:40 的觀察',source:'notes_3'},
+    {id:'draft',label:'02-08｜草稿匣：未送出的下雨訊息',source:'drafts_1'}
+  ];
+  const E2_TARGET=E2_TIMELINE.map(item=>item.id);
+  const E2_INITIAL=['draft','reply','online'];
+  const normalizeEvidence = value => String(value||'').normalize('NFKC').replace(/[\s　／/，,。·・「」『』\-]/g,'').toLowerCase();
+  function e2TimelinePanel(){
+    const read=E12_EVIDENCE[1].every(id=>state.seenRecords.includes(id));
+    const solved=!!state.puzzles.e2Timeline;
+    const rows=state.e2TimelineOrder.map((id,i)=>{
+      const item=E2_TIMELINE.find(x=>x.id===id);if(!item)return '';
+      return `<div class="bp-sort-row"><span class="bp-sort-text">${clean(item.label)}</span><div class="bp-sort-ctrl"><button type="button" data-timeline="up" data-idx="${i}" ${i===0||solved?'disabled':''} aria-label="將${clean(id)}上移">↑</button><button type="button" data-timeline="down" data-idx="${i}" ${i===2||solved?'disabled':''} aria-label="將${clean(id)}下移">↓</button></div></div>`;
+    }).join('');
+    return `<section class="bp-panel bp-e4-puzzle"><div class="bp-tag">E2 / TIMELINE RECONSTRUCTION</div><h2>重建三份備份的先後</h2><p class="bp-note">按日期排列，不要把上線紀錄解讀成「故意不回」。三份資料都讀過才可提交。</p>${read?`<div class="bp-sort">${rows}<button type="button" class="bp-primary" data-action="check-timeline" ${solved?'disabled':''}>${solved?'[VERIFIED] 已完成':'[VERIFY] 核對時間線'}</button></div>`:'<p class="bp-e4-locked">[LOCKED] 先閱讀回覆紀錄、上線紀錄與草稿。</p>'}<p class="bp-note" role="status">${clean(state.e2Feedback||'')}</p>${solved?'<p class="bp-forensic-note">三份紀錄的先後可以核實；A 是否刻意疏遠，不能由這些資料直接推定。</p>':''}</section>`;
+  }
+  const E3_DIFF_LINES=[
+    {time:'21:02',text:'我有話想跟你說',status:'omitted'},
+    {time:'21:05',text:'我喜歡你 不是朋友那種',status:'omitted'},
+    {time:'21:31',text:'咱沒有討厭你',status:'retained'},
+    {time:'21:31',text:'可是咱不想跟你交往',status:'refusal'},
+    {time:'21:33',text:'也希望你不要再一直找咱了（',status:'omitted'},
+    {time:'21:40',text:'好',status:'retained'},
+    {time:'23:58',text:'我知道你只是現在還沒想清楚',status:'omitted'}
+  ];
+  function e3DiffPanel(){
+    const read=['messages_1','messages_2'].every(id=>state.seenRecords.includes(id));
+    const solved=!!state.puzzles.backupDiff;
+    return `<section class="bp-panel bp-e4-puzzle"><div class="bp-tag">E3 / VERSION DIFF · 04-10</div><h2>原始備份被省略的拒絕</h2><p class="bp-note">v2 只保留部分對話。對照 v1，點選 A 明確拒絕交往的原句。不是所有 v2 缺少的句子都能證明拒絕。</p>${read?`<div class="bp-diff-grid"><div class="bp-diff-column"><strong>v2 · 自留版本</strong><div>21:31｜咱沒有討厭你</div><div>21:40｜好</div></div><div class="bp-diff-column"><strong>v1 · 早期備份</strong>${E3_DIFF_LINES.map((line,i)=>`<button type="button" data-diff-line="${i}" ${solved?'disabled':''} class="${line.status==='retained'?'bp-diff-retained':''}">${clean(line.time)}｜${clean(line.text)}</button>`).join('')}</div></div>`:'<p class="bp-e4-locked">[LOCKED] 請先閱讀 v1 與 v2 原始檔案。</p>'}<p class="bp-note" role="status">${clean(state.diffFeedback||'')}</p>${solved?'<p class="bp-forensic-note">[VERIFIED] 21:31 的明確拒絕未出現在 v2。v2 還省略其他句子，因此不能把它當作完整對話。</p>':''}</section>`;
+  }
+  let correlationDraft={views:'',place:'',claim:''};
+  function e4CorrelationPanel(){
+    const read=E4_REQUIRED_RECORDS.every(id=>state.seenRecords.includes(id));
+    const solved=!!state.puzzles.e4Correlation;
+    return `<section class="bp-panel bp-e4-puzzle"><div class="bp-tag">E4 / CROSS-REFERENCE</div><h2>三份紀錄的交集</h2><p class="bp-note">從 04/20 搜尋、04/22 限動與 PLAN-7F3 草稿中取證。只能填備份實際記錄的內容，不要推測 A 的動機。</p>${read?`<div class="bp-correlation"><label>04/22 18:55 限動被觀看幾次？<input data-correlate="views" value="${clean(correlationDraft.views)}" inputmode="numeric" autocomplete="off" placeholder="填入次數" ${solved?'disabled':''}></label><label>04/20 搜尋中出現的道路與候車設施<input data-correlate="place" value="${clean(correlationDraft.place)}" autocomplete="off" placeholder="例如：○○路 ○○亭" ${solved?'disabled':''}></label><label>PLAN-7F3 反覆寫下哪一句話？<input data-correlate="claim" value="${clean(correlationDraft.claim)}" autocomplete="off" placeholder="填入草稿中的原句" ${solved?'disabled':''}></label><button type="button" class="bp-primary" data-action="check-correlation" ${solved?'disabled':''}>${solved?'[VERIFIED] 交叉核對完成':'[VERIFY] 交叉核對'}</button></div>`:'<p class="bp-e4-locked">[LOCKED] 先閱讀限動觀看、搜尋紀錄與 PLAN-7F3。</p>'}<p class="bp-note" role="status">${clean(state.e4Feedback||'')}</p>${solved?'<p class="bp-forensic-note">觀看次數、搜尋地點與草稿文字都能核對，但「他叫我去的」是 7f3 自己寫的，不是 A 的邀請紀錄。</p>':''}</section>`;
+  }
   const forensicSlots = ch => FORENSIC_CASES[ch] || [];
   const isForensicCompleted = ch => forensicSlots(ch).every((slot,i)=>state.forensicMatches[String(ch)+':'+i]===slot.id);
   function forensicPanel(ch){
@@ -112,7 +127,7 @@
   }
   const getApp = id => APPS.find(a => a.id === id);
   const recordsForApp = id => (RECORDS[id] || []).filter(r => r.chapter <= state.unlocked);
-  const base = () => ({unlocked:0,completed:[],visited:{},scares:true,stream:false,typing:true,microphone:false,readCounts:{},seenRecords:[],searchHistory:[],openedDiary:false,pinnedEvidence:[],forensicMatches:{},puzzles:{finalSort:false,backupDiff:false,e4Step:0,e1Step:0,e2Step:0},sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]});
+  const base = () => ({unlocked:0,completed:[],visited:{},scares:true,stream:false,typing:true,microphone:false,readCounts:{},seenRecords:[],searchHistory:[],openedDiary:false,pinnedEvidence:[],forensicMatches:{},puzzles:{finalSort:false,backupDiff:false,e4Correlation:false,e2Timeline:false,e4Step:0,e1Step:0,e2Step:0},e2TimelineOrder:[...E2_INITIAL],sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]});
   let state = base();
   try {
     const data = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -123,7 +138,8 @@
         visited:data.visited && typeof data.visited==='object' && !Array.isArray(data.visited)?data.visited:{},
         scares:data.scares!==false,
         stream:data.stream===true, typing:data.typing!==false, microphone:data.microphone===true, readCounts:data.readCounts && typeof data.readCounts==='object'?data.readCounts:{},seenRecords:Array.isArray(data.seenRecords)?data.seenRecords.filter(x=>typeof x==='string').slice(-300):[],searchHistory:Array.isArray(data.searchHistory)?data.searchHistory.filter(x=>typeof x==='string').slice(-12):[],openedDiary:!!data.openedDiary,pinnedEvidence:Array.isArray(data.pinnedEvidence)?data.pinnedEvidence.filter(x=>typeof x==='string').slice(-100):[],forensicMatches:data.forensicMatches && typeof data.forensicMatches==='object' && !Array.isArray(data.forensicMatches)?data.forensicMatches:{},
-        puzzles:data.puzzles && typeof data.puzzles==='object'?{finalSort:!!data.puzzles.finalSort,backupDiff:!!data.puzzles.backupDiff,e4Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e4Step)?data.puzzles.e4Step:0)),e1Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e1Step)?data.puzzles.e1Step:0)),e2Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e2Step)?data.puzzles.e2Step:0))}:{finalSort:false,backupDiff:false,e4Step:0,e1Step:0,e2Step:0},
+        puzzles:data.puzzles && typeof data.puzzles==='object'?{finalSort:!!data.puzzles.finalSort,backupDiff:!!data.puzzles.backupDiff,e4Correlation:!!data.puzzles.e4Correlation,e2Timeline:!!data.puzzles.e2Timeline,e4Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e4Step)?data.puzzles.e4Step:0)),e1Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e1Step)?data.puzzles.e1Step:0)),e2Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e2Step)?data.puzzles.e2Step:0))}:{finalSort:false,backupDiff:false,e4Correlation:false,e2Timeline:false,e4Step:0,e1Step:0,e2Step:0},
+        e2TimelineOrder:Array.isArray(data.e2TimelineOrder)&&data.e2TimelineOrder.length===3&&new Set(data.e2TimelineOrder).size===3&&data.e2TimelineOrder.every(id=>E2_TARGET.includes(id))?data.e2TimelineOrder:[...E2_INITIAL],
         sortOrder:Array.isArray(data.sortOrder)&&data.sortOrder.length===FINAL_SORT_TARGET.length?data.sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]
       };
     }
@@ -131,7 +147,7 @@
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {} };
   const isNativeApp = () => !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
   function mainIsCleared() {
-    try { const s=JSON.parse(localStorage.getItem('murmur_p01_v7')||'{}'); return !!(s && (s.cleared || s.imported)); }
+    try { const s=JSON.parse(localStorage.getItem('murmur_p01_v7')||'{}'); return !!(s && s.cleared2); }
     catch (_) { return false; }
   }
   const canEnter = () => (isNativeApp() && mainIsCleared()) || PREVIEW;
@@ -256,17 +272,18 @@
   }
   function chapterReady(ch) {
     const ready = requirements(ch).every(r=>r.done);
-    if (ch === 0 || ch === 1) return state.completed.includes(ch) || (ready && isForensicCompleted(ch));
+    if (ch === 0) return state.completed.includes(ch) || (ready && isForensicCompleted(ch));
+    if (ch === 1) return state.completed.includes(ch) || (ready && isForensicCompleted(ch) && !!state.puzzles.e2Timeline);
     if (ch === 2) return state.completed.includes(ch) || (ready && isForensicCompleted(ch) && !!state.puzzles.backupDiff);
-    if (ch === 4) return state.completed.includes(ch) || (ready && isForensicCompleted(ch));
-    if (ch === 5) return ready && !!state.puzzles.finalSort;
+    if (ch === 4) return state.completed.includes(ch) || (ready && isForensicCompleted(ch) && !!state.puzzles.e4Correlation);
+    if (ch === 5) return state.completed.includes(ch) || (ready && !!state.puzzles.finalSort);
     return ready;
   }
   function top(title) {
     const back=(view==='home')?'返回對話':(view==='entry'?'返回列表':view==='app'&&backTarget==='chapter'?'返回章節':'返回手機');
     const location=view==='home'?'BACKUP':view==='chapter'?`CHAPTERS\\${currentChapter+1}`:view==='settings'?'CONFIG':view==='entry'?`${String(currentApp).toUpperCase()}\\FILE_${String(currentItem+1).padStart(2,'0')}`:String(currentApp).toUpperCase();
     const directory=`C:\\7F3\\${location}>`;
-    return `<div class="bp-windowline"><span class="bp-square" aria-hidden="true">_</span><span class="bp-windowname">MURMUR / 7F3_BACKUP.CMD</span><span class="bp-version">v1.1</span></div>
+    return `<div class="bp-windowline"><span class="bp-square" aria-hidden="true">_</span><span class="bp-windowname">MURMUR / 7F3_BACKUP.CMD</span><span class="bp-version">v1.6.5</span></div>
       <div class="bp-top"><button type="button" data-action="back" aria-label="${back}">[←] ${back}</button><span class="bp-status">LOCAL · READ ONLY</span><button type="button" data-action="settings">[SET]</button></div>
       <div class="bp-commandbar" aria-label="目前所在的虛構備份目錄"><span class="bp-prompt">${clean(directory)}</span><span class="bp-cursor" aria-hidden="true">▌</span></div>
       <div class="bp-meta">MURMUR // participant_7f3</div><h1 class="bp-title">${clean(title)}</h1>`;
@@ -447,33 +464,9 @@
   function chapter() {
     const ch=CHAPTERS[currentChapter], req=requirements(currentChapter), ready=chapterReady(currentChapter);
     const taskBlock=req.length ? `<div class="bp-tasks"><h2>本章線索</h2>${req.map(r=>`<button type="button" class="bp-task" data-task="${r.id}"><span class="bp-checkmark">${r.done?'✓':'○'}</span><span><b>${clean(r.label)}</b><small>${clean(r.hint)}</small></span><span aria-hidden="true">›</span></button>`).join('')}${currentChapter===5?`<p class="bp-note">另外：〈最後一篇〉需要完成排序，才算完成 E5。</p>`:''}</div>` : '';
-    const e4Step=Math.max(0,Math.min(E4_QUESTIONS.length,state.puzzles.e4Step||0));
-    const e4Read=E4_REQUIRED_RECORDS.every(id=>state.seenRecords.includes(id));
-    const e4Question=E4_QUESTIONS[e4Step];
-    const e4Puzzle=currentChapter===4 ? `<div class="bp-panel bp-e4-puzzle" aria-label="E4 三份檔案交叉核對">
-      <div class="bp-tag">E4 / CROSS-REFERENCE · ${e4Step}/3 VERIFIED</div>
-      <h2>交叉核對：觀看、搜尋、草稿</h2>
-      <p class="bp-note">這裡只核對備份寫了什麼，不把 7f3 的想法當成 A 的事實。三份檔案都讀過後才可核對。</p>
-      ${e4Step===3 ? `<div class="bp-e4-result" role="status"><b>[VERIFIED] 3 / 3</b><p>三份資料已完成核對。觀看次數、搜尋詞與草稿模仿都屬於備份紀錄，不能單憑它們推定 A 的真實意圖。</p></div>` :
-        !e4Read ? `<div class="bp-e4-locked">[LOCKED] 尚需閱讀：${E4_REQUIRED_RECORDS.filter(id=>!state.seenRecords.includes(id)).map(id=>id==='stories_1'?'限動觀看紀錄':id==='searches_1'?'04/20 搜尋紀錄':'PLAN-7F3 草稿').join('、')}</div>` :
-        `<div class="bp-e4-step"><span class="bp-tag">${clean(e4Question.title)}</span><p>${clean(e4Question.prompt)}</p><div class="bp-e4-choices">${e4Question.choices.map(([id,label])=>`<button type="button" data-e4-answer="${clean(id)}">${clean(label)}</button>`).join('')}</div></div>`}
-      <p class="bp-e4-feedback" role="status">${clean(state.e4Feedback||'')}</p>
-      </div>` : '';
-    const e12Step=currentChapter===0?(state.puzzles.e1Step||0):(state.puzzles.e2Step||0);
-    const e12Required=E12_EVIDENCE[currentChapter];
-    const e12Ready=e12Required?e12Required.every(id=>state.seenRecords.includes(id)):false;
-    const e12Question=E12_QUESTIONS[currentChapter]?.[e12Step];
-    const e12Puzzle=e12Required ? `<div class="bp-panel bp-e4-puzzle" aria-label="E${currentChapter+1} 證據核對">
-      <div class="bp-tag">E${currentChapter+1} / EVIDENCE CHECK · ${e12Step}/3 VERIFIED</div>
-      <h2>${currentChapter===0?'被選中的證據':'回覆、上線、未寄出'}</h2>
-      <p class="bp-note">請根據備份回答。角色相信的事不一定是文件能證實的事。</p>
-      ${e12Step===3?'<div class="bp-e4-result" role="status"><b>[VERIFIED] 3 / 3</b><p>已核對原始紀錄與推測的差別。</p></div>':!e12Ready?
-      `<div class="bp-e4-locked">[LOCKED] 尚需閱讀：${e12Required.filter(id=>!state.seenRecords.includes(id)).map(id=>({diary_18:'11/12 01:47 日記',diary_20:'11/19 日記',notes_1:'備忘錄 · 她',notes_2:'回覆紀錄',notes_3:'上線紀錄',drafts_1:'沒送出的訊息'})[id]).join('、')}</div>`:
-      `<div class="bp-e4-step"><span class="bp-tag">${clean(e12Question.title)}</span><p>${clean(e12Question.prompt)}</p><div class="bp-e4-choices">${e12Question.choices.map(([id,label])=>`<button type="button" data-e12-answer="${clean(id)}">${clean(label)}</button>`).join('')}</div></div>`}
-      <p class="bp-e4-feedback" role="status">${clean(state.e12Feedback||'')}</p></div>`:'';
-    const backupDiff = currentChapter===2 ? `<div class="bp-panel bp-e3-puzzle"><div class="bp-tag">E3 / INTEGRITY CHECK</div><h2>兩份備份之間，消失的是哪一句？</h2><p class="bp-note">先閱讀 04-10 的 v1 與 v2，再選擇答案。這是對檔案差異的核對，不是猜測 A 的心意。</p>${state.puzzles.backupDiff?'<p class="bp-note">[VERIFIED] 已確認 v2 遺漏的拒絕訊息。</p>':(state.seenRecords.includes('messages_1')&&state.seenRecords.includes('messages_2')?`<div class="bp-diff-choices"><button type="button" data-diff="a">咱沒有討厭你</button><button type="button" data-diff="b">可是咱不想跟你交往</button><button type="button" data-diff="c">好</button></div>`:'<p class="bp-note">[LOCKED] 尚未閱讀兩個版本的備份。</p>')}<p class="bp-note" role="status">${clean(state.diffFeedback||'')}</p></div>` : '';
+    const chapterPuzzle=currentChapter===1?e2TimelinePanel():currentChapter===2?e3DiffPanel():currentChapter===4?e4CorrelationPanel():'';
     return top(ch.name)+
-      `<div class="bp-panel"><div class="bp-tag">${clean(ch.range)} · V0.5</div><p class="bp-copy">本章所有正文都已匯入原始文字。請依線索打開對應目錄。</p><div class="bp-outline">${chapterEntries(currentChapter).map(rec=>`<div><span>[${clean(getApp(rec.app)?.name || rec.app)}]</span> ${clean(displayRecordTitle(rec))}</div>`).join('')}</div></div>${taskBlock}${forensicPanel(currentChapter)}${backupDiff}
+      `<div class="bp-panel"><div class="bp-tag">${clean(ch.range)} · ARCHIVE</div><p class="bp-copy">本章所有正文都已匯入原始文字。請依線索打開對應目錄。</p><div class="bp-outline">${chapterEntries(currentChapter).map(rec=>`<div><span>[${clean(getApp(rec.app)?.name || rec.app)}]</span> ${clean(displayRecordTitle(rec))}</div>`).join('')}</div></div>${taskBlock}${forensicPanel(currentChapter)}${chapterPuzzle}
       <div class="bp-actions"><button type="button" class="bp-primary" data-action="complete" ${!ready?'disabled':''}>${currentChapter===CHAPTERS.length-1?'完成尾聲':'完成本章，解鎖下一章'} →</button><button type="button" class="bp-ghost" data-action="home">回手機桌面</button></div>
       ${!ready?'<p class="bp-note">先依序查看本章指定資料，再回到這裡繼續。</p>':''}`;
   }
@@ -485,7 +478,7 @@
   function renderFinalSort(body) {
     const solved = !!state.puzzles.finalSort;
     const items = state.sortOrder.map((line, idx)=>`<div class="bp-sort-row"><span class="bp-sort-text">${clean(line)}</span><div class="bp-sort-ctrl"><button type="button" data-sort="up" data-idx="${idx}" ${idx===0?'disabled':''}>↑</button><button type="button" data-sort="down" data-idx="${idx}" ${idx===state.sortOrder.length-1?'disabled':''}>↓</button></div></div>`).join('');
-    return `<div class="bp-sort"><p class="bp-note">照實際發生的順序排列。排對之後會顯示原文。</p>${items}<button type="button" class="bp-primary" data-action="check-sort">確認順序</button>${solved?`<div class="bp-reveal">${renderMarkup(body)}</div>`:''}${state.sortFeedback?`<p class="bp-note">${clean(state.sortFeedback)}</p>`:''}</div>`;
+    return `<div class="bp-sort"><p class="bp-note">照實際發生的順序排列。排對之後會顯示原文。</p>${items}<button type="button" class="bp-primary" data-action="check-sort">確認順序</button>${solved?`<div class="bp-integrity-warning" role="status"><strong>[INTEGRITY WARNING]</strong><span>順序已核實。但這份日記只有一個人的視角。仍有未經獨立證實的部分。</span></div><div class="bp-reveal">${renderMarkup(body)}</div>`:''}${state.sortFeedback?`<p class="bp-note">${clean(state.sortFeedback)}</p>`:''}</div>`;
   }
   function entry() {
     const a=getApp(currentApp); const rec=recordsForApp(currentApp)[currentItem];
@@ -543,7 +536,7 @@
   function render() {
     const content=view==='home'?home():view==='chapter'?chapter():view==='app'?appIndex():view==='entry'?entry():settings();
     window.dispatchEvent(new CustomEvent('murmur:context',{detail:{view,chapter:currentChapter,scares:state.scares,stream:state.stream,open:!root.hidden}}));
-    root.innerHTML=`<div class="bp-shell">${content}<footer class="bp-footer">MURMUR · FICTIONAL DEVICE ARCHIVE / CMD v1.5.1<br>LOCAL STORY · NO CLOUD SYNC</footer></div>`;
+    root.innerHTML=`<div class="bp-shell">${content}<footer class="bp-footer">MURMUR · FICTIONAL DEVICE ARCHIVE / CMD v1.6.5<br>LOCAL STORY · NO CLOUD SYNC</footer></div>`;
     root._surgeCheck=null;root.scrollTop=0; const heading=root.querySelector('h1'); if(heading) heading.setAttribute('tabindex','-1');
     updateRepetitionColors();
     if(view==='entry'){
@@ -558,7 +551,7 @@
   }
   function changeView(next) { if(typingSkip)typingSkip();stopTyping();stopSound();view=next; pendingEntryOpen=(next==='entry'); render(); const el=root.querySelector('h1'); if(el) el.focus({preventScroll:true}); }
   function open() { if(!canEnter()) return false; focusBefore=document.activeElement; root.hidden=false; document.body.classList.add('murmur-backup-active'); changeView('home'); return true; }
-  function close() { if(typingSkip)typingSkip();stopTyping();stopSound();root.hidden=true; document.body.classList.remove('murmur-backup-active'); if(focusBefore && focusBefore.isConnected) focusBefore.focus({preventScroll:true}); }
+  function close() { if(typingSkip)typingSkip();stopTyping();stopSound();root.hidden=true; window.dispatchEvent(new CustomEvent('murmur:context',{detail:{view:'closed',chapter:currentChapter,scares:state.scares,stream:state.stream,open:false}})); document.body.classList.remove('murmur-backup-active'); if(focusBefore && focusBefore.isConnected) focusBefore.focus({preventScroll:true}); }
   function back() { if(view==='home'){close();return;} if(view==='entry'){changeView('app');return;} if(view==='app'&&backTarget==='chapter'){changeView('chapter');return;} changeView('home'); }
   function openApp(id, returnTo='home') { const a=getApp(id); if(!a || a.openAt>state.unlocked) return; currentApp=id; backTarget=returnTo; changeView('app'); }
 
@@ -596,34 +589,36 @@
       else {state.forensicFeedback='[MISMATCH] 檔案存在，但不符合目前的核對目標。請再比較。';}
       save();render();return;
     }
-    if(b.dataset.e12Answer!==undefined){
-      if(currentChapter!==0&&currentChapter!==1)return;
-      if(!E12_EVIDENCE[currentChapter].every(id=>state.seenRecords.includes(id)))return;
-      const key=currentChapter===0?'e1Step':'e2Step';
-      const step=state.puzzles[key]||0;
-      const q=E12_QUESTIONS[currentChapter][step];
-      if(!q)return;
-      if(b.dataset.e12Answer===q.answer){state.puzzles[key]=step+1;state.e12Feedback=q.success;}
-      else state.e12Feedback='[MISMATCH] 這是推測，不是備份能直接證實的內容。';
+    if(b.dataset.timeline){
+      if(currentChapter!==1||state.puzzles.e2Timeline)return;
+      const idx=Number(b.dataset.idx),swap=b.dataset.timeline==='up'?idx-1:idx+1;
+      if(!Number.isInteger(idx)||idx<0||idx>=3||swap<0||swap>=3)return;
+      const next=[...state.e2TimelineOrder];[next[idx],next[swap]]=[next[swap],next[idx]];
+      state.e2TimelineOrder=next;state.e2Feedback='';save();render();return;
+    }
+    if(action==='check-timeline'){
+      if(currentChapter!==1||!E12_EVIDENCE[1].every(id=>state.seenRecords.includes(id)))return;
+      state.puzzles.e2Timeline=JSON.stringify(state.e2TimelineOrder)===JSON.stringify(E2_TARGET);
+      state.e2Feedback=state.puzzles.e2Timeline?'[VERIFIED] 01-14 → 02-05 → 02-08。':'[MISMATCH] 日期先後不符，請再比對三份備份。';
       save();render();return;
     }
-    if(b.dataset.e4Answer!==undefined){
-      if(currentChapter!==4 || !E4_REQUIRED_RECORDS.every(id=>state.seenRecords.includes(id)))return;
-      const step=state.puzzles.e4Step||0;
-      if(step>=E4_QUESTIONS.length)return;
-      const q=E4_QUESTIONS[step];
-      if(b.dataset.e4Answer===q.answer){
-        state.puzzles.e4Step=step+1;
-        state.e4Feedback=q.success;
-      }else{
-        state.e4Feedback='[MISMATCH] 這個答案與備份不符。請返回三份資料重新核對。';
-      }
+    if(b.dataset.diffLine!==undefined){
+      if(currentChapter!==2||!['messages_1','messages_2'].every(id=>state.seenRecords.includes(id)))return;
+      const line=E3_DIFF_LINES[Number(b.dataset.diffLine)];if(!line)return;
+      state.puzzles.backupDiff=line.status==='refusal';
+      state.diffFeedback=state.puzzles.backupDiff?'[VERIFIED] 21:31 的明確拒絕在 v2 中被省略。':'[MISMATCH] 請找出 A 明確表示不願交往的句子。';
       save();render();return;
     }
-    if(b.dataset.diff){
-      if(currentChapter!==2 || !state.seenRecords.includes('messages_1') || !state.seenRecords.includes('messages_2'))return;
-      state.puzzles.backupDiff=b.dataset.diff==='b';
-      state.diffFeedback=state.puzzles.backupDiff?'比對成功：原始備份明確寫著 A 不想交往。':'這句不是 v2 刪掉的關鍵內容，請再比較一次。';
+    if(action==='check-correlation'){
+      if(currentChapter!==4||!E4_REQUIRED_RECORDS.every(id=>state.seenRecords.includes(id)))return;
+      const field=k=>{const raw=root.querySelector('[data-correlate="'+k+'"]')?.value||'';correlationDraft[k]=raw.slice(0,100);return normalizeEvidence(raw);};
+      const views=field('views'),place=field('place'),claim=field('claim');
+      const okViews=views==='23'||views==='23次';
+      const okPlace=place.includes('和平路')&&place.includes('公車亭');
+      const okClaim=claim.includes('他叫我去的');
+      state.puzzles.e4Correlation=okViews&&okPlace&&okClaim;
+      state.e4Feedback=state.puzzles.e4Correlation?'[VERIFIED] 三份紀錄已交叉核對；草稿不是邀請證明。':
+        `[MISMATCH] ${[!okViews?'觀看次數':null,!okPlace?'搜尋地點':null,!okClaim?'草稿原句':null].filter(Boolean).join('、')}尚未對上原始資料。`;
       save();render();return;
     }
     if(action==='search'){searchArchive(root.querySelector('#bp-search-input')?.value);return;}
@@ -643,7 +638,7 @@
     }
     if(action==='reset'){ if(!window.confirm('清除加害者篇進度？第一、第二周目不受影響。')) return; state=base(); save(); currentChapter=0; changeView('home'); return; }
     if(action==='complete'){ if(currentChapter>state.unlocked || !chapterReady(currentChapter)) return; if(!state.completed.includes(currentChapter)) state.completed.push(currentChapter); state.unlocked=Math.min(CHAPTERS.length-1, Math.max(state.unlocked, currentChapter+1)); save(); if(currentChapter===CHAPTERS.length-1)window.dispatchEvent(new CustomEvent('murmur:epilogue')); changeView('home'); return; }
-    if(action==='check-sort'){ const ok = JSON.stringify(state.sortOrder)===JSON.stringify(FINAL_SORT_TARGET); state.puzzles.finalSort=ok; state.sortFeedback = ok ? '排序正確。已顯示原文。' : '順序不對，請再比對一次。'; save(); render(); return; }
+    if(action==='check-sort'){ const ok = JSON.stringify(state.sortOrder)===JSON.stringify(FINAL_SORT_TARGET); state.puzzles.finalSort=ok; state.sortFeedback = ok ? '排序正確。已顯示原文。' : '順序不對，請再比對一次。'; save(); render(); if(ok && currentChapter===5)window.dispatchEvent(new CustomEvent('murmur:e5-verified',{detail:{chapter:5,record:'diary_75'}})); return; }
     if(b.dataset.sort){ const idx=Number(b.dataset.idx); if(!Number.isInteger(idx)) return; const arr=[...state.sortOrder]; const dir=b.dataset.sort; const swap=dir==='up'?idx-1:idx+1; if(swap<0||swap>=arr.length) return; [arr[idx],arr[swap]]=[arr[swap],arr[idx]]; state.sortOrder=arr; state.sortFeedback=''; save(); render(); return; }
     if(b.dataset.app){ openApp(b.dataset.app); return; }
     if(b.dataset.chapter!==undefined){ const idx=Number(b.dataset.chapter); if(!Number.isInteger(idx)||idx<0||idx>state.unlocked) return; currentChapter=idx; changeView('chapter'); return; }
