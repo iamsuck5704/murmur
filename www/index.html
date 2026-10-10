@@ -219,6 +219,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 </style>
 <link rel="stylesheet" href="perpetrator.css">
+<link rel="stylesheet" href="meta-horror.css">
 </head>
 <body>
 
@@ -2526,7 +2527,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   /* =====================================================================
      v1.0：第二周目、加害者篇（App 版）、授權碼、F12 紅字
      ===================================================================== */
-  const APP = !!window.Capacitor || /app/.test(location.hash);
+  const APP = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
   const NG = ['s1', 's2', 's3'], EP = ['e1', 'e2', 'e3', 'e4'];
   const pad3 = (n) => String(n).padStart(3, '0');
   function solveStage(list, k) {
@@ -3334,6 +3335,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 })();
 </script>
 
+<script src="meta-horror.js"></script>
 <script src="perpetrator.js"></script>
 </body>
 </html>

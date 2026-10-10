@@ -37,3 +37,22 @@ if 'NSMicrophoneUsageDescription' not in s:
 </dict>''', 1)
     info.write_text(s, encoding='utf-8')
 print('iOS patch applied')
+
+# Optional effects request permissions only when the player chooses to use them.
+info = Path('ios/App/App/Info.plist')
+if info.exists():
+    t=info.read_text(encoding='utf-8')
+    descriptions={
+        'NSCameraUsageDescription':'只有玩家主動啟用鏡子演出才使用前鏡頭，即時顯示、不錄影、不儲存。',
+        'NSLocationWhenInUseUsageDescription':'玩家主動同意後，Murmur 使用一次大略位置呈現行政區或查詢即時天氣；會向第三方服務送出約略座標。',
+        'NSMotionUsageDescription':'玩家主動啟用動作演出時，Murmur 僅在前景判斷自然手部晃動。'
+    }
+    for key,description in descriptions.items():
+        if '<key>'+key+'</key>' not in t:
+            t=t.replace('</dict>','<key>'+key+'</key>\n<string>'+description+'</string>\n</dict>',1)
+    info.write_text(t,encoding='utf-8')
+
+# Murmur v1.4: Capacitor LocalNotifications handles iOS UNUserNotificationCenter
+# authorization from an explicit JS tap. Never request on launch.
+# App icon switching needs a preinstalled CFBundleAlternateIcons entry plus assets
+# and is intentionally disabled until those resources are supplied.

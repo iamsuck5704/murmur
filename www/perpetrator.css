@@ -256,3 +256,47 @@ body.murmur-backup-active{overflow:hidden}
 @keyframes murmur-surge{0%{opacity:.2;transform:translateY(8px)}100%{opacity:1;transform:none}}
 #backupRoot .bp-story-toast{position:sticky;bottom:16px;z-index:10;background:#101b16;border:1px solid #9b6868;color:#d5d0c8;padding:14px 18px;margin:8px 12px;font:14px/1.65 'Courier New',monospace;box-shadow:0 6px 25px #0009}
 @media(prefers-reduced-motion:reduce){#backupRoot .bp-document.bp-crt-boot{clip-path:none!important;transform:none!important;filter:none!important}#backupRoot .bp-type-cursor{animation:none!important}#backupRoot .bp-surge{animation:none!important}}
+
+/* v0.9: in-universe search, E3 integrity puzzle and reread text */
+#backupRoot .bp-search-panel{margin-block:14px}
+#backupRoot .bp-search-controls{display:flex;gap:8px;margin-top:10px}
+#backupRoot .bp-search-controls input{flex:1;min-width:0;background:#08130d;color:#d0ebd5;border:1px solid #496b52;padding:13px 11px;font:inherit;border-radius:0}
+#backupRoot .bp-search-controls button,#backupRoot .bp-search-results button,#backupRoot .bp-diff-choices button{background:#11251a;border:1px solid #496b52;color:#c9ead0;font:inherit;min-height:52px;padding:10px 12px;text-align:left;cursor:pointer}
+#backupRoot .bp-search-results,#backupRoot .bp-diff-choices{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#backupRoot .bp-search-contamination{margin-top:32px;padding:14px 8px;border-top:1px dashed #5a3e42;color:#c78083}
+#backupRoot .bp-search-contamination .bp-line{color:#bd6d73}
+#backupRoot .bp-reread{margin-top:48px;padding-top:16px;border-top:1px dashed #435d4a;color:#a8c5b0;letter-spacing:.08em}
+#backupRoot .bp-diff-choices button:focus-visible,#backupRoot .bp-search-results button:focus-visible{outline:2px solid #c3eacb;outline-offset:2px}
+@media(max-width:340px){#backupRoot .bp-search-controls{flex-direction:column}}
+
+/* v1.0: evidence-driven E4 cross-reference, accessible terminal controls */
+#backupRoot .bp-e4-puzzle{margin-top:20px;border-color:#426c50}
+#backupRoot .bp-e4-puzzle h2{font-size:17px;line-height:1.5;margin:12px 0}
+#backupRoot .bp-e4-step{padding:14px 0}
+#backupRoot .bp-e4-step p{font-size:14px;line-height:1.9;color:#d0e4d4}
+#backupRoot .bp-e4-choices{display:grid;gap:10px;margin:12px 0}
+#backupRoot .bp-e4-choices button{min-height:68px;text-align:left;padding:14px 12px;border:1px solid #55785d;background:#0c1c12;color:#d1ebd8;font:14px/1.65 var(--term-font),monospace;overflow-wrap:anywhere;touch-action:manipulation}
+#backupRoot .bp-e4-choices button:active{background:#27402c}
+#backupRoot .bp-e4-choices button:focus-visible{outline:2px solid #c6f0d1;outline-offset:3px}
+#backupRoot .bp-e4-feedback{color:#c2d3bc;font-size:13px;line-height:1.7;min-height:1.7em}
+#backupRoot .bp-e4-locked{color:#c9af93;padding:16px 0;line-height:1.8}
+#backupRoot .bp-e4-result{border-left:2px solid #6aab78;padding:14px 16px;background:#0d1d12;line-height:1.8}
+#backupRoot .bp-e4-result b{color:#9ce6ac}
+#backupRoot .bp-e4-result p{margin:8px 0 0}
+
+/* v1.1 E1/E2 verification is built from the existing E4 accessible choice components */
+#backupRoot .bp-e4-puzzle [role="status"]{overflow-wrap:anywhere}
+
+/* v1.5 forensic board: full-width touch affordances */
+#backupRoot .bp-forensics{margin-top:16px}
+#backupRoot .bp-evidence-slot{border:1px solid #385440;padding:14px 12px;margin:12px 0;background:#0c1710}
+#backupRoot .bp-evidence-slot p{line-height:1.85;margin:10px 0}
+#backupRoot .bp-forensic-label{display:block;font-size:13px;color:#9db8a5;margin:12px 0}
+#backupRoot .bp-forensic-label select{display:block;width:100%;min-height:52px;background:#101e15;border:1px solid #5b8063;color:#d4eed9;padding:10px;font:inherit;font-size:15px;margin-top:8px}
+#backupRoot .bp-evidence-slot button,#backupRoot .bp-evidence-collect button{min-height:56px;max-width:100%;white-space:normal;text-align:left}
+#backupRoot .bp-evidence-collect{border-top:1px solid #3d5744;margin-top:20px;padding-top:16px}
+#backupRoot .bp-evidence-collect small{display:block;color:#8fa895;margin-top:6px}
+#backupRoot .bp-forensic-note{color:#a9d9b0}
+
+/* v1.5.1: stable viewport CRT animation on all file types. */
+#backupRoot .bp-document.bp-crt-boot{will-change:clip-path,filter,transform}

@@ -20,6 +20,70 @@
   const CHAPTERS = ARCHIVE.chapters;
   const RECORDS = ARCHIVE.records;
   const FINAL_SORT_ID = 'diary_75';
+  // E4: verification of *archived evidence*, not a diagnosis or assertion of motive.
+  const E4_REQUIRED_RECORDS=['stories_1','searches_1','drafts_2'];
+  const E4_QUESTIONS=[
+    {title:'01 / 觀看紀錄', prompt:'04/22 18:55 的限動，在備份中記錄了多少次觀看？',
+      choices:[['4','4 次'],['11','11 次'],['23','23 次']], answer:'23',
+      success:'已核對：04/22 18:55 的限動紀錄為 23 次。'},
+    {title:'02 / 搜尋索引', prompt:'04/20 搜尋紀錄中，哪一組詞確實出現過？',
+      choices:[['station','和平路／公車亭／路燈'],['office','辦公室／門禁卡／會議室'],['park','公園／長椅／腳踏車']], answer:'station',
+      success:'已核對：備份出現「和平路 公車亭 路燈 壞」等搜尋。'},
+    {title:'03 / 草稿語氣', prompt:'PLAN-7F3 草稿中的「咱」與「他叫我去的」，最直接支持哪個觀察？',
+      choices:[['fact','A 已明確邀請 7f3 到場'],['mimic','7f3 嘗試模仿 A 的說話方式，並把想像寫成邀請'],['none','草稿能證明 7f3 從未打算靠近']], answer:'mimic',
+      success:'已核對：草稿的語氣與主張來自 7f3 的文字，不能當成 A 的邀請證據。'}
+  ];
+  // Confirm facts from original backup entries before choosing an interpretation.
+  const E12_EVIDENCE={
+    0:['diary_18','diary_20','notes_1'],
+    1:['notes_2','notes_3','drafts_1']
+  };
+  const E12_QUESTIONS={
+    0:[
+      {title:'01 / 被選中',prompt:'11/12 凌晨掛睡時，A 實際說的是哪一句？',choices:[['promise','我會永遠在妳身邊'],['thanks','有你真好。'],['love','我只喜歡妳']],answer:'thanks',success:'原文為「有你真好」。它沒有直接承諾戀愛關係。'},
+      {title:'02 / 第一個',prompt:'11/19 的「你是第一個」，在日記裡具體指什麼？',choices:[['secret','A 首次向公司裡的人談及自己的性別身分'],['date','A 第一次向 7f3 告白'],['move','A 答應與 7f3 同居']],answer:'secret',success:'「第一個」是分享秘密的對象，不是交往承諾。'},
+      {title:'03 / 備忘錄',prompt:'將備忘錄和日記對照後，哪個結論最能區分紀錄與推測？',choices:[['proof','記住偏好就能證明 A 只喜歡 7f3'],['uncertain','備忘錄記下細節與主觀解讀，但無法證明 A 想與 7f3 交往'],['false','日記所有溫暖互動都是捏造']],answer:'uncertain',success:'互動可以是真實的，7f3 對關係的認定仍是她自己的解讀。'}
+    ],
+    1:[
+      {title:'01 / 回覆紀錄',prompt:'回覆紀錄把哪些東西整理成可比較的數據？',choices:[['counts','回覆字數與訊息間隔'],['gps','A 的精確 GPS 座標'],['photos','A 私人相簿的照片']],answer:'counts',success:'表格記錄的是字數與間隔，沒有直接記錄 A 的感情。'},
+      {title:'02 / 上線紀錄',prompt:'從上線紀錄推斷「A 故意不回 7f3」時，最重要的缺口是什麼？',choices:[['intent','上線時間無法直接證明 A 當時看到訊息或有意不回'],['time','時間表沒有任何日期'],['system','表格顯示 A 已刪除帳號']],answer:'intent',success:'上線和已讀、意圖是不同的事情，不能直接畫上等號。'},
+      {title:'03 / 草稿匣',prompt:'未送出的多個版本，最能支持哪項觀察？',choices:[['sent','這些訊息全部已經送給 A'],['rewrite','7f3 在傳送前反覆修改措辭、猶豫與懷疑'],['invite','A 親自寫了這些草稿']],answer:'rewrite',success:'草稿證明 7f3 的猶豫和反覆修訂，不代表 A 看過它們。'}
+    ]
+  };
+  // v1.5: proof-backed reconstruction. The document names are not an answer key;
+  // players archive individual records, then pair them with evidence slots.
+  const FORENSIC_CASES={
+    0:[
+      {name:'四秒語音',question:'找出「有你真好」的記錄；這句話被保存在什麼事件裡？',id:'diary_18',note:'檔案能證實這句話與錄音的存在，無法證實戀愛承諾。'},
+      {name:'第一個',question:'找出被反覆寫下「第一個」的日記，注意她省略了哪些背景。',id:'diary_20',note:'這是 7f3 寫下的版本，不能把私人日記當完整逐字稿。'},
+      {name:'私人索引',question:'哪份備忘錄把偏好細節累積成對 A 的解釋？',id:'notes_1',note:'偏好紀錄可以核對；「對方愛我」仍只是解讀。'}
+    ],
+    1:[
+      {name:'回覆變化',question:'找出記錄回覆字數與間隔的備份。',id:'notes_2',note:'時間與字數不是情緒的直接量尺。'},
+      {name:'上線時間',question:'找出她追蹤上線時間的原始紀錄。',id:'notes_3',note:'上線不等於已讀，更不能證實刻意忽略。'},
+      {name:'未寄出的版本',question:'哪份檔案保留多次改寫、卻沒送出的訊息？',id:'drafts_1',note:'草稿可以證明寫過，不能證明收件者讀過。'}
+    ],
+    2:[
+      {name:'自留版本',question:'歸檔手機備份 v2（修改版）。',id:'messages_1',note:'僅證明這個版本存在。'},
+      {name:'早期備份',question:'歸檔手機備份 v1（原始版）。',id:'messages_2',note:'比對後才能確認哪句話消失。'}
+    ],
+    4:[
+      {name:'反覆觀看',question:'找出 04/22 的限動觀看紀錄。',id:'stories_1',note:'觀看次數可以比對，但動機不能直接推定。'},
+      {name:'搜尋痕跡',question:'找出 04/20 的搜尋紀錄。',id:'searches_1',note:'搜尋詞是行為線索，不等於已執行的計畫。'},
+      {name:'未發送計畫',question:'找出 PLAN-7F3 草稿。',id:'drafts_2',note:'草稿中的宣稱並非 A 的真實邀請。'}
+    ]
+  };
+  const forensicSlots = ch => FORENSIC_CASES[ch] || [];
+  const isForensicCompleted = ch => forensicSlots(ch).every((slot,i)=>state.forensicMatches[String(ch)+':'+i]===slot.id);
+  function forensicPanel(ch){
+    const slots=forensicSlots(ch);if(!slots.length)return '';
+    const pinned=state.pinnedEvidence.filter(id=>Object.values(RECORDS).some(rows=>rows.some(rec=>rec.id===id && rec.chapter<=state.unlocked)));
+    const choices=pinned.map(id=>{const rec=Object.values(RECORDS).flat().find(r=>r.id===id);return rec?`<option value="${clean(id)}">${clean(displayRecordTitle(rec))}</option>`:'';}).join('');
+    return `<section class="bp-panel bp-forensics" aria-label="鑑識工作台"><div class="bp-tag">FORENSIC WORKBENCH / EVIDENCE BOARD</div><h2>資料重建 · ${slots.filter((_,i)=>state.forensicMatches[ch+':'+i]).length}/${slots.length}</h2>
+      <p class="bp-copy">到原始檔案按 [COLLECT] 收錄，再回這裡選擇對應的證據。只核對檔案事實，不判決人物動機。</p>
+      ${slots.map((slot,i)=>{const key=ch+':'+i,matched=state.forensicMatches[key]===slot.id;return `<div class="bp-evidence-slot"><div class="bp-tag">${String(i+1).padStart(2,'0')} / ${clean(slot.name)} ${matched?'[MATCHED]':'[UNMATCHED]'}</div><p>${clean(slot.question)}</p>${matched?`<p class="bp-forensic-note">[VERIFIED] ${clean(slot.note)}</p>`:`<label class="bp-forensic-label">證據檔案 <select data-evidence-select="${key}" aria-label="為${clean(slot.name)}選擇證據"><option value="">選擇已收錄檔案</option>${choices}</select></label><button type="button" class="bp-ghost" data-match-evidence="${key}">[VERIFY] 核對檔案</button>`}</div>`;}).join('')}
+      <p class="bp-e4-feedback" role="status">${clean(state.forensicFeedback||'')}</p><p class="bp-note">線索未列在這裡的檔案也可自行收錄。已通關的舊存檔維持通關，不強迫重新鑑識。</p></section>`;
+  }
   const EXTENDED_0409 = "時間過去了。\n那一點熱慢慢從皮膚底下退下去。\n我以為它會消失。\n沒有。\n它只是變成了別的東西。\n現在不一樣了。\n它變得更安靜。更重。\n像有什麼東西沉在身體裡面，白天不會動，到了晚上，房間安靜下來，才一點一點浮上來。\n我把窗簾拉起來。燈只開了一盞。\n桌上放著昨天買的傘。還沒拆。\n昨天她就在兩百公尺外。走過去不用三分鐘。\n我沒有走過去。\n我現在坐在這裡，卻還是一直想，如果我那時候走過去了，她會不會笑。\n她以前會笑的。\n我不知道她是不是對每個人都這樣。\n我不想知道。\n我把手放在自己的肩膀上。\n那天捷運很擠。她喝醉了，靠在我肩上睡著。\n十個站。\n我原本第四站就該下車。\n可是她沒有醒。我也沒有動。\n下一站。下一站。再下一站。\n我那時候真的很幸福。\n不是我想像出來的。她真的靠在我肩上。那是真的。\n我把手放下來。肩膀是冷的。\n房間很安靜。\n我又想起她的手。以前她總是說手很冰。\n我幫她搓過。搓到她說好了好了，咱熱了。\n她的手是我弄熱的。\n那時候她沒有躲開。她還笑了。\n所以我不明白。\n為什麼現在連見她一面都這麼難。\n我只是想回到那個時候。\n回到她還會主動把手伸過來的時候。\n回到她還會半夜打電話給我的時候。\n回到她買了什麼都想拍給我看的時候。\n回到她還需要我的時候。\n不對。不是需要。\n我希望她想要我。\n我希望她在很開心的時候也想到我。\n不是只有難過的時候。不是只有睡不著的時候。不是只有下雨的時候。\n我希望她走到哪裡，都會覺得少了一個人。\n就像我現在這樣。\n這樣才公平。\n可是她沒有答應過。\n我知道。她沒有答應過。\n那些事情總是真的吧。\n那十個站是真的。那雙手是真的。她在電話裡睡著是真的。\n我沒有把它們編出來。\n我只是想要它們不要結束。\n";
   const EXTENDED_0409_TAIL = "渴望回到她把頭靠在我肩上的那一秒。\n渴望回到她還會說「咱熱了」的時候。\n渴望回到她還不知道我會變成這樣的時候。\n我明天就要跟她說了。\n我有話想跟妳說。\n我喜歡妳，不是朋友那種。";
   const FINAL_SORT_TARGET = [
@@ -30,9 +94,25 @@
   ];
 
   const clean = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function findRecords(query) {
+    const q=query.trim().toLocaleLowerCase();
+    if(!q) return [];
+    const hits=[];
+    Object.entries(RECORDS).forEach(([app, list])=>list.forEach(rec=>{
+      if(rec.chapter<=state.unlocked && (`${rec.heading} ${rec.body}`).toLocaleLowerCase().includes(q))hits.push({app,id:rec.id,title:displayRecordTitle(rec)});
+    }));
+    return hits.slice(0,40);
+  }
+  function searchArchive(query) {
+    const q=String(query||'').trim().slice(0,80);
+    if(!q){searchResults=null;searchFeedback='請輸入關鍵字。';render();return;}
+    searchResults=findRecords(q);
+    searchFeedback=`在已解鎖備份中找到 ${searchResults.length} 筆結果。`;
+    state.searchHistory=[...state.searchHistory.filter(x=>x!==q),q].slice(-12);save();render();
+  }
   const getApp = id => APPS.find(a => a.id === id);
   const recordsForApp = id => (RECORDS[id] || []).filter(r => r.chapter <= state.unlocked);
-  const base = () => ({unlocked:0,completed:[],visited:{},scares:true,stream:false,typing:true,microphone:false,readCounts:{},openedDiary:false,puzzles:{finalSort:false},sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]});
+  const base = () => ({unlocked:0,completed:[],visited:{},scares:true,stream:false,typing:true,microphone:false,readCounts:{},seenRecords:[],searchHistory:[],openedDiary:false,pinnedEvidence:[],forensicMatches:{},puzzles:{finalSort:false,backupDiff:false,e4Step:0,e1Step:0,e2Step:0},sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]});
   let state = base();
   try {
     const data = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -42,14 +122,14 @@
         completed:Array.isArray(data.completed)?data.completed.filter(n=>Number.isInteger(n)&&n>=0&&n<CHAPTERS.length):[],
         visited:data.visited && typeof data.visited==='object' && !Array.isArray(data.visited)?data.visited:{},
         scares:data.scares!==false,
-        stream:data.stream===true, typing:data.typing!==false, microphone:data.microphone===true, readCounts:data.readCounts && typeof data.readCounts==='object'?data.readCounts:{},openedDiary:!!data.openedDiary,
-        puzzles:data.puzzles && typeof data.puzzles==='object'?{finalSort:!!data.puzzles.finalSort}:{finalSort:false},
+        stream:data.stream===true, typing:data.typing!==false, microphone:data.microphone===true, readCounts:data.readCounts && typeof data.readCounts==='object'?data.readCounts:{},seenRecords:Array.isArray(data.seenRecords)?data.seenRecords.filter(x=>typeof x==='string').slice(-300):[],searchHistory:Array.isArray(data.searchHistory)?data.searchHistory.filter(x=>typeof x==='string').slice(-12):[],openedDiary:!!data.openedDiary,pinnedEvidence:Array.isArray(data.pinnedEvidence)?data.pinnedEvidence.filter(x=>typeof x==='string').slice(-100):[],forensicMatches:data.forensicMatches && typeof data.forensicMatches==='object' && !Array.isArray(data.forensicMatches)?data.forensicMatches:{},
+        puzzles:data.puzzles && typeof data.puzzles==='object'?{finalSort:!!data.puzzles.finalSort,backupDiff:!!data.puzzles.backupDiff,e4Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e4Step)?data.puzzles.e4Step:0)),e1Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e1Step)?data.puzzles.e1Step:0)),e2Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e2Step)?data.puzzles.e2Step:0))}:{finalSort:false,backupDiff:false,e4Step:0,e1Step:0,e2Step:0},
         sortOrder:Array.isArray(data.sortOrder)&&data.sortOrder.length===FINAL_SORT_TARGET.length?data.sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]
       };
     }
   } catch (_) {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {} };
-  const isNativeApp = () => !!window.Capacitor;
+  const isNativeApp = () => !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
   function mainIsCleared() {
     try { const s=JSON.parse(localStorage.getItem('murmur_p01_v7')||'{}'); return !!(s && (s.cleared || s.imported)); }
     catch (_) { return false; }
@@ -59,7 +139,7 @@
   root.id='backupRoot'; root.hidden=true; root.setAttribute('role','dialog'); root.setAttribute('aria-modal','true');
   root.setAttribute('aria-label','Murmur 加害者篇手機備份'); document.body.appendChild(root);
   let view='home', currentApp=null, currentChapter=0, currentItem=0;
-  let backTarget='home'; let focusBefore=null;
+  let backTarget='home'; let focusBefore=null; let searchResults=null; let searchFeedback='';
   let typingTimer=null, soundStream=null, soundContext=null, soundFrame=0, typingSkip=null;
   let soundApprovedThisSession=false;
   let eventToastTimer=null;
@@ -71,8 +151,11 @@
     toast.textContent=message;toast.hidden=false;
     clearTimeout(eventToastTimer);eventToastTimer=setTimeout(()=>{toast.hidden=true;},4400);
   }
+  let leftAt=0,lastReturnEvent=0;
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)leftAt=Date.now();});
   window.addEventListener('murmur:native', e=>{
     const type=e.detail && e.detail.type;
+    if(type==='foreground' && leftAt && Date.now()-leftAt>=90000 && currentChapter>=4 && Date.now()-lastReturnEvent>120000){lastReturnEvent=Date.now();storyEvent('你不是看得很開心嗎？');}
     if(type==='screenshot')storyEvent('你也想把它留下來嗎。');
     if(type==='recording')storyEvent('你想把這些都留下來嗎。');
   });
@@ -106,21 +189,21 @@
   }
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stopSound();else if(!root.hidden&&view==='entry'&&state.microphone&&soundApprovedThisSession)startSound();});
   function stopTyping(){if(typingTimer)clearTimeout(typingTimer);typingTimer=null;typingSkip=null;}
-  function startDiaryEffects(rec){
+  function startRecordEffects(rec, firstRead){
     stopTyping();
     if(rec.id==='diary_58')attachSurge();
     if(rec.id==='diary_67' && motionAllowed() && navigator.vibrate)navigator.vibrate([70,110,70]);
-    if(currentApp!=='diary')return;
-    state.readCounts[rec.id]=(state.readCounts[rec.id]||0)+1;save();
-    const firstRead=state.readCounts[rec.id]===1;
+    if(currentApp==='diary'){state.readCounts[rec.id]=(state.readCounts[rec.id]||0)+1;save();}
+    window.dispatchEvent(new CustomEvent('murmur:record',{detail:{id:rec.id,chapter:currentChapter,reads:state.readCounts[rec.id]||1,body:rec.body||'',app:currentApp}}));
     const panel=root.querySelector('.bp-document');if(!panel)return;
-    if(!state.openedDiary && motionAllowed()){
-      panel.classList.add('bp-crt-boot');state.openedDiary=true;save();
-      setTimeout(()=>panel.classList.remove('bp-crt-boot'),800);
+    // Every file-open action gets the same CRT boot, including notes, messages and drafts.
+    if(motionAllowed()){
+      panel.classList.add('bp-crt-boot');
+      setTimeout(()=>{if(panel.isConnected)panel.classList.remove('bp-crt-boot');},800);
     }
-    if(state.readCounts[rec.id]===3 && currentChapter>=4)storyEvent('這一頁你看了 '+state.readCounts[rec.id]+' 次。');
-    if(rec.id==='diary_75' && new Date().getHours()===22 && new Date().getMinutes()===6 && motionAllowed())storyEvent('你下班了嗎。');
-    if(!firstRead || !state.typing || window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    if(currentApp==='diary' && state.readCounts[rec.id]===3 && currentChapter>=4)storyEvent('這一頁你看了 '+state.readCounts[rec.id]+' 次。');
+    if(currentApp==='diary' && rec.id==='diary_75' && new Date().getHours()===22 && new Date().getMinutes()===6 && motionAllowed())storyEvent('你下班了嗎。');
+    if(!firstRead || !state.typing || !motionAllowed() || window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
     const doc=panel.querySelector('.bp-docbody');if(!doc)return;
     // Progressive reveal by complete Unicode code points, preserving original DOM structure.
     const nodes=[];const walker=document.createTreeWalker(doc,NodeFilter.SHOW_TEXT);
@@ -128,7 +211,7 @@
       const n=walker.currentNode;if(n.parentElement.closest('.bp-stage-repetition,.bp-stage-longing,.bp-surge,.bp-stage-0409,.bp-stage-0409-tail,.bp-type-cursor'))continue;
       const chars=Array.from(n.textContent);if(chars.length)nodes.push({n,chars});
     }
-    const total=nodes.reduce((a,x)=>a+x.chars.length,0);if(total>4500)return;
+    const total=nodes.reduce((a,x)=>a+x.chars.length,0);if(total>12000)return;
     let ni=0, ci=0, shown=0;
     nodes.forEach(x=>x.n.textContent='');
     const cursor=document.createElement('span');cursor.className='bp-type-cursor';cursor.textContent='█';doc.prepend(cursor);
@@ -145,7 +228,7 @@
       const last=batch.chars[ci-1]||'';
       typingTimer=setTimeout(tick,/[。！？]/.test(last)?260:75+Math.random()*95);
     }
-    typingTimer=setTimeout(tick,750);
+    typingTimer=setTimeout(tick,760);
   }
   function attachSurge(){
     const sentinel=root.querySelector('.bp-surge-sentinel'),surge=root.querySelector('.bp-surge');
@@ -166,10 +249,16 @@
   function chapterTasks(ch) { return CHAPTERS[ch].tasks || []; }
   function requirements(ch) {
     const seen=Array.isArray(state.visited[String(ch)])?state.visited[String(ch)]:[];
-    return chapterTasks(ch).map(t => ({ ...t, done: seen.includes(t.id) }));
+    return chapterTasks(ch).map(t => ({ ...t,
+      done: (ch===0||ch===1) ? E12_EVIDENCE[ch].some(id=>id.startsWith(t.id+'_')) && E12_EVIDENCE[ch].filter(id=>id.startsWith(t.id+'_')).every(id=>state.seenRecords.includes(id)) : ch===4 ? E4_REQUIRED_RECORDS.some(id=>id.startsWith(t.id+'_')) &&
+        E4_REQUIRED_RECORDS.filter(id=>id.startsWith(t.id+'_')).every(id=>state.seenRecords.includes(id))
+        : seen.includes(t.id) }));
   }
   function chapterReady(ch) {
     const ready = requirements(ch).every(r=>r.done);
+    if (ch === 0 || ch === 1) return state.completed.includes(ch) || (ready && isForensicCompleted(ch));
+    if (ch === 2) return state.completed.includes(ch) || (ready && isForensicCompleted(ch) && !!state.puzzles.backupDiff);
+    if (ch === 4) return state.completed.includes(ch) || (ready && isForensicCompleted(ch));
     if (ch === 5) return ready && !!state.puzzles.finalSort;
     return ready;
   }
@@ -177,7 +266,7 @@
     const back=(view==='home')?'返回對話':(view==='entry'?'返回列表':view==='app'&&backTarget==='chapter'?'返回章節':'返回手機');
     const location=view==='home'?'BACKUP':view==='chapter'?`CHAPTERS\\${currentChapter+1}`:view==='settings'?'CONFIG':view==='entry'?`${String(currentApp).toUpperCase()}\\FILE_${String(currentItem+1).padStart(2,'0')}`:String(currentApp).toUpperCase();
     const directory=`C:\\7F3\\${location}>`;
-    return `<div class="bp-windowline"><span class="bp-square" aria-hidden="true">_</span><span class="bp-windowname">MURMUR / 7F3_BACKUP.CMD</span><span class="bp-version">v0.8</span></div>
+    return `<div class="bp-windowline"><span class="bp-square" aria-hidden="true">_</span><span class="bp-windowname">MURMUR / 7F3_BACKUP.CMD</span><span class="bp-version">v1.1</span></div>
       <div class="bp-top"><button type="button" data-action="back" aria-label="${back}">[←] ${back}</button><span class="bp-status">LOCAL · READ ONLY</span><button type="button" data-action="settings">[SET]</button></div>
       <div class="bp-commandbar" aria-label="目前所在的虛構備份目錄"><span class="bp-prompt">${clean(directory)}</span><span class="bp-cursor" aria-hidden="true">▌</span></div>
       <div class="bp-meta">MURMUR // participant_7f3</div><h1 class="bp-title">${clean(title)}</h1>`;
@@ -285,7 +374,7 @@
         continue;
       }
       if (line === '（下面寫了十四次同一句。字越來越小。最後一次只寫到「我喜歡」。）') {
-        // v0.8: extend the visible obsessive repetition at the player's request.
+        // v0.9: extend the visible obsessive repetition at the player's request.
         // Preserve the existing source manuscript unchanged. New lines only repeat
         // or shorten the already-written confession; do not invent new plot facts.
         const repeated='我有話想跟妳說。我喜歡妳，不是朋友那種。';
@@ -346,9 +435,11 @@
     const chapters=CHAPTERS.map((ch,i)=>`<button type="button" class="bp-chapter" data-chapter="${i}" ${state.unlocked<i?'disabled':''}>
       <span class="bp-chapter-name">${clean(ch.name)}</span><span class="bp-tag">${state.unlocked<i?'[LOCKED]':state.completed.includes(i)?'[DONE]':i===state.unlocked?'[ACTIVE]':'[OPEN]'}</span>
     </button>`).join('');
+    const searchHits = searchResults===null ? '' : '<p class="bp-note" role="status">'+clean(searchFeedback)+'</p><div class="bp-search-results">'+(searchResults.map(r=>'<button type="button" data-search-record="'+clean(r.id)+'" data-search-app="'+clean(r.app)+'">[FILE] '+clean(r.title)+'</button>').join('')||'<span class="bp-note">NO MATCH</span>')+'</div>';
+    const searchBlock='<div class="bp-panel bp-search-panel"><label for="bp-search-input" class="bp-tag">FIND / 搜尋已解鎖備份</label><div class="bp-search-controls"><input id="bp-search-input" type="search" maxlength="80" placeholder="輸入備份中的文字" autocomplete="off"><button type="button" data-action="search">[FIND]</button></div><p class="bp-note">只搜尋遊戲內資料。輸入的字會留在本機，並可能在後期的虛構搜尋紀錄出現。</p>'+searchHits+'</div>';
     return top('7f3 // 手機備份')+
       `<div class="bp-demo">完整原稿與互動演出已匯入。部分原生 Meta 效果仍須實機驗證。</div>
-      <div class="bp-section-heading"><h2>BACKUP DIRECTORY / 應用資料</h2><span>${APPS.filter(a=>a.openAt<=state.unlocked).length}/${APPS.length} 項可用</span></div>
+      ${searchBlock}<div class="bp-section-heading"><h2>BACKUP DIRECTORY / 應用資料</h2><span>${APPS.filter(a=>a.openAt<=state.unlocked).length}/${APPS.length} 項可用</span></div>
       <div class="bp-directory" role="group" aria-label="備份資料夾"><div class="bp-dir-head"><span>TYPE / DIRECTORY</span><span>STATUS</span></div>${gallery}<div class="bp-dir-foot">C:\\7F3\\BACKUP&gt;</div></div>
       <div class="bp-section-heading"><h2>CHAPTER LOG / 章節</h2><span>${state.completed.length}/${CHAPTERS.length} 已完成</span></div>
       <div class="bp-chapters">${chapters}</div>`;
@@ -356,8 +447,33 @@
   function chapter() {
     const ch=CHAPTERS[currentChapter], req=requirements(currentChapter), ready=chapterReady(currentChapter);
     const taskBlock=req.length ? `<div class="bp-tasks"><h2>本章線索</h2>${req.map(r=>`<button type="button" class="bp-task" data-task="${r.id}"><span class="bp-checkmark">${r.done?'✓':'○'}</span><span><b>${clean(r.label)}</b><small>${clean(r.hint)}</small></span><span aria-hidden="true">›</span></button>`).join('')}${currentChapter===5?`<p class="bp-note">另外：〈最後一篇〉需要完成排序，才算完成 E5。</p>`:''}</div>` : '';
+    const e4Step=Math.max(0,Math.min(E4_QUESTIONS.length,state.puzzles.e4Step||0));
+    const e4Read=E4_REQUIRED_RECORDS.every(id=>state.seenRecords.includes(id));
+    const e4Question=E4_QUESTIONS[e4Step];
+    const e4Puzzle=currentChapter===4 ? `<div class="bp-panel bp-e4-puzzle" aria-label="E4 三份檔案交叉核對">
+      <div class="bp-tag">E4 / CROSS-REFERENCE · ${e4Step}/3 VERIFIED</div>
+      <h2>交叉核對：觀看、搜尋、草稿</h2>
+      <p class="bp-note">這裡只核對備份寫了什麼，不把 7f3 的想法當成 A 的事實。三份檔案都讀過後才可核對。</p>
+      ${e4Step===3 ? `<div class="bp-e4-result" role="status"><b>[VERIFIED] 3 / 3</b><p>三份資料已完成核對。觀看次數、搜尋詞與草稿模仿都屬於備份紀錄，不能單憑它們推定 A 的真實意圖。</p></div>` :
+        !e4Read ? `<div class="bp-e4-locked">[LOCKED] 尚需閱讀：${E4_REQUIRED_RECORDS.filter(id=>!state.seenRecords.includes(id)).map(id=>id==='stories_1'?'限動觀看紀錄':id==='searches_1'?'04/20 搜尋紀錄':'PLAN-7F3 草稿').join('、')}</div>` :
+        `<div class="bp-e4-step"><span class="bp-tag">${clean(e4Question.title)}</span><p>${clean(e4Question.prompt)}</p><div class="bp-e4-choices">${e4Question.choices.map(([id,label])=>`<button type="button" data-e4-answer="${clean(id)}">${clean(label)}</button>`).join('')}</div></div>`}
+      <p class="bp-e4-feedback" role="status">${clean(state.e4Feedback||'')}</p>
+      </div>` : '';
+    const e12Step=currentChapter===0?(state.puzzles.e1Step||0):(state.puzzles.e2Step||0);
+    const e12Required=E12_EVIDENCE[currentChapter];
+    const e12Ready=e12Required?e12Required.every(id=>state.seenRecords.includes(id)):false;
+    const e12Question=E12_QUESTIONS[currentChapter]?.[e12Step];
+    const e12Puzzle=e12Required ? `<div class="bp-panel bp-e4-puzzle" aria-label="E${currentChapter+1} 證據核對">
+      <div class="bp-tag">E${currentChapter+1} / EVIDENCE CHECK · ${e12Step}/3 VERIFIED</div>
+      <h2>${currentChapter===0?'被選中的證據':'回覆、上線、未寄出'}</h2>
+      <p class="bp-note">請根據備份回答。角色相信的事不一定是文件能證實的事。</p>
+      ${e12Step===3?'<div class="bp-e4-result" role="status"><b>[VERIFIED] 3 / 3</b><p>已核對原始紀錄與推測的差別。</p></div>':!e12Ready?
+      `<div class="bp-e4-locked">[LOCKED] 尚需閱讀：${e12Required.filter(id=>!state.seenRecords.includes(id)).map(id=>({diary_18:'11/12 01:47 日記',diary_20:'11/19 日記',notes_1:'備忘錄 · 她',notes_2:'回覆紀錄',notes_3:'上線紀錄',drafts_1:'沒送出的訊息'})[id]).join('、')}</div>`:
+      `<div class="bp-e4-step"><span class="bp-tag">${clean(e12Question.title)}</span><p>${clean(e12Question.prompt)}</p><div class="bp-e4-choices">${e12Question.choices.map(([id,label])=>`<button type="button" data-e12-answer="${clean(id)}">${clean(label)}</button>`).join('')}</div></div>`}
+      <p class="bp-e4-feedback" role="status">${clean(state.e12Feedback||'')}</p></div>`:'';
+    const backupDiff = currentChapter===2 ? `<div class="bp-panel bp-e3-puzzle"><div class="bp-tag">E3 / INTEGRITY CHECK</div><h2>兩份備份之間，消失的是哪一句？</h2><p class="bp-note">先閱讀 04-10 的 v1 與 v2，再選擇答案。這是對檔案差異的核對，不是猜測 A 的心意。</p>${state.puzzles.backupDiff?'<p class="bp-note">[VERIFIED] 已確認 v2 遺漏的拒絕訊息。</p>':(state.seenRecords.includes('messages_1')&&state.seenRecords.includes('messages_2')?`<div class="bp-diff-choices"><button type="button" data-diff="a">咱沒有討厭你</button><button type="button" data-diff="b">可是咱不想跟你交往</button><button type="button" data-diff="c">好</button></div>`:'<p class="bp-note">[LOCKED] 尚未閱讀兩個版本的備份。</p>')}<p class="bp-note" role="status">${clean(state.diffFeedback||'')}</p></div>` : '';
     return top(ch.name)+
-      `<div class="bp-panel"><div class="bp-tag">${clean(ch.range)} · V0.5</div><p class="bp-copy">本章所有正文都已匯入原始文字。請依線索打開對應目錄。</p><div class="bp-outline">${chapterEntries(currentChapter).map(rec=>`<div><span>[${clean(getApp(rec.app)?.name || rec.app)}]</span> ${clean(displayRecordTitle(rec))}</div>`).join('')}</div></div>${taskBlock}
+      `<div class="bp-panel"><div class="bp-tag">${clean(ch.range)} · V0.5</div><p class="bp-copy">本章所有正文都已匯入原始文字。請依線索打開對應目錄。</p><div class="bp-outline">${chapterEntries(currentChapter).map(rec=>`<div><span>[${clean(getApp(rec.app)?.name || rec.app)}]</span> ${clean(displayRecordTitle(rec))}</div>`).join('')}</div></div>${taskBlock}${forensicPanel(currentChapter)}${backupDiff}
       <div class="bp-actions"><button type="button" class="bp-primary" data-action="complete" ${!ready?'disabled':''}>${currentChapter===CHAPTERS.length-1?'完成尾聲':'完成本章，解鎖下一章'} →</button><button type="button" class="bp-ghost" data-action="home">回手機桌面</button></div>
       ${!ready?'<p class="bp-note">先依序查看本章指定資料，再回到這裡繼續。</p>':''}`;
   }
@@ -376,9 +492,11 @@
     if (!rec) return top(a.name)+`<p class="bp-note">找不到這筆資料。</p>`;
     const list=recordsForApp(currentApp);
     const prev=currentItem>0, next=currentItem<list.length-1;
-    const body = rec.id===FINAL_SORT_ID ? renderFinalSort(rec.body) : `<div class="bp-docbody${rec.heading==='日記 · 2021-04-15'?' bp-timed-log':''}">${renderMarkup(rec.body,rec)}</div>`;
+    const contamination = rec.id==='searches_1' && state.searchHistory.length ? `<div class="bp-search-contamination"><div class="bp-tag">[LOCAL CACHE / 未知來源]</div>${state.searchHistory.map(q=>`<div class="bp-line">- ${clean(q)}</div>`).join('')}</div>` : '';
+    const reread = currentApp==='diary' && (state.readCounts[rec.id]||0)>=1 && rec.id!=='diary_75' && rec.id!=='diary_58' && currentChapter>=4 && state.scares && !state.stream ? '<div class="bp-reread" aria-label="重讀時新增的文字">你又回來看了。</div>' : '';
+    const body = rec.id===FINAL_SORT_ID ? renderFinalSort(rec.body) : `<div class="bp-docbody${rec.heading==='日記 · 2021-04-15'?' bp-timed-log':''}">${renderMarkup(rec.body,rec)}${contamination}${reread}</div>`;
     return top(a.name)+`<div class="bp-read-status" aria-label="第 ${currentItem+1} 筆，共 ${list.length} 筆"><span>[FILE ${String(currentItem+1).padStart(2,'0')} / ${String(list.length).padStart(2,'0')}]</span><span>READ ONLY</span></div>
-      <div class="bp-panel bp-document"><div class="bp-tag">${clean(displayRecordDate(rec))} · ${clean(CHAPTERS[rec.chapter].name)}</div><h2>${clean(displayRecordTitle(rec))}</h2>${body}</div>
+      <div class="bp-panel bp-document"><div class="bp-tag">${clean(displayRecordDate(rec))} · ${clean(CHAPTERS[rec.chapter].name)}</div><h2>${clean(displayRecordTitle(rec))}</h2>${body}<div class="bp-evidence-collect"><button type="button" class="bp-ghost" data-collect-evidence="${clean(rec.id)}">${state.pinnedEvidence.includes(rec.id)?'[COLLECTED] 已收錄到證據庫':'[COLLECT] 收錄這份紀錄'}</button><small>證據可在章節頁的鑑識工作台選用</small></div></div>
       <nav class="bp-file-nav" aria-label="閱讀上一筆或下一筆紀錄">
         <button type="button" data-action="prev-item" ${prev?'':'disabled'}><span class="bp-nav-code">&lt; PREV</span><span class="bp-nav-caption">上一筆</span></button>
         <button type="button" data-action="next-item" ${next?'':'disabled'}><span class="bp-nav-code">NEXT &gt;</span><span class="bp-nav-caption">下一筆</span></button>
@@ -392,7 +510,8 @@
       <label class="bp-check"><input type="checkbox" data-toggle="microphone" ${state.microphone?'checked':''}><span><b>環境音量演出（選用）</b><small>僅加害者篇 E4／E5 閱讀期間、App 前景啟用；本機判斷持續聲量，不辨識、不儲存、不上傳聲音。開啟後進入指定頁面才會詢問麥克風權限。</small></span></label></div>
       <button type="button" class="bp-ghost" data-action="sound-consent">[ALLOW] 本次遊玩允許環境聲量演出</button>
       <div class="bp-panel"><b>目前權限狀態</b><p class="bp-copy">麥克風僅在玩家主動啟用後、特定章節閱讀期間存取。相機、位置與通知尚未在本版本啟用。原生截圖與錄影事件依平台支援。</p><p class="bp-note">字型會隨 App 本機封裝；系統開啟「減少動態效果」時會停用動畫。</p></div>
-      <button type="button" class="bp-danger" data-action="reset">清除加害者篇進度</button><p class="bp-note">只清除這個虛擬手機的閱讀與章節進度，不影響第一、第二周目。</p>`;
+      ${window.MurmurMeta ? window.MurmurMeta.panel() : ''}
+      <button type="button" class="bp-ghost" data-action="clear-search">[CLEAR] 清除本機搜尋紀錄</button><button type="button" class="bp-danger" data-action="reset">清除加害者篇進度</button><p class="bp-note">只清除這個虛擬手機的閱讀與章節進度，不影響第一、第二周目。</p>`;
   }
   function updateRepetitionColors() {
     const group=root.querySelector('.bp-stage-repetition');
@@ -420,17 +539,24 @@
     repeatScrollFrame=requestAnimationFrame(()=>{repeatScrollFrame=0;updateRepetitionColors();if(root._surgeCheck)root._surgeCheck();});
   },{passive:true});
   window.addEventListener('resize',updateRepetitionColors,{passive:true});
+  let pendingEntryOpen=false;
   function render() {
     const content=view==='home'?home():view==='chapter'?chapter():view==='app'?appIndex():view==='entry'?entry():settings();
-    root.innerHTML=`<div class="bp-shell">${content}<footer class="bp-footer">MURMUR · FICTIONAL DEVICE ARCHIVE / CMD v0.8<br>LOCAL STORY · NO CLOUD SYNC</footer></div>`;
+    window.dispatchEvent(new CustomEvent('murmur:context',{detail:{view,chapter:currentChapter,scares:state.scares,stream:state.stream,open:!root.hidden}}));
+    root.innerHTML=`<div class="bp-shell">${content}<footer class="bp-footer">MURMUR · FICTIONAL DEVICE ARCHIVE / CMD v1.5.1<br>LOCAL STORY · NO CLOUD SYNC</footer></div>`;
     root._surgeCheck=null;root.scrollTop=0; const heading=root.querySelector('h1'); if(heading) heading.setAttribute('tabindex','-1');
     updateRepetitionColors();
     if(view==='entry'){
-      const rec=recordsForApp(currentApp)[currentItem];if(rec)startDiaryEffects(rec);
+      const rec=recordsForApp(currentApp)[currentItem];
+      const firstRead=!!rec && !state.seenRecords.includes(rec.id);
+      if(firstRead){state.seenRecords.push(rec.id);save();}
+      // A refresh to collect evidence is not another file open.
+      if(rec && pendingEntryOpen)startRecordEffects(rec,firstRead);
+      pendingEntryOpen=false;
       if(state.microphone && soundApprovedThisSession && !state.stream && currentChapter>=4)startSound();
     }
   }
-  function changeView(next) { if(typingSkip)typingSkip();stopTyping();stopSound();view=next; render(); const el=root.querySelector('h1'); if(el) el.focus({preventScroll:true}); }
+  function changeView(next) { if(typingSkip)typingSkip();stopTyping();stopSound();view=next; pendingEntryOpen=(next==='entry'); render(); const el=root.querySelector('h1'); if(el) el.focus({preventScroll:true}); }
   function open() { if(!canEnter()) return false; focusBefore=document.activeElement; root.hidden=false; document.body.classList.add('murmur-backup-active'); changeView('home'); return true; }
   function close() { if(typingSkip)typingSkip();stopTyping();stopSound();root.hidden=true; document.body.classList.remove('murmur-backup-active'); if(focusBefore && focusBefore.isConnected) focusBefore.focus({preventScroll:true}); }
   function back() { if(view==='home'){close();return;} if(view==='entry'){changeView('app');return;} if(view==='app'&&backTarget==='chapter'){changeView('chapter');return;} changeView('home'); }
@@ -449,12 +575,66 @@
       const nextIndex=currentItem+(action==='prev-item'?-1:1);
       if(nextIndex<0||nextIndex>=list.length)return;
       currentItem=nextIndex;
-      currentChapter=list[nextIndex].chapter;
+      
       markVisited(currentApp);
       changeView('entry');return;
     }
+    if(b.dataset.collectEvidence!==undefined){
+      const id=b.dataset.collectEvidence;const rec=recordsForApp(currentApp)[currentItem];
+      if(!rec || rec.id!==id)return;
+      if(!state.pinnedEvidence.includes(id))state.pinnedEvidence.push(id);
+      save();render();storyEvent('檔案已加入證據庫。');return;
+    }
+    if(b.dataset.matchEvidence!==undefined){
+      const key=b.dataset.matchEvidence;
+      const m=/^(0|1|2|4):([0-9]+)$/.exec(key);
+      if(!m || Number(m[1])!==currentChapter)return;
+      const slot=forensicSlots(currentChapter)[Number(m[2])];if(!slot)return;
+      const select=root.querySelector('[data-evidence-select="'+key+'"]');const id=select?.value||'';
+      if(!id || !state.pinnedEvidence.includes(id)){state.forensicFeedback='[NO EVIDENCE] 請先收錄一份檔案。';}
+      else if(id===slot.id){state.forensicMatches[key]=id;state.forensicFeedback='[VERIFIED] 這份檔案與核對目標相符。';}
+      else {state.forensicFeedback='[MISMATCH] 檔案存在，但不符合目前的核對目標。請再比較。';}
+      save();render();return;
+    }
+    if(b.dataset.e12Answer!==undefined){
+      if(currentChapter!==0&&currentChapter!==1)return;
+      if(!E12_EVIDENCE[currentChapter].every(id=>state.seenRecords.includes(id)))return;
+      const key=currentChapter===0?'e1Step':'e2Step';
+      const step=state.puzzles[key]||0;
+      const q=E12_QUESTIONS[currentChapter][step];
+      if(!q)return;
+      if(b.dataset.e12Answer===q.answer){state.puzzles[key]=step+1;state.e12Feedback=q.success;}
+      else state.e12Feedback='[MISMATCH] 這是推測，不是備份能直接證實的內容。';
+      save();render();return;
+    }
+    if(b.dataset.e4Answer!==undefined){
+      if(currentChapter!==4 || !E4_REQUIRED_RECORDS.every(id=>state.seenRecords.includes(id)))return;
+      const step=state.puzzles.e4Step||0;
+      if(step>=E4_QUESTIONS.length)return;
+      const q=E4_QUESTIONS[step];
+      if(b.dataset.e4Answer===q.answer){
+        state.puzzles.e4Step=step+1;
+        state.e4Feedback=q.success;
+      }else{
+        state.e4Feedback='[MISMATCH] 這個答案與備份不符。請返回三份資料重新核對。';
+      }
+      save();render();return;
+    }
+    if(b.dataset.diff){
+      if(currentChapter!==2 || !state.seenRecords.includes('messages_1') || !state.seenRecords.includes('messages_2'))return;
+      state.puzzles.backupDiff=b.dataset.diff==='b';
+      state.diffFeedback=state.puzzles.backupDiff?'比對成功：原始備份明確寫著 A 不想交往。':'這句不是 v2 刪掉的關鍵內容，請再比較一次。';
+      save();render();return;
+    }
+    if(action==='search'){searchArchive(root.querySelector('#bp-search-input')?.value);return;}
+    if(action==='clear-search'){state.searchHistory=[];searchResults=null;save();render();return;}
+    if(b.dataset.searchRecord){
+      const app=b.dataset.searchApp;const records=recordsForApp(app);const idx=records.findIndex(r=>r.id===b.dataset.searchRecord);
+      if(idx<0)return;currentApp=app;currentItem=idx;backTarget='home';markVisited(app);changeView('entry');return;
+    }
     if(action==='sound-consent'){
       if(!state.microphone){storyEvent('請先啟用環境音量演出。');return;}
+      if(!window.confirm('Murmur · 麥克風權限說明\n\n僅在加害者篇 E4／E5、App 前景閱讀時判斷環境音量持續時間，不辨識語音、不儲存、不上傳；離開頁面就停止。系統接下來可能詢問麥克風權限。\n\n要允許本次遊玩使用此效果嗎？'))return;
       soundApprovedThisSession=true;
       // Request on explicit user action. No recording or uploads.
       if(currentChapter<4)storyEvent('已允許本次遊玩於 E4／E5 啟用環境音量演出。');
@@ -462,14 +642,15 @@
       return;
     }
     if(action==='reset'){ if(!window.confirm('清除加害者篇進度？第一、第二周目不受影響。')) return; state=base(); save(); currentChapter=0; changeView('home'); return; }
-    if(action==='complete'){ if(currentChapter>state.unlocked || !chapterReady(currentChapter)) return; if(!state.completed.includes(currentChapter)) state.completed.push(currentChapter); state.unlocked=Math.min(CHAPTERS.length-1, Math.max(state.unlocked, currentChapter+1)); save(); changeView('home'); return; }
+    if(action==='complete'){ if(currentChapter>state.unlocked || !chapterReady(currentChapter)) return; if(!state.completed.includes(currentChapter)) state.completed.push(currentChapter); state.unlocked=Math.min(CHAPTERS.length-1, Math.max(state.unlocked, currentChapter+1)); save(); if(currentChapter===CHAPTERS.length-1)window.dispatchEvent(new CustomEvent('murmur:epilogue')); changeView('home'); return; }
     if(action==='check-sort'){ const ok = JSON.stringify(state.sortOrder)===JSON.stringify(FINAL_SORT_TARGET); state.puzzles.finalSort=ok; state.sortFeedback = ok ? '排序正確。已顯示原文。' : '順序不對，請再比對一次。'; save(); render(); return; }
     if(b.dataset.sort){ const idx=Number(b.dataset.idx); if(!Number.isInteger(idx)) return; const arr=[...state.sortOrder]; const dir=b.dataset.sort; const swap=dir==='up'?idx-1:idx+1; if(swap<0||swap>=arr.length) return; [arr[idx],arr[swap]]=[arr[swap],arr[idx]]; state.sortOrder=arr; state.sortFeedback=''; save(); render(); return; }
     if(b.dataset.app){ openApp(b.dataset.app); return; }
     if(b.dataset.chapter!==undefined){ const idx=Number(b.dataset.chapter); if(!Number.isInteger(idx)||idx<0||idx>state.unlocked) return; currentChapter=idx; changeView('chapter'); return; }
     if(b.dataset.task){ openApp(b.dataset.task,'chapter'); return; }
-    if(b.dataset.item!==undefined){ const idx=Number(b.dataset.item); const list=recordsForApp(currentApp); if(!Number.isInteger(idx)||idx<0||idx>=list.length) return; currentItem=idx; currentChapter=list[idx].chapter; markVisited(currentApp); changeView('entry'); return; }
+    if(b.dataset.item!==undefined){ const idx=Number(b.dataset.item); const list=recordsForApp(currentApp); if(!Number.isInteger(idx)||idx<0||idx>=list.length) return; currentItem=idx;  markVisited(currentApp); changeView('entry'); return; }
   });
+  root.addEventListener('keydown',e=>{if(e.key==='Enter' && e.target?.id==='bp-search-input'){e.preventDefault();searchArchive(e.target.value);}});
   root.addEventListener('change', e => { const k=e.target.dataset.toggle;
     if(['scares','stream','typing','microphone'].includes(k)){
       state[k]=!!e.target.checked;save();
