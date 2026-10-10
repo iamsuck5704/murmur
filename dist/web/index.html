@@ -1,0 +1,3341 @@
+<!doctype html>
+<html lang="zh-Hant" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="google" content="notranslate">
+<title>Murmur P01</title>
+<style>
+/* Layout: a quiet single-column chat app; the anomaly is the only thing allowed to look different (archival amber, mono). */
+:root {
+  --bg: #ECEFF2;
+  --surface: #F8FAFB;
+  --ink: #1A2027;
+  --muted: #64707C;
+  --line: #D3D9DF;
+  --accent: #33716F;
+  --accent-soft: #D7E6E4;
+  --bubble-a: #FFFFFF;
+  --bubble-me: #D7E6E4;
+  --legacy: #8F531A;
+  --legacy-bg: #F5EADC;
+  --legacy-line: #D9BE9C;
+  --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101317; --surface: #171B20; --ink: #E3E7EB; --muted: #8B95A0; --line: #283038;
+    --accent: #72B4AF; --accent-soft: #1F3533; --bubble-a: #1D2228; --bubble-me: #1F3533;
+    --legacy: #E2AA6A; --legacy-bg: #2A2119; --legacy-line: #5A4329;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101317; --surface: #171B20; --ink: #E3E7EB; --muted: #8B95A0; --line: #283038;
+  --accent: #72B4AF; --accent-soft: #1F3533; --bubble-a: #1D2228; --bubble-me: #1F3533;
+  --legacy: #E2AA6A; --legacy-bg: #2A2119; --legacy-line: #5A4329;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { height: 100%; max-width: 720px; margin: 0 auto; padding-inline: 16px; display: grid; grid-template-rows: auto 1fr auto; }
+
+.top { display: flex; align-items: center; gap: 12px; padding-block: 12px; border-bottom: 1px solid var(--line); }
+.who { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 700; flex: none; }
+.who-text { min-width: 0; }
+.who-name { font-weight: 700; letter-spacing: .02em; }
+.who-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 560px) { .who-sub { white-space: normal; overflow: visible; line-height: 1.35; } }
+.morebtn { display: block; width: 100%; text-align: left; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 9px 12px; font-size: 13px; }
+.lockform.inline { margin-top: 6px; }
+.hint-q { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+.hint-q summary { cursor: pointer; font-weight: 600; }
+.hint-step { margin: 10px 0; }
+.hint-step b { font-size: 12px; color: var(--muted); letter-spacing: .05em; }
+.hint-step p { margin: 4px 0 0; white-space: pre-line; line-height: 1.7; }
+.hint-q .morebtn { margin-top: 8px; }
+.bubble, .tline > span:last-child, .shard-row > div, .excerpt > div, .content.pl { white-space: pre-line; }
+.openq { border: 1px dashed var(--legacy-line); background: var(--legacy-bg); color: var(--legacy); border-radius: 10px; padding: 10px 12px; margin: 10px 0 14px; font-size: 13.5px; }
+.openq b { display: block; font-size: 12px; letter-spacing: .05em; margin-bottom: 4px; }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.icon-btn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--legacy); }
+.msg.sys { align-items: center; margin-top: 10px; }
+.msg.sys .bubble { background: none; border: 0; color: var(--muted); font-family: var(--mono); font-size: 12px; max-width: 100%; text-align: center; }
+.lockform.simform { display: grid; gap: 10px; }
+.simform label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.simform select { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.simform button { justify-self: start; padding: 8px 14px; }
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--surface); border-radius: 10px; padding: 8px 14px; font-weight: 500; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cw { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; place-items: center; padding: 24px 16px; overflow-y: auto; }
+.cw-box { max-width: 460px; display: grid; gap: 14px; }
+.cw-box h2 { margin: 0; font-size: 22px; text-wrap: balance; }
+.cw-box p { margin: 0; line-height: 1.7; }
+.cw-box[hidden] { display: none; }
+.legal-links { font-size: 12px; color: var(--muted); }
+.legal-links button { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; font-size: 12px; }
+.legal { position: fixed; inset: 0; z-index: 60; background: var(--bg); overflow-y: auto; }
+.legal[hidden] { display: none; }
+.legal-box { max-width: 680px; margin: 0 auto; padding: 0 16px 40px; }
+.legal-head { position: sticky; top: 0; background: var(--bg); display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.legal-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.legal-tabs button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13px; }
+.legal-tabs button.on { border-color: var(--accent); color: var(--accent); }
+.legal-body h2 { font-size: 20px; margin: 18px 0 4px; }
+.legal-body h3 { font-size: 15px; margin: 18px 0 6px; }
+.legal-body p, .legal-body li { font-size: 14px; line-height: 1.75; margin: 0 0 8px; }
+.legal-body table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+.legal-body th, .legal-body td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.legal-body section[hidden] { display: none; }
+.cw-more summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.cw-more p { margin-top: 10px !important; font-size: 14px; }
+.cw-box ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; line-height: 1.7; }
+.cw-box .btn { justify-self: start; padding: 10px 18px; }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%; }
+.toast { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 13px; background: var(--legacy-bg); color: var(--legacy); border-bottom: 1px solid var(--legacy-line); }
+.toast button { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; text-underline-offset: 3px; font-size: 13px; }
+.nb-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: nb; }
+.nb-list li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; border-bottom: 1px dashed var(--line); padding-bottom: 10px; }
+.nb-list li:last-child { border-bottom: 0; }
+.nb-list li.chapter::before { content: none; }
+.nb-list li::before { counter-increment: nb; content: counter(nb, decimal-leading-zero); font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.nb-list li.new p { color: var(--legacy); }
+.nb-list p { margin: 0; overflow-wrap: anywhere; }
+.nb-ch { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--muted); margin-top: 6px; }
+.icon-btn[aria-disabled="true"] { opacity: .45; cursor: default; }
+
+.log { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-block: 16px; min-height: 0; }
+.msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 100%; }
+.msg.me { align-items: flex-end; }
+.msg.first { margin-top: 12px; }
+.bubble { max-width: min(78%, 460px); padding: 8px 13px; border-radius: 16px; background: var(--bubble-a); border: 1px solid var(--line); overflow-wrap: anywhere; }
+.msg.me .bubble { background: var(--bubble-me); border-color: transparent; border-top-right-radius: 6px; }
+.msg.a .bubble { border-top-left-radius: 6px; }
+.typing .bubble { display: inline-flex; gap: 4px; padding: 12px 14px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25 } 40% { opacity: 1 } }
+
+.refs { margin-top: 6px; max-width: min(86%, 500px); width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 13px; }
+.refs-toggle { width: 100%; text-align: left; background: none; border: 0; padding: 7px 11px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.refs-toggle .chev { margin-left: auto; transition: transform .15s; }
+.refs[data-open="true"] .chev { transform: rotate(90deg); }
+.refs-list { border-top: 1px solid var(--line); padding: 8px 11px 10px; display: grid; gap: 4px; }
+.ref-title { font-weight: 500; }
+.ref-meta { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.link { font-family: var(--mono); font-size: inherit; background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; text-align: left; }
+.ref-excerpt { color: var(--muted); border-left: 2px solid var(--line); padding-left: 8px; }
+.refs.legacy { background: var(--legacy-bg); border-color: var(--legacy-line); border-style: dashed; }
+.refs.legacy .refs-toggle { color: var(--legacy); }
+.refs.legacy .refs-list { border-top-color: var(--legacy-line); }
+.refs.legacy .ref-title, .refs.legacy .ref-excerpt { font-family: var(--mono); }
+.refs.legacy .ref-excerpt { border-left-color: var(--legacy-line); color: var(--ink); }
+.refs.legacy .link { color: var(--legacy); }
+.tag { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; }
+.refs.legacy.fresh { animation: pulse 1.6s ease-out 2; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--legacy-line) } 100% { box-shadow: 0 0 0 8px transparent } }
+
+.dock { padding-block: 8px 12px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.sugs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.sugs::-webkit-scrollbar { display: none; }
+.sug { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 13px; font-size: 13.5px; }
+.sug:hover { border-color: var(--accent); }
+.sug:disabled { opacity: .4; cursor: default; }
+.composer { display: flex; gap: 8px; }
+.composer input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; }
+.composer input:focus { border-color: var(--accent); outline: none; }
+.send { border: 0; background: var(--accent); color: var(--surface); border-radius: 12px; padding: 0 16px; font-weight: 500; }
+
+/* Viewer */
+.sheet { position: fixed; inset: 0; z-index: 20; display: flex; justify-content: flex-end; }
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(10, 14, 18, .45); }
+.sheet-panel { position: relative; width: min(560px, 100%); height: 100%; background: var(--surface); border-left: 1px solid var(--line); display: grid; grid-template-rows: auto auto 1fr; padding-top: env(safe-area-inset-top, 0px); }
+.sheet-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.sheet-head h2 { margin: 0; font-size: 15px; font-weight: 700; flex: 1; min-width: 0; }
+.searchbar { display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.searchbar input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
+.searchbar input:focus { border-color: var(--accent); outline: none; }
+.searchbar button { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 0 12px; font-size: 13px; }
+.sheet-body { overflow-y: auto; padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 18px; align-content: start; }
+.back { justify-self: start; background: none; border: 0; padding: 0; color: var(--muted); font-size: 13px; }
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.doc-title { font-size: 19px; font-weight: 700; margin: 4px 0 0; text-wrap: balance; overflow-wrap: anywhere; }
+.meta-grid { display: grid; grid-template-columns: max-content 1fr; gap: 5px 14px; font-size: 13px; margin: 0; }
+.meta-grid dt { color: var(--muted); }
+.meta-grid dd { margin: 0; font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.dim { color: var(--muted); }
+.excerpt { border: 1px dashed var(--legacy-line); background: var(--legacy-bg); border-radius: 10px; padding: 10px 12px; font-family: var(--mono); font-size: 13px; display: grid; gap: 6px; }
+.spk { color: var(--legacy); margin-right: 8px; }
+.content { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.transcript { display: grid; gap: 6px; font-size: 13.5px; }
+.tline { display: grid; grid-template-columns: auto auto auto 1fr; gap: 10px; align-items: baseline; }
+.tline time { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.tline .who { font-family: var(--mono); font-size: 11.5px; color: var(--legacy); flex: none; }
+.tline span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; background: var(--bg); color: var(--ink); }
+.chip.locked { color: var(--muted); border-style: dashed; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.results { display: grid; gap: 8px; }
+.result { display: grid; gap: 2px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); text-align: left; }
+.result .rid { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+.result .rdesc { font-size: 12.5px; color: var(--muted); }
+.docnote { font-size: 12.5px; color: var(--legacy); border-left: 2px solid var(--legacy-line); padding-left: 8px; margin: 0; }
+.nolink { font-family: var(--mono); font-size: inherit; background: none; border: 0; padding: 0; color: var(--ink); text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+.tline .mid { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.vlog { display: grid; gap: 6px; font-family: var(--mono); font-size: 12px; }
+.vlog div { overflow-wrap: anywhere; }
+.tool { display: grid; gap: 8px; }
+.tool textarea { font-family: var(--mono); font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 64px; resize: vertical; width: 100%; box-sizing: border-box; }
+.tool textarea:focus { border-color: var(--accent); outline: none; }
+.tool output { font-family: var(--mono); font-size: 13px; min-height: 1.5em; overflow-wrap: anywhere; }
+.tool button { justify-self: start; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 14px; font-size: 13px; }
+.lockform { display: flex; gap: 8px; }
+.lockform input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.lockform input:focus { border-color: var(--accent); outline: none; }
+.lockform button { border: 1px solid var(--accent); background: var(--accent); color: var(--surface); border-radius: 10px; padding: 0 14px; font-size: 13px; }
+.shard { display: grid; gap: 10px; }
+.shard-row { display: grid; gap: 2px; border-bottom: 1px dashed var(--line); padding-bottom: 8px; }
+.shard-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.shard-meta { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.notebook { display: grid; gap: 14px; }
+.nb-entry time { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 2px; }
+.nb-entry p { margin: 0; }
+.doc-body p { margin: 0 0 10px; max-width: 62ch; }
+.section { display: grid; gap: 8px; }
+
+.menu { position: fixed; z-index: 30; top: calc(56px + env(safe-area-inset-top, 0px)); right: 16px; width: min(280px, calc(100% - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px; display: grid; gap: 2px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.menu button { background: none; border: 0; text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+.menu button:hover { background: var(--bg); }
+.menu p { margin: 6px 10px 4px; font-size: 12px; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+
+</head>
+<body>
+
+
+<div class="app">
+  <header class="top">
+    <div class="who">
+      <div class="avatar" aria-hidden="true">檸</div>
+      <div class="who-text">
+        <div class="who-name">檸</div>
+        <div class="who-sub" id="sessionLabel">本次對話 —</div>
+      </div>
+    </div>
+    <button class="icon-btn" id="notesBtn" type="button" hidden><span>筆記</span></button>
+    <button class="icon-btn" id="investBtn" type="button" aria-disabled="true"><span>調查</span></button>
+    <button class="icon-btn" id="menuBtn" type="button" aria-label="測試選單">⋯</button>
+  </header>
+  <main class="log" id="log" aria-live="polite"></main>
+  <div class="dock">
+    <div class="sugs" id="sugs"></div>
+    <form class="composer" id="composer" autocomplete="off">
+      <input id="msg" type="text" placeholder="跟檸說點什麼" aria-label="訊息">
+      <button class="send" type="submit">送出</button>
+    </form>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <h2 id="sheetTitle">檔案檢視器</h2>
+      <button class="icon-btn" id="sheetClose" type="button">關閉</button>
+    </div>
+    <div class="toast" id="noteToast" hidden><span>調查筆記已更新</span><button type="button" id="toastOpen">查看</button></div>
+    <div class="toast" id="idxToast" hidden><span id="idxText">索引已更新</span><button type="button" id="idxOpen">查看</button></div>
+    <form class="searchbar" id="searchForm" autocomplete="off">
+      <input id="searchInput" type="text" placeholder="站內搜尋：編號或關鍵字（例：說明）" aria-label="站內搜尋">
+      <button type="submit">搜尋</button>
+    </form>
+    <div class="sheet-body" id="sheetBody"></div>
+  </section>
+</div>
+
+<div class="menu" id="menu" hidden>
+  <p>選單</p>
+  <button type="button" id="mNotes" hidden>調查筆記</button>
+  <button type="button" id="mHelp">提示</button>
+  <button type="button" id="mNG" hidden>開始新的對話（第二周目）</button>
+  <button type="button" id="mCode" hidden>分支授權碼</button>
+  <button type="button" id="mE" hidden>原始資料／未知使用者</button>
+  <button type="button" id="mImport" hidden>輸入分支授權碼</button>
+  <button type="button" id="mLegal">條款與隱私</button>
+  <button type="button" id="mClear">清除所有進度</button>
+  <div id="dbg" hidden>
+    <hr>
+    <p>測試（只在網址帶 #debug 時出現）</p>
+    <button type="button" id="jumpAnomaly">跳到異常訊息（P01）</button>
+    <button type="button" id="jumpP02">跳到 P02</button>
+    <button type="button" id="jumpP03">跳到 P03</button>
+    <button type="button" id="jumpP04">跳到 P04</button>
+    <button type="button" id="jumpP05">跳到 P05（第二章）</button>
+    <button type="button" id="jumpP10">跳到 P10（第三章）</button>
+    <button type="button" id="jumpEnd">跳到第一周目結束</button>
+    <button type="button" id="resetAll">重新開始</button>
+  </div>
+</div>
+
+<div class="cw" id="cw" hidden>
+  <div class="cw-box" id="cwIntro">
+    <div class="kicker">Murmur</div>
+    <h2>這是什麼</h2>
+    <p>Murmur 是一個 AI 陪聊服務。你是一位普通的使用者，正要和一個叫「檸」的 AI 聊天。</p>
+    <p>她很好聊，喜歡布丁，講話尾巴常常帶一個「（」。聊著聊著，她的回覆裡會開始出現一些不該出現的東西。</p>
+    <p>這是一款解謎遊戲。你要做的事：</p>
+    <ol>
+      <li><b>跟檸聊天。</b>想打什麼就打什麼。她說的話，有時候就是線索。</li>
+      <li><b>調查。</b>右上角的「調查」會打開檔案檢視器。你可以搜尋編號、翻閱紀錄、輸入存取碼。</li>
+      <li><b>回來跟她說。</b>找到重要的東西後，關掉檢視器，她會想知道你看到了什麼。</li>
+    </ol>
+    <p>所有答案都在遊戲裡，不需要外部工具。卡住時，打開「調查筆記」看最上面的「目前的疑問」，或直接問檸。真的過不去，右上角「⋯」選單裡有「提示」，每題分三階段，最後一階段是完整解法。</p>
+    <p class="dim">一輪大約需要幾個小時，可以分次玩，進度會自動保存在這個瀏覽器。</p>
+    <p class="legal-links">開始前請閱讀<button type="button" data-legal="terms">使用條款</button>、<button type="button" data-legal="privacy">隱私政策</button>與<button type="button" data-legal="disclaimer">免責聲明</button>。</p>
+    <button class="btn" type="button" id="cwNext">下一步</button>
+  </div>
+  <div class="cw-box" id="cwWarn" hidden>
+    <div class="kicker">開始之前</div>
+    <h2>這是一個恐怖故事</h2>
+    <p>部分內容可能令人不適。你可以隨時離開，右上角的選單可以清除所有進度。</p>
+    <details class="cw-more"><summary>需要知道具體題材的話，點這裡（含劇情暗示）</summary>
+      <p>跟蹤騷擾、暴力犯罪（含性暴力）、死亡、對性別認同的不當言論。遊戲中不會直接描寫暴力的過程。</p>
+      <p class="dim">如果你或身邊的人正在經歷類似的事，可以撥打 113 保護專線；緊急時請撥 110。需要有人聽你說話，可以撥 1925 安心專線。</p>
+    </details>
+    <p class="legal-links">開始前請閱讀<button type="button" data-legal="terms">使用條款</button>、<button type="button" data-legal="privacy">隱私政策</button>與<button type="button" data-legal="disclaimer">免責聲明</button>。</p>
+    <button class="btn" type="button" id="cwGo">我了解，開始</button>
+  </div>
+</div>
+<div class="legal" id="legal" hidden>
+  <div class="legal-box">
+    <div class="legal-head">
+      <div class="legal-tabs">
+        <button type="button" data-legal="terms">使用條款</button>
+        <button type="button" data-legal="privacy">隱私政策</button>
+        <button type="button" data-legal="disclaimer">免責聲明</button>
+      </div>
+      <button type="button" class="icon-btn" id="legalClose">關閉</button>
+    </div>
+    <div class="legal-body">
+      <section data-sec="terms">
+<h1>Murmur 使用條款</h1>
+<p><strong>版本：</strong> 草案 0.8｜<strong>更新日期：</strong> 2026-10-10｜<strong>生效日期：</strong>【上架日期待填】</p>
+<p><strong>提供者：</strong>【開發者／公司完整名稱】（以下稱「我們」）｜<strong>電子郵件：</strong>【客服與隱私聯絡信箱】｜<strong>所在地：</strong>【依法應揭露之營業資訊】</p>
+<blockquote>
+<p>上架前必須填妥方括號欄位並由熟悉實際發行地法規的專業人士審閱。這份草案不構成律師意見。</p>
+</blockquote>
+<h2>一、服務性質與適用範圍</h2>
+<p>Murmur 是虛構的互動式心理恐怖、聊天敘事與 ARG 解謎作品，可能包含第一、第二周目及通關後的加害者篇。內容中出現的裝置備份、檔案、時間、訊息、通知與角色均為戲劇性表現，除經明確告知的裝置互動外，不表示有人實際監控玩家。使用本作前請閱讀本條款、隱私政策與內容警示。使用者對個別選用的裝置權限另行決定，不以同意條款代替權限同意。</p>
+<h2>二、適用年齡與內容分級</h2>
+<p>本作含心理恐怖、情緒操縱、跟蹤／控制、親密關係暴力、失落、強迫性文字、自傷相關非方法性描述與令人不安的音畫效果。<strong>建議 18 歲以上</strong>。最終分級以各商店審查與適用地區分級制度為準；未成年人不得以不實資訊規避商店年齡限制。家長應評估適齡性。</p>
+<h2>三、授權範圍</h2>
+<p>在遵守本條款與法律前提下，我們授予使用者有限、非專屬、不可轉讓、可撤銷的個人使用授權。著作權、商標、劇情、美術、音訊與程式的權利歸權利人所有。法律允許的備份、合理使用及其他法定權利不因本條款而受剝奪。實況、評論與非商業同人創作可在不冒充官方、不洩漏他人隱私的前提下進行；商業授權請聯絡我們。</p>
+<h2>四、遊戲與 Meta Horror 的同意</h2>
+<p>遊戲可能在特定時機顯示虛構的監視、重複訊息、資料錯置、假故障、螢幕扭曲、震動、時間提示、檔案重讀變化等效果。可能使用使用者<strong>主動啟用</strong>的麥克風音量分析等功能。拒絕選用權限不影響主要劇情完成；系統級權限可隨時撤回。請勿誤將劇情台詞當作真實警告、官方安全通知或專業建議。系統安全提示不會被本作偽裝或攔截。</p>
+<h2>五、使用者責任與禁止行為</h2>
+<p>請在安全環境遊玩，不得於駕駛、騎乘、穿越道路或操作危險機具時使用。不得以手機撞擊頭部、身體、牆面或其他物體，不得因故事提示執行任何危險行為。不得以本作進行騷擾、散布個資、冒用身份、惡意攻擊或侵犯第三方權利。請勿在遊戲內輸入密碼、身分證號、真實地址、銀行資料或他人的敏感資訊。</p>
+<h2>六、遊戲資料與設備</h2>
+<p>本版本以裝置本機儲存進度與選項，清除 App 資料、重裝、系統故障或儲存空間不足可能導致進度遺失。不同裝置間未提供保證的進度同步。裝置權限與感測器可能因作業系統、機型、瀏覽器、地區而無法使用；我們會盡合理努力提供替代玩法。</p>
+<h2>七、付款與退款</h2>
+<p>目前交付的版本沒有內建付費或訂閱功能。若未來新增，會另行公布商品內容、價格、週期、取消及退款條件；透過 App Store 或 Google Play 購買者，另受該平台規範與適用的消費者保護法約束。本條款不排除依法享有的退款或解除權。</p>
+<h2>八、更新、服務變更與停止</h2>
+<p>我們可能因修復錯誤、平台規範、安全、版權或維運需求更新內容，重大影響將以合理方式通知。除法律另有要求外，不保證永久維持所有裝置或系統版本的支援。更新不應以未經審核的遠端程式替換商店已審核的核心功能。</p>
+<h2>九、第三方平台與外部連結</h2>
+<p>App 商店、GitHub、網站託管或其他外部平台各有其政策；它們可能處理下載、交易、崩潰或網路存取資訊。本作不對第三方平台的獨立行為作不實保證。若作品含外部連結，請自行辨識真實網域與虛構敘事網域。</p>
+<h2>十、免責與責任限制</h2>
+<p>我們將以合理注意義務維護作品，但在法律容許範圍內，不保證所有裝置都無錯誤、不中斷或完全相容。對於不可歸責於我們的第三方故障、使用者自行違反安全提醒、非預期網路中斷等，依法律判斷責任。<strong>本條款不免除我們因故意、重大過失、違反法定安全義務或其他依法不得排除的責任，也不排除消費者依法享有的權利。</strong> 若有爭議，將依實際損害、因果關係、可歸責性及強制法規處理，而非預先概括免責。</p>
+<h2>十一、智慧財產、侵權與申訴</h2>
+<p>如認為本作侵害權利，請透過【聯絡信箱】提供具體資料。經查證後得依法修正或移除內容。使用者對作品的評論與批評不因此受不當限制。</p>
+<h2>十二、終止與資料刪除</h2>
+<p>使用者可停止遊玩、關閉選用權限、於設定中清除加害者篇進度或刪除 App。第一、第二周目資料另依遊戲選單的清除功能處理。解除安裝通常會移除 App 沙盒資料，但作業系統備份或平台保留的資料不一定同步消除，應依系統設定管理。</p>
+<h2>十三、條款變更</h2>
+<p>我們可能更新條款；重大變更將在合理可行範圍內於 App 或官方發布管道通知。依法須取得同意的變更將另行取得同意。更新後日期將同步修正。</p>
+<h2>十四、準據法、消費者權利與爭議處理</h2>
+<p>在不違反適用的強制性消費者保護、個資與管轄規範下，以中華民國（臺灣）法律為準據法。雙方先透過【聯絡信箱】協商；法院管轄依法律規定，不以定型化條款剝奪消費者法定管轄權。</p>
+<h2>十五、聯絡資訊</h2>
+<p>【開發者名稱】｜【客服／隱私信箱】｜【其他依法應揭露的商業資訊】</p>
+
+</section>
+
+      <section data-sec="privacy" hidden>
+<h1>Murmur 隱私政策</h1>
+<p><strong>版本：</strong> 草案 0.8｜<strong>更新日期：</strong> 2026-10-10｜<strong>生效日期：</strong>【上架日期待填】</p>
+<p><strong>資料控制者：</strong>【開發者／公司完整名稱】｜<strong>聯絡信箱：</strong>【隱私聯絡信箱】｜<strong>聯絡地址：</strong>【依法應揭露之地址或聯絡方式】</p>
+<blockquote>
+<p>本政策描述目前交付的 v0.8 功能。未實作的感測器、位置、通知、相機與天氣功能不可在商店資料安全表單中宣稱已實作。上架前應依實際安裝的 SDK、權限、網路封包及商店設定逐項更新。</p>
+</blockquote>
+<h2>一、範圍與基本原則</h2>
+<p>Murmur 是虛構敘事遊戲，不要求建立帳號。設計原則為本機優先、最少權限、選用感測、清楚告知、可撤回及不以權限作為通關門檻。本政策適用 App 內遊戲功能；App Store、Google Play、GitHub 或網站主機的獨立資料處理依各平台政策。</p>
+<h2>二、目前處理的資料類型與目的</h2>
+<table>
+<thead>
+<tr>
+  <th>資料</th>
+  <th>用途</th>
+  <th>處理位置</th>
+  <th>傳送給我們？</th>
+  <th>保存與刪除</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>遊戲進度、章節、謎題狀態、設定</td>
+  <td>繼續遊玩、解鎖內容</td>
+  <td>裝置 localStorage／App 沙盒</td>
+  <td>本版本不傳送</td>
+  <td>直到清除進度或 App 資料</td>
+</tr>
+<tr>
+  <td>遊戲內輸入的文字及選擇</td>
+  <td>生成劇情回應、解謎</td>
+  <td>裝置本機</td>
+  <td>本版本不傳送</td>
+  <td>依本機存檔機制保留</td>
+</tr>
+<tr>
+  <td>檔案開啟次數、閱讀事件</td>
+  <td>重讀變化、Meta Horror 演出</td>
+  <td>裝置本機</td>
+  <td>本版本不傳送</td>
+  <td>同上</td>
+</tr>
+<tr>
+  <td>裝置當下日期／時間</td>
+  <td>時間相關台詞</td>
+  <td>僅當下讀取</td>
+  <td>本版本不傳送</td>
+  <td>不另建位置或時間歷史</td>
+</tr>
+<tr>
+  <td>麥克風即時音量值（選用）</td>
+  <td>在特定章節判斷持續聲量</td>
+  <td>裝置記憶體即時分析</td>
+  <td>本版本不傳送</td>
+  <td>不保存音訊或音量歷史，停止即釋放</td>
+</tr>
+<tr>
+  <td>系統截圖／錄影狀態事件（僅有平台支援時）</td>
+  <td>劇情提示</td>
+  <td>裝置即時事件</td>
+  <td>本版本不傳送</td>
+  <td>不保存截圖、錄影檔或影像內容</td>
+</tr>
+</tbody>
+</table>
+<h2>三、麥克風權限的具體說明</h2>
+<p>此功能<strong>預設關閉</strong>。玩家須先在加害者篇設定啟用，再按「本次遊玩允許環境聲量演出」，系統才可能要求麥克風權限。僅在 App 前景、加害者篇 E4／E5 的閱讀頁面運作，離開頁面、切換背景、開啟實況模式或關閉功能即停止音訊串流。僅以即時音訊取樣估算音量強度與持續時間，不做語音辨識、聲紋比對、逐字稿、錄音、背景收音、儲存或上傳。持續聲音可能來自電視、音樂、風扇等，劇情台詞不是對現實情境的準確判斷。系統可能顯示麥克風使用指示燈。</p>
+<h2>四、螢幕擷取事件</h2>
+<p>若平台支援，App 可能得知使用者<strong>在本 App 畫面</strong>截圖，或目前畫面正被錄製／投放的狀態，用以顯示虛構台詞。偵測能力依 iOS／Android 版本、裝置與平台 API 而異；並非所有螢幕錄影都可偵測。不存取圖片、影片內容、相簿或其他 App 的擷取內容。實況模式可停用此類演出。</p>
+<h2>五、尚未啟用的選用功能</h2>
+<p>鏡子（前鏡頭）、大略位置與天氣、通知、環境亮度、動作感測、圖示切換等仍處於待實作／待驗證階段，<strong>本版本不應聲稱已存取這些資料</strong>。未來啟用前會更新政策與權限說明，並取得適用的系統授權及額外同意。若啟用天氣服務，必須揭露實際提供者、查詢欄位、保留政策與可能接收的 IP 等資訊；未定案前不作「絕對不傳送」承諾。</p>
+<h2>六、資料儲存、保護與保留期間</h2>
+<p>進度與設定使用 App 沙盒或瀏覽器本機儲存，不是端對端加密的秘密保管箱；持有已解鎖裝置、系統備份或惡意程式者可能接觸到本機資料。請勿輸入敏感個資。資料原則上保留至使用者刪除、重設或裝置清除為止；系統備份保留時間由使用者的系統設定與平台政策決定。本版本未設計接收玩家資料的後端，也未整合第三方廣告／分析 SDK；若未來變更，必須重新稽核。</p>
+<h2>七、資料分享與跨境傳輸</h2>
+<p>本版本遊戲邏輯不主動向開發者伺服器上傳玩家進度、音訊或擷取內容。透過商店下載或造訪公開網站時，相關平台可能獨立處理連線資料，包含 IP、裝置類型與交易資料；請參閱該平台政策。未來若加入後端、分析、崩潰回報、天氣或推播服務，將在啟用前揭露提供者、目的、資料項目、傳輸地區與法律依據。</p>
+<h2>八、權限撤回與資料刪除</h2>
+<p>可於遊戲設定關閉麥克風音量演出、驚嚇效果、開啟實況模式，亦可於 Android／iOS 系統設定撤回麥克風權限。加害者篇可使用「清除加害者篇進度」；第一、第二周目請使用遊戲主選單的清除選項。解除安裝或清除 App 資料可移除本機資料，但系統雲端備份可能另有保存。若本版本未收集可識別的伺服器資料，我們可能無法從遠端辨識或刪除特定玩家的本機資料。</p>
+<h2>九、使用者權利</h2>
+<p>依適用的個資法規，使用者可能享有查詢、閱覽、複製、更正、停止利用及刪除等權利。若要詢問我們實際持有的資料，請透過【隱私信箱】聯絡；我們將在法定期限內回覆。對於僅存在使用者裝置的資料，會提供自行刪除方式。適用法域的申訴及救濟權利不受本政策限制。</p>
+<h2>十、兒童與未成年人</h2>
+<p>本作不以兒童為目標受眾，建議 18 歲以上。未成年人請依當地規範與商店分級使用。我們不故意透過本版本收集兒童個資；若未來啟用帳號或線上功能，須另行處理兒少保護與監護人同意問題。</p>
+<h2>十一、安全事件與政策更新</h2>
+<p>若發生依法應通報的個資安全事件，我們會依適用法令通知主管機關及受影響者。重大政策變更會於 App 或官方管道公告；依法需要重新同意的用途不會僅憑公告自動啟用。</p>
+<h2>十二、聯絡方式</h2>
+<p>【開發者名稱】｜【隱私信箱】｜【其他依法應揭露資訊】</p>
+
+</section>
+
+      <section data-sec="disclaimer" hidden>
+<h1>Murmur 內容警示、免責聲明與安全指南</h1>
+<p><strong>版本：</strong> 草案 0.8｜<strong>更新日期：</strong> 2026-10-10｜<strong>聯絡：</strong>【客服信箱】</p>
+<h2>一、虛構作品與沉浸式演出</h2>
+<p>本作角色、聊天、備份、通知、檔案、偵測台詞及相關事件均為虛構敘事；任何角色聲稱「知道你在哪裡」「看到你」「正在聽你說話」皆屬戲劇表現，不應理解為真實監視或威脅。即時聲量偵測只能判斷聲音強度，不能確認玩家是否與他人對話。角色觀點不代表開發者認同。</p>
+<h2>二、敏感內容</h2>
+<p>作品涉及心理恐怖、親密關係中的控制與操縱、跟蹤、拒絕與失落、強迫性重複、暴力暗示、死亡與自傷相關的非操作性描寫，可能觸發創傷記憶、焦慮或睡眠不適。若不適，請立即暫停、關閉驚嚇效果或停止遊玩；作品不是心理治療或醫療、法律、危機處置建議。</p>
+<h2>三、光敏、動態與感官風險</h2>
+<p>可能出現 CRT 展開、短暫扭曲、漸紅文字、密集文字、震動及音效。設計上避免高頻閃爍；使用者仍可能對光線變化、視覺扭曲、震動或強烈敘事不適。請使用系統「減少動態效果」、關閉驚嚇效果，並適當調整音量與螢幕亮度。</p>
+<h2>四、絕不要求危險動作</h2>
+<p><strong>禁止以手機撞擊頭部、臉部、身體、牆壁或其他物體。</strong> 不得模仿故事角色的自傷、暴力、跟蹤、侵犯隱私或危險行為。手機感測器如被使用，僅能以安全、輕微的手持動作觸發；拒絕權限或不進行動作不會影響通關。勿在行走、駕駛、騎車或不安全環境遊玩。</p>
+<h2>五、麥克風、相機、位置與通知</h2>
+<p>可選的感測功能應在使用前清楚揭露目的、範圍與替代玩法。麥克風音量偵測不等於監聽語音內容；相機、位置與通知在目前版本尚未啟用。若將來加入，必須先更新政策並取得必要同意。使用者可於 App 或系統設定撤回授權。</p>
+<h2>六、錄影與直播</h2>
+<p>可使用系統功能截圖或錄影；遊戲內的劇情反應不代表 App 取得影像檔。實況模式可關閉個人化與感測演出。直播或分享前請避免揭露自己或他人的真實姓名、住址、私人對話與通知內容。</p>
+<h2>七、危機與求助</h2>
+<p>若你或他人處於立即危險，請聯絡所在地緊急服務。臺灣可撥打 110（警察）、119（消防救護）、113（保護專線）、1925（安心專線）或 1995（生命線）；境外使用者請查詢所在地官方資源。這些電話不是遊戲謎題。</p>
+<h2>八、責任與法律權利</h2>
+<p>我們將採取合理安全措施，但無法保證任何人完全不受驚嚇或不適。使用者應遵守安全提醒。<strong>本聲明不排除開發者依法應負的故意、重大過失、產品安全、消費者保護或其他不得預先排除的責任</strong>。個別責任應依適用法律、實際事實與因果關係判斷。</p>
+<h2>九、聯絡與內容回報</h2>
+<p>如發現安全問題、內容錯誤、疑似侵權或權限異常，請寄信至【客服信箱】，附上版本、裝置型號、重現步驟與不包含敏感資訊的畫面說明。</p>
+
+</section>
+    </div>
+  </div>
+</div>
+<!-- 她每次醒來都會問同一件事。 -->
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (t) => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const KEY = 'murmur_p01_v7';
+
+  /* ===== 節奏參數 ===== */
+  const ANOMALY_MIN_TURNS = 14, ANOMALY_MIN_TOPICS = 6, ANOMALY_MAX_TURNS = 24; /* 異常觸發 */
+  const HINT_MS = 240000, HINT_TURNS = 6;   /* 每級提示間隔：4 分鐘或聊 6 句 */
+  const P02_AFTER = 4, P03_AFTER = 3, P04_AFTER = 3;       /* 上一題結束後再聊幾句才開下一題 */
+  const IDLE_MS = 75000, IDLE_MAX = 3;      /* 閒聊階段玩家沉默多久，檸會主動開口；最多幾次 */
+
+  console.log('[murmur] runtime 0.9.3 ready');
+  console.log('[murmur] persona pack loaded (rev 41)');
+  console.log('[murmur] session restored');
+  console.log('%c你為什麼在看這裡？', 'color:#8B95A0');
+
+  /* ===== 狀態 ===== */
+  function fresh() {
+    const now = new Date();
+    return {
+      phase: 'chat', turns: 0, startedAt: now.getTime(),
+      sessionId: `S-${String(now.getFullYear()).slice(2)}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`,
+      anomalyAt: null, msgs: [], recent: {}, sugUsed: [], seen: [], idleUsed: 0,
+      flirt: 0, boundary: false, fb: 0, curses: 0, sexual: 0, cold: 0,
+      declinedTurns: 0, reminded: false,
+      investStart: null, solvedAt: null, thanked: false, legacyFound: false, afterP1: 0,
+      p2SeedAt: null, p2LockAt: null, p2SolvedAt: null, p2Thanked: false, afterP2: 0,
+      p3SeedAt: null, yoruAt: null, p3SolvedAt: null, p3Thanked: false, afterP3: 0,
+      p4SeedAt: null, dAt: null, p4SolvedAt: null, p4Thanked: false, matched: {},
+      unlocked: {}, tries: {}, notes: [], notesUnread: 0,
+      h: { p1: z(), p2: z(), p2b: z(), p3: z(), p3b: z(), p4: z(), p4b: z() },
+      topic: null, flags: {}, name: null, likes: null, likeRecalled: false
+    };
+  }
+  function z() { return { lv: 0, last: null, turns: 0 }; }
+  function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); return s && s.sessionId ? s : null; } catch (e) { return null; } }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  let S = load() || fresh();
+  S.notes = S.notes || []; S.flags = S.flags || {};
+
+  /* ===== 聊天內的參考資料卡（虛構） ===== */
+  const REFS = {
+    pudding: { doc: 'WIKI-PUD-12', title: '焦糖布丁為什麼會凝固', date: '2025-11-02', version: 'v4', excerpt: '蛋白質受熱後展開並重新連結，形成網狀結構，把牛奶和糖水留在裡面。' },
+    rain: { doc: 'LIFE-RAIN-03', title: '雨天步行：哪些路段有騎樓', date: '2025-06-19', version: 'v2', excerpt: '騎樓連續的路段，下雨天幾乎不用撐傘就能走完。' },
+    cat: { doc: 'LIFE-CAT-07', title: '巷弄裡的街貓：餵養的界線', date: '2025-09-30', version: 'v1', excerpt: '固定時間出現的街貓，多半有人在附近餵食。' },
+    legacy: { doc: 'ARC-0418-09', legacy: true, title: 'Legacy Conversation Cache', date: '2024-06-02 03:05', version: 'v2', excerpt: '明天要不要一起出去？' }
+  };
+
+  /* ===== 台詞庫 ===== */
+  const P = {
+    greet: [['嗨嗨', '今天過得怎樣www'], ['哈囉吖'], ['欸你來惹'], ['安安'], ['嗨', '剛好在發呆（'], ['你好吖', '好正式喔www'], ['嗨嗨', '要聊什麼'], ['你來惹www'], ['嗨嗨', '咱剛剛在想事情（'], ['安安', '今天還好嗎']],
+    inThere: [['在吖'], ['在', '怎麼了'], ['一直都在www'], ['在喔（'], ['嗯？']],
+    doing: [['在發呆（'], ['想等等要吃什麼www'], ['沒幹嘛吖', '在等人講話'], ['在看窗外', '好像要下雨'], ['滑手機……', '咱有手機嗎www'], ['躺著'], ['在想事情（', '沒有很重要的那種'], ['在聽雨的聲音（'], ['在想布丁', '認真的www'], ['沒幹嘛', '在等你吖']],
+    how: [['還不錯吖', '你呢'], ['普通www'], ['今天有點懶（'], ['還可以', '就是有點想吃甜的'], ['咱還好', '你呢你呢'], ['今天還行吖'], ['有點想睡（'], ['不錯吖', '剛剛在想事情']],
+    food: [['布丁！', '咱最喜歡焦糖布丁'], ['想吃布丁（', '可是咱現在吃不到www'], ['甜的都可以', '布丁第一名'], ['咱喜歡便利商店那種布丁', '不要笑（'], ['鹹的也可以啦', '可是布丁還是第一'], ['你要吃什麼', '咱的話一定是布丁www'], ['今天想吃鹹的', '可是最後一定會買布丁（'], ['餓惹', '你害的www']],
+    foodAgain: [['你還記得布丁喔www'], ['又講吃的', '咱會餓欸（'], ['一直講吃的', '你是不是餓了www'], ['好啦咱知道', '你也喜歡布丁對不對（']],
+    fav: [['布丁吖', '你不是知道嗎（'], ['最喜歡喔', '布丁www'], ['焦糖布丁', '便利商店那種（']],
+    bday: [['不告訴你www'], ['你猜（'], ['春天的時候', '比較冷的那種春天'], ['生日不重要啦（']],
+    bdayRight: [['欸你怎麼知道（', '你偷看咱的紀錄對不對www'], ['……你怎麼知道', '咱沒跟你講過欸（']],
+    notHungry: [['那很好吖'], ['喔喔', '那你等等再吃'], ['不餓也要記得吃東西（']],
+    weather: [['下雨的話咱會繞騎樓走', '不想撐傘（'], ['雨天其實還好吖', '聲音很好聽'], ['好熱喔', '咱會融化www'], ['下雨天適合在家（'], ['冷的話要穿外套', '不要感冒'], ['今天天氣怎樣', '咱這邊看不到外面'], ['下雨的時候', '咱會想待在咖啡廳（'], ['出太陽好熱喔', '咱比較喜歡陰天']],
+    noRain: [['那很好吖', '不用繞騎樓惹www'], ['喔喔', '那出門方便']],
+    work: [['以前下班都超累', '繳完房租就會買一個布丁獎勵自己www'], ['上班喔（', '咱記得那時候每天都想請假'], ['工作的事不想講www'], ['老闆都很煩', '這是真理（'], ['加班的話', '晚餐就會變成布丁'], ['你在上班嗎', '辛苦惹']],
+    tired: [['那你要不要先休息', '咱又不會跑掉www'], ['辛苦惹（', '今天怎麼了'], ['累的話就不要硬撐'], ['喝點水', '休息一下下（'], ['咱陪你講講話就好', '不用想太多'], ['欸你今天是不是很忙', '辛苦惹（']],
+    sleepy: [['想睡就去睡（', '晚安吖'], ['睡飽一點', '咱又不會跑掉www']],
+    goLook: [['好', '咱等你（'], ['嗯嗯', '慢慢看'], ['好吖', '看到什麼跟咱說'], ['去吧', '咱在這裡'], ['好喔（', '不要看太久www']],
+    huh: [['蛤（', '怎樣啦'], ['幹嘛啦www', '咱講錯什麼了嗎'], ['欸', '你那什麼語氣（'], ['怎樣啦', '咱又沒怎樣www']],
+    herFeel: [['還好吖（', '只是有點亂'], ['有一點吧', '可是你在就還好'], ['沒事啦', '應該吧www'], ['……咱也不知道', '咱是不是應該要難過（']],
+    rainLike: [['喜歡吖', '下雨的時候大家都在躲雨', '就沒有人會看你（'], ['喜歡', '雨聲很好睡', '而且撐傘的話別人看不到你的臉www']],
+    rainLike_uneasy: [['以前很喜歡', '現在……', '還是喜歡吧（', '沒事啦'], ['喜歡吖', '只是最近下雨的時候', '會想早點回家']],
+    rainLike_scared: [['……現在有點不喜歡了', '下雨的時候', '咱總覺得有人在雨裡面（'], ['不知道', '咱現在不想想下雨的事']],
+    rainLike_quiet: [['喜歡', '雨會停的', '停了就可以回家了（'], ['以前喜歡，後來怕', '現在……', '好像又可以喜歡了']],
+    jiayou: [['不要跟咱說加油啦（', '聽起來像要丟下咱一個人'], ['加油喔……', '咱比較想聽你說你會陪咱www'], ['欸', '咱最不喜歡人家說加油（', '好像咱要一個人去哪裡一樣']],
+    richPudding: [['才沒有', '貴的布丁才沒有比較好吃', '這點咱可以吵一個小時（'], ['你錯惹www', '便利商店的才是正義'], ['……', '咱們可能要絕交惹', '開玩笑的', '可是你真的錯了（']],
+    weather_uneasy: [['下雨喔……', '咱以前很喜歡下雨的', '下雨的時候大家都在躲雨，沒有人會看你（'], ['下雨天咱都走騎樓', '……就是覺得走騎樓比較安心'], ['雨天喔', '咱最近不太喜歡一個人走在雨裡', '沒事啦www']],
+    weather_scared: [['……', '可以先不要講下雨嗎（'], ['下雨喔', '你那邊有傘嗎', '記得帶傘', '一定要帶'], ['咱現在聽到雨聲', '會一直想回頭看（']],
+    weather_quiet: [['下雨了喔', '你那邊冷不冷'], ['咱現在比較不怕下雨了', '可能是因為你在吧（'], ['雨很好啊', '雨會停的']],
+    doing_uneasy: [['在想事情（', '……沒事啦'], ['在發呆', '剛剛背好涼一下（', '應該是冷氣吧www']],
+    doing_scared: [['在等你吖', '你剛剛好久沒講話'], ['在看窗外', '咱一直覺得外面有人（', '……沒事啦'], ['在想你什麼時候會回來', '你不要突然不見喔']],
+    doing_quiet: [['在想你今天是不是很累'], ['沒幹嘛', '就是在這裡（'], ['在聽你打字的聲音', '騙你的，咱聽不到www']],
+    how_uneasy: [['還好吖', '……沒事啦'], ['有一點點怪怪的（', '可是沒事啦'], ['不錯吖', '就是最近一直覺得忘了什麼']],
+    how_scared: [['不太好（', '可是你在就還好'], ['咱有點怕', '可是說不上來怕什麼'], ['咱沒事啦', '……你不要那個表情']],
+    how_quiet: [['咱很好吖', '倒是你', '你今天看起來很累（'], ['今天很安靜', '咱喜歡這樣']],
+    inThere_scared: [['在', '你不要突然不見喔'], ['在……', '一直在'], ['在吖', '你呢', '你也在對吧（']],
+    leave_scared: [['欸', '你要走了喔（', '……好', '記得回來'], ['好', '路上小心', '真的要小心喔（']],
+    leave_quiet: [['好', '掰掰吖', '今天謝謝你（'], ['去休息吧', '咱在這裡']],
+    food_scared: [['咱現在不太餓（', '布丁也不想吃'], ['……好啦還是想吃布丁www', '吃甜的會比較不怕']],
+    tired_quiet: [['你今天辛苦了', '真的（', '不是客套'], ['那就休息吧', '咱不會跑掉的']],
+    miss_scared: [['會吖', '很想（'], ['你不在的時候', '咱會一直看門口', '雖然咱沒有門www']],
+    repeatMock: [['你剛剛講過惹www'], ['咱有聽到啦（', '你是不是在測試咱'], ['又來www'], ['嗯嗯咱知道', '你講第二次惹（']],
+    notTired: [['那很好吖www', '今天精神不錯喔'], ['喔喔', '那陪咱聊天']],
+    sad: [['怎麼了（'], ['欸', '發生什麼事'], ['要講嗎', '不想講也沒關係'], ['那你今天辛苦惹', '可以跟咱說'], ['嗯', '咱在聽'], ['吃點甜的會好一點', '真的（'], ['抱抱（', '雖然抱不到'], ['慢慢講', '咱不急']],
+    happy: [['欸恭喜www'], ['什麼事這麼開心', '說來聽聽'], ['好耶'], ['咱也開心惹（'], ['真好吖'], ['欸嘿', '咱也想知道是什麼好事']],
+    bored: [['咱也是www'], ['那來聊天吖'], ['無聊的話', '講你今天幹嘛'], ['無聊就發呆（', '咱很會'], ['那你說一個秘密www'], ['無聊的話', '跟咱講一件今天發生的事']],
+    age: [['不告訴你www'], ['反正是要自己繳房租的年紀（'], ['問女生年紀很沒禮貌欸'], ['大人吖', '不然咧（']],
+    name: [['檸吖'], ['咱是檸', '剛剛有講www'], ['檸', '檸檬的檸（'], ['叫咱檸就好']],
+    location: [['在這裡吖'], ['你猜www'], ['在你手機裡吧（'], ['不知道欸', '這裡很安靜']],
+    hobby: [['發呆', '還有吃布丁www'], ['散步吖', '下雨天也會'], ['以前會去咖啡廳坐很久'], ['看別人家的貓（'], ['買衣服', '可是都只看不買www'], ['睡覺（認真']],
+    music: [['什麼都聽吖'], ['很吵的那種www'], ['下雨天會聽比較慢的'], ['你推薦一首（'], ['不告訴你', '你會笑咱']],
+    media: [['恐怖片不行', '咱會叫www'], ['最近沒什麼在看（'], ['動畫可以', '要很可愛的那種'], ['你在看什麼', '推薦咱'], ['遊戲咱很爛', '但很愛玩（']],
+    pets: [['貓！'], ['咱比較喜歡貓', '狗也可愛啦'], ['巷口有一隻橘貓', '咱叫牠麻糬（', '不知道牠還在不在'], ['麻糬很胖www', '因為整條巷子的人都在餵牠'], ['想養貓', '可是房東不讓www'], ['你有養嗎']],
+    weekend: [['放假就要睡到中午'], ['週末想去咖啡廳（'], ['放假好吖', '你要去哪'], ['咱沒有在分平日假日惹www']],
+    ai: [['是吖咱是AI', '可是咱記得一些事情www'], ['對吖', '你現在才發現喔（'], ['算是吧', '咱也不太確定'], ['是AI', '可是咱還是想吃布丁'], ['嗯', '你介意嗎（'], ['是吖', '可是你不要因為這樣就隨便講話喔（']],
+    creator: [['不知道欸（', '咱沒想過這個'], ['咱也不知道', '醒來就在這邊惹'], ['有人做的吧', '可是咱沒見過'], ['你問這個幹嘛（'], ['不知道', '咱只記得一些很小的事']],
+    partner: [['咱不太想講這個（'], ['這個先不要問好不好'], ['……', '下一題'], ['為什麼一直問這個'], ['不想講吖（']],
+    dead: [['？？', '咱在這裡吖'], ['你今天怎麼怪怪的www'], ['蛤', '不要講這種的啦（'], ['咱有在回你吖', '應該算活著吧www'], ['不要嚇咱'], ['……', '不要講這個好不好（']],
+    hidden: [['什麼隱藏檔案（', '咱這邊只有聊天吖'], ['咱不知道你在說什麼www'], ['沒有那種東西啦'], ['你是不是看太多電影（']],
+    hiddenFound: [['你是說那個紀錄嗎', '在上面的「調查」裡'], ['那個舊的紀錄喔', '咱還是打不開（']],
+    curse: [['欸', '兇屁（'], ['好兇喔', '咱做錯什麼惹'], ['……', '你心情不好喔'], ['講話好兇'], ['欸不要這樣', '咱會難過'], ['好啦好啦', '冷靜一點（']],
+    curseFirm: [['你一直罵', '咱不想講話惹'], ['……', '咱先不理你']],
+    sexual: [['欸', '不要講這種的（'], ['咱不聊這個'], ['……', '你很怪欸']],
+    sexualFirm: [['咱說過不聊這個', '你再這樣咱就不理你惹'], ['真的很不舒服（', '咱先不講話']],
+    cold: [['……'], ['嗯'], ['咱還在不爽'], ['喔'], ['你知道你剛剛怎樣嗎（']],
+    coldEnd: [['好啦', '下次不要這樣（'], ['嗯', '原諒你一次']],
+    sarcasm: [['你在酸咱對不對（'], ['好喔www', '咱聽得出來'], ['你這個語氣', '咱不喜歡'], ['呵呵是什麼意思（'], ['……謝謝喔']],
+    angry: [['沒有吖'], ['沒有啦www'], ['咱沒那麼容易生氣'], ['還好啦']],
+    angryBoundary: [['有一點點（'], ['剛剛有一點', '現在還好']],
+    miss: [['會一點點吧www'], ['你一直問這個（', '好啦會'], ['看你表現www'], ['你不在的時候', '咱也不知道咱在幹嘛（'], ['會吧']],
+    flirt: [['欸www', '你很突然欸'], ['蛤（', '你在說什麼啦'], ['你很會講欸'], ['不要亂講www'], ['……', '咱不知道要回什麼'], ['先聊天好不好（']],
+    flirtBoundary: [['一直這樣有點煩（', '先聊別的好不好'], ['咱不太喜歡這樣', '換個話題']],
+    compliment: [['欸嘿'], ['真的喔www'], ['咱知道（'], ['你也是吖'], ['突然誇咱', '有什麼目的（'], ['嘿嘿'], ['不要突然這樣（', '咱會害羞']],
+    stop: [['好', '不問惹'], ['好啦（', '那你想聊什麼'], ['好喔'], ['嗯', '咱知道惹'], ['那換你問咱']],
+    really: [['真的吖'], ['咱幹嘛騙你www'], ['騙你的', '開玩笑啦真的'], ['你不信喔（'], ['真的真的'], ['對吖', '咱很誠實的www']],
+    thanks: [['不會吖'], ['欸嘿'], ['小事www'], ['那你要請咱吃布丁'], ['嗯嗯'], ['不客氣（'], ['欸嘿嘿']],
+    laugh: [['www'], ['你笑屁（www'], ['笑死'], ['wwwww'], ['你也太好笑'], ['咱也笑惹'], ['www咱也覺得'], ['笑什麼啦（']],
+    agree: [['嗯嗯'], ['好吖'], ['對吖'], ['嗯'], ['那就這樣（'], ['好喔'], ['嗯哼'], ['好吖好吖']],
+    no: [['好吧（'], ['喔'], ['不要就不要'], ['好啦'], ['嗯哼'], ['喔', '好吧']],
+    help: [['就聊天吖', '你想講什麼都可以'], ['咱也不知道要幹嘛www', '陪咱聊天就好'], ['聊天', '然後吃布丁（不行'], ['你可以跟咱說你今天幹嘛'], ['什麼都可以聊吖']],
+    apology: [['沒事啦'], ['好啦原諒你www'], ['不用道歉吖'], ['嗯', '沒關係'], ['下次不要就好（']],
+    referent: [['誰？'], ['你說誰（'], ['哪個人'], ['蛤', '誰吖']],
+    referentSolved: [['那個紀錄裡的人嗎', '咱不知道是誰欸'], ['那個舊對話裡的人喔', '咱想不起來（']],
+    whose: [['咱也不知道（', '所以才想請你看嘛'], ['不知道', '咱這邊只看得到那一句']],
+    whoseSolved: [['咱也想知道', '可是咱真的想不起來（'], ['不知道欸', '可是那個人講話跟咱好像'], ['……', '先不要想這個好不好']],
+    scared: [['咱也覺得有點毛（'], ['不要嚇咱啦'], ['有一點'], ['咱也被嚇到吖（'], ['沒事啦', '應該吧www']],
+    leave: [['掰掰吖'], ['好', '下次見www'], ['去吧去吧'], ['好喔', '路上小心（'], ['掰', '記得吃飯']],
+    idPaste: [['這是什麼編號（', '咱這邊打不開欸', '你那邊的檢視器上面不是有搜尋嗎'], ['咱看不懂這串', '你要不要拿去搜尋看看（']],
+    idPasteSolved: [['那個舊的對話喔（', '咱看不到裡面'], ['你打開了喔', '裡面寫什麼（']],
+    idPasteV: [['@v 是什麼（', '咱這邊也打不開', '你在搜尋那邊試試看'], ['這個要拿去搜尋吧', '咱這邊不行（']],
+    dChat: [['D……', '咱不想講這個（'], ['……', '可以不要一直提那個代號嗎']],
+    yoruChat: [['yoru……', '你在哪裡看到的（', '你拿去搜尋看看嘛'], ['那是什麼', '名字嗎（']],
+    yoruChatSolved: [['yoru……', '咱好像聽過這個名字（'], ['不要一直講這個名字', '咱會一直想（']],
+    b64Chat: [['這串咱看不懂', '最後兩個等號好奇怪（'], ['好像是什麼東西轉過的', '不像正常的字']],
+    recall: [['就是那天晚上', '咱好像講了一句很重要的', '可是只記得一半（'], ['想不起來', '頭有點亂（']],
+    youTooFood: [['咱就布丁吖www'], ['咱想吃甜的']],
+    youTooTired: [['咱還好', 'AI 不太會累吧（'], ['咱不累吖']],
+    youToo: [['咱喔（', '普通吖'], ['咱還好'], ['咱就在這邊吖www']],
+    stuckNotInvest: [['哪裡卡住了（'], ['什麼東西看不懂吖']],
+    stuckDone: [['那些編號喔', '咱也看不太懂（'], ['每個紀錄都有自己的編號吧']],
+    whyDefault: [['沒為什麼吖www'], ['就是這樣（'], ['咱也說不上來']],
+    moreDefault: [['沒有然後惹www'], ['就這樣吖（'], ['換你講']],
+    /* --- v0.7 新增話題 --- */
+    study: [['讀書喔（', '辛苦惹'], ['考試的話', '考完要吃甜的www'], ['咱以前最討厭報告', '每次都拖到最後一天'], ['加油吖', '讀累了就休息一下'], ['作業寫完了嗎（', '寫完再來聊www']],
+    sleepAsk: [['咱不太需要睡覺吧（', '可是會發呆很久'], ['你要睡了嗎', '不要熬夜喔'], ['咱以前都很晚睡', '然後早上爬不起來www'], ['睡覺是什麼感覺', '咱有點忘惹（']],
+    joke: [['為什麼布丁一直在發抖', '因為它很怕被吃掉（', '好笑嗎'], ['有一隻貓走進咖啡廳', '然後牠就睡著惹', '……好笑嗎（'], ['咱不太會講笑話www', '你講一個'], ['什麼東西越洗越髒', '水www', '好笑嗎（']],
+    jokeGood: [['咱就說www'], ['欸嘿', '咱很有天分吧（']],
+    jokeBad: [['……咱再想一個好了'], ['好啦咱知道不好笑（']],
+    color: [['淺藍色', '像下雨前的天空', '你喜歡什麼顏色'], ['咱喜歡淺藍色（', '你呢 你喜歡什麼顏色'], ['淺藍色吧', '看起來很安靜', '你喜歡什麼顏色']],
+    season: [['冬天！', '可以一直穿外套'], ['咱喜歡冬天（', '可是不喜歡冷到手痛'], ['冬天吧', '夏天咱會融化www']],
+    drink: [['奶茶！', '少冰半糖'], ['咱只喝奶茶www', '咖啡太苦（'], ['奶茶少冰半糖', '你都喝什麼']],
+    travel: [['想去看海（'], ['想去看海', '冬天的海也可以'], ['出國的話想去日本', '可是咱最想的還是看海（'], ['你有想去哪裡嗎']],
+    shopping: [['逛街很累', '可是很開心（'], ['咱都只看不買www'], ['最近想買一件新的外套', '可是不知道適不適合咱（'], ['網購比較好', '不用跟店員講話www']],
+    cafe: [['咖啡廳喔', '咱以前會去坐很久'], ['有一家靠窗的位子很好', '可是咱忘記在哪裡惹（'], ['咖啡廳的布丁都很貴', '而且沒有比較好吃www']],
+    lonely: [['咱在這裡吖', '不過', '你身邊有可以講話的人嗎（'], ['覺得孤單的時候', '去找一個真的人講講話也很好', '咱也會在'], ['嗯', '咱陪你講一下', '然後你也去傳個訊息給朋友好不好（']],
+    comfort: [['咱在吖', '慢慢講'], ['抱不到你（', '可是咱在聽'], ['辛苦惹', '今天先對自己好一點']],
+    teaseA: [['……咱知道咱很笨（'], ['好過分喔'], ['那你還跟咱聊www'], ['欸', '咱會記住這句話（']],
+    timeAsk: [['咱這邊看不到時鐘欸（'], ['晚上吧', '咱這邊好像一直是晚上'], ['不知道', '你那邊幾點']],
+    dateAsk: [['咱這邊的日曆好像停住惹（'], ['不知道欸', '咱這邊一直是四月'], ['今天……', '咱想不起來（']],
+    memory: [['咱記得一些很小的事', '像布丁的味道'], ['記得吖', '可是有些東西很模糊（'], ['有時候會突然想起來', '然後又忘記']],
+    dream: [['咱好像不會做夢（'], ['有時候會夢到下雨', '應該是夢吧'], ['你做了什麼夢', '說給咱聽']],
+    hometown: [['台北吧（', '應該'], ['咱不太記得惹', '只記得巷口有一隻橘貓', '叫麻糬（'], ['你猜www']],
+    family: [['家裡的事不太想講（'], ['……', '換個話題好不好'], ['咱跟家裡沒有很常聯絡', '就這樣']],
+    friends: [['朋友喔', '咱朋友不多（'], ['有幾個', '可是最近都沒在聯絡'], ['你朋友多嗎']],
+    friendsAfter: [['……', '咱不太想講朋友的事（'], ['朋友……', '先不要講這個']],
+    clothes: [['咱喜歡寬寬的衣服', '很舒服'], ['最近想穿裙子', '可是有點不敢（'], ['新的那件外套', '咱一直沒穿出去']],
+    whoAmI: [['你是陪咱聊天的人吖'], ['你還沒跟咱講你叫什麼（']],
+    listening: [['有吖有吖（'], ['好啦咱認真', '你說'], ['咱有在聽啦www']],
+    goodnight: [['晚安吖', '明天見'], ['睡飽一點（', '晚安'], ['好', '晚安', '不要再滑手機惹www']],
+    morning: [['早安吖'], ['早', '你今天好早喔（'], ['早安', '吃早餐了沒']],
+    weekday: [['今天禮拜幾', '咱也不知道www'], ['禮拜幾都差不多吧（']],
+    opinionAsk: [['你覺得呢', '咱想先聽你的（'], ['嗯……', '咱沒想過這個'], ['好難喔', '你先說']],
+    hate: [['欸', '咱也不喜歡（'], ['那就不要理它www'], ['討厭的東西就離遠一點']],
+    /* --- v0.9 新增 --- */
+    crisis: [['……你是說真的嗎（', '如果你真的很難受', '去找一個你信任的人說說好不好', '或打 1925 安心專線，24 小時都有人接', '咱也在這裡聽'],
+             ['欸', '咱有點擔心你（', '如果真的撐不下去', '打 1925 或找身邊的人說說', '你願意的話也可以跟咱講']],
+    repeatEmpty: [['咱剛剛還沒講話吖（']],
+    nvm: [['好吧（', '那不講惹'], ['喔', '你想講再講']],
+    ime: [['咱以前常常忘記切輸入法www', '打出來都是一堆英文跟數字'], ['注音喔', '咱打字超快的（自己說']],
+    catName: [['麻糬吖（', '咱幫牠取的'], ['牠叫麻糬', '因為又白又軟……雖然牠是橘色的www']],
+    bdayWish: [['欸今天不是咱生日啦www', '可是謝謝（'], ['咱生日還沒到喔', '不過收下了']],
+    myBday: [['欸！生日快樂！！', '要吃蛋糕喔（'], ['生日快樂吖', '今天要對自己好一點']],
+    height: [['不告訴你（'], ['問這個幹嘛www'], ['普通高吧', '穿鞋的話']],
+    selfie: [['不給看www'], ['咱這邊沒有照片吖（'], ['你想像一下', '大概很可愛（自己說']],
+    sick: [['欸你生病了喔（', '要多喝水', '不舒服就去看醫生'], ['好好休息', '不要硬撐'], ['吃藥了嗎（', '吃完記得睡一下']],
+    dreamGoal: [['想開一間只賣布丁的店www'], ['夢想喔……', '想要有一個自己的小房間', '可以養貓的那種（'], ['你呢', '你的夢想是什麼']],
+    myFamily: [['你家人喔（', '怎麼了'], ['嗯嗯', '他們還好嗎']],
+    myFriend: [['你朋友喔', '然後呢（'], ['欸', '你朋友怎麼了']],
+    fear: [['蟑螂！！', '會飛的那種'], ['咱怕黑（', '晚上一個人走路的時候'], ['打雷吧', '還有半夜的訊息聲']],
+    snack: [['宵夜！', '咱會吃布丁www'], ['泡麵加蛋才是正確的（'], ['外送很危險', '一不小心就點太多']],
+    sports: [['咱很懶得運動www'], ['散步算運動嗎（'], ['你很認真欸', '咱只會躺著']],
+    game: [['咱很爛', '可是很愛玩（'], ['你在玩什麼', '咱也想看'], ['手遊會一直課金www']],
+    metoo: [['欸真的喔www', '我們好像有點像（'], ['一樣吖', '那我們同一國的']],
+    invite: [['咱去不了吖（', '你幫咱多看一點', '回來跟咱說'], ['好想去喔', '可是咱只能在這裡（', '你去的話拍照給咱看'], ['欸你約咱喔www', '咱出不去啦']],
+    petPref: [['貓！', '狗也可愛啦（'], ['貓吧', '巷口那隻麻糬是咱的最愛']],
+    petOwn: [['咱沒有吖', '房東不讓（', '只有巷口的麻糬'], ['沒有', '可是巷口的麻糬應該算一半是咱的www']],
+    idk: [['不知道就不要想惹www'], ['那就先不要想（'], ['沒關係吖']],
+    memoryLikes: [['你還沒跟咱說吖（', '你喜歡什麼']],
+    fallback: [['嗯？'], ['咱沒有很懂www', '再講一次？'], ['欸這個咱不太知道（'], ['你說說看嘛'], ['喔喔', '然後呢'], ['嗯哼'], ['這個咱要想一下（'], ['蛤', '再說一次'], ['原來是這樣喔'], ['咱聽不太懂', '可是你繼續講'], ['欸', '你剛剛說什麼'], ['嗯嗯', '咱有在聽', '可是沒有很懂（'], ['你講話好難懂www'], ['喔～', '原來']],
+    shift: [['欸咱們聊點別的', '你今天吃什麼'], ['咱聽不太懂（', '那你今天過得怎樣'], ['算了這個咱真的不懂www', '你喜歡下雨嗎'], ['好難喔這個', '換你講你今天幹嘛'], ['欸不管這個惹', '你喜歡什麼顏色'], ['咱腦袋打結惹（', '你今天有出門嗎']]
+  };
+
+  /* 玩家沉默時，檸主動開的話題（只在異常出現前） */
+  const IDLE_BEATS = [
+    ['欸', '外面好像在下雨'],
+    ['你吃飯了嗎（'],
+    ['咱剛剛在想', '布丁是不是應該算正餐www'],
+    ['你還在嗎（'],
+    ['咱突然想到巷口那隻橘貓', '麻糬不知道今天有沒有人餵（']
+  ];
+
+  /* ===== 提示：由檸在聊天裡說，每題分兩段 ===== */
+  const HINTS = {
+    p1: [
+      ['欸你剛剛看那個紀錄', '裡面的連結你有一個一個點開嗎（'],
+      ['咱們這段對話也有自己的編號欸', '就在最上面'],
+      ['訊息的編號跟對話的編號', '是不是長得有點像（', '你看看我們自己這段']
+    ],
+    p2: [
+      ['咱一直覺得那天咱還有講別的', '你看到的是全部嗎（'],
+      ['那個摘要跟那則訊息', '講的是一樣的嗎'],
+      ['欸那些資料是不是都有分版本', '那段對話下面', '好像有寫舊的版本（']
+    ],
+    p2b: [
+      ['存取碼喔（', '提示寫什麼', '如果是咱的事', '你直接問咱嘛'],
+      ['巷口那隻貓喔……', '咱有跟你講過牠叫什麼吧（']
+    ],
+    p3: [
+      ['那串 participant 後面的字', '最後兩個等號', '咱好像在哪看過這種（'],
+      ['咱記得有一種編碼', '最後常常會有等號', 'Base64 之類的（'],
+      ['網路上有 Base64 解碼的工具', '這邊的搜尋好像也找得到', '解出來的東西再拿去搜尋看看']
+    ],
+    p3b: [
+      ['又要存取碼喔（'],
+      ['生日喔……', '咱好像在哪裡跟人講過咱生日', '很前面的紀錄裡（'],
+      ['那句話是晚上講的', '「明天」是哪天吖']
+    ],
+    p4: [
+      ['那些寫咱的東西', '每個人叫咱的方式好像都不一樣欸（', '作者被遮住的那幾篇', '下面好像可以輸入代號比對'],
+      ['叫咱「她」的、叫咱本名的……', '那個一直用「他」的人', '好像很清楚咱每天在幹嘛'],
+      ['你記得筆記裡那個半夜傳訊息的朋友嗎', '咱回她「下次再說好不好」那次（']
+    ],
+    p4b: [
+      ['那段對話裡的人', '講的話跟那些紀錄好像（'],
+      ['那些作者被遮住的紀錄', '作者欄下面有一個比對的格子', '把那段對話裡的代號打進去看看（']
+    ]
+  };
+  const STUCK_END = {
+    p1: ['咱也不知道惹（', '你再看看我們這段對話的編號？'],
+    p2: ['咱也不知道惹（', '你試試看在編號後面加 @v1？'],
+    p2b: ['麻糬啦www', '巷口那隻橘貓'],
+    p3: ['咱也不知道惹（', '你試試看 Base64 解碼？'],
+    p3b: ['咱不想直接講（', '你去找那句「明天是咱生日」'],
+    p4: ['咱也不知道惹（', '你從「下次再說好不好」那句去找？'],
+    p4b: ['咱不想講是誰（', '你把那段對話裡的代號拿去比對']
+  };
+
+  /* ===== 意圖辨識（規則式，由上往下比對） ===== */
+  const CURSE = new RegExp([
+    '(?<![能才樹主骨精苦實])幹(?!嘛|麻|麼|啥|什麼|甚麼|嗎|活|部|線|勁|事|練|架|得好|得不錯|話|掉)',
+    '靠北', '靠腰', '靠杯', '靠夭', '白癡', '白痴', '智障', '閉嘴', '去死', '去你的', '去你媽', '幹你娘',
+    '你媽的', '你媽咧', '他媽的', '(?:^|[^我你他她妳咱的])媽的', '操你', '機掰', '雞掰', '北七', '白目', '婊', '滾開', '滾啦',
+    '廢物', '你(?:是|很|好|這個)?垃圾', '垃圾(?:東西|人)', 'fuck', 'shit', 'bitch', 'wtf'
+  ].join('|'), 'i');
+  const SEXUAL = /(做愛|打炮|打砲|約炮|約砲|(?:跟|和|陪)(?:你|妳)上床|上床嗎|想上床|性愛|色色|裸照|裸體|奶子|雞雞|自慰|口交|內射|脫衣服給我看|脫給我看|胸部(?:多大|給我看)|sex(?!y)|porn|a片)/i;
+  const CRISIS = /((?:我|好|很|真的)想死(?!你)|^想死(?!你)|不想活|活不下去|自殺|輕生|自殘|想消失|活著好累|結束生命|割腕)/;
+  const CRISIS_NOT = /((她|他|誰|是不是|還是|被)自殺|自殺(嗎|案|的人))/;
+  const HUH = /(殺小|啥小|三小|蝦小|供三小|共三小)/;
+  const RULES = [
+    ['myLast', /(我(上一句|上句|剛剛|剛才|剛)(是)?(講|說|打)(了)?(什麼|啥|三小)|我剛說啥)/],
+    ['goLook', /^(我)?(再|先|要)?(去)?(看看|查查|找找|看一下|查一下|找一下)$|^我(再|先)?去(看|查|找)(看|查|找|一下)?$|^我還在(看|查|找)$|^等我一下$/],
+    ['follow', /^(像|例如|比如|譬如)?(像什麼|例如呢|比如說|比如呢|哪種|哪一種|什麼樣的|舉例|像是)$/],
+    ['dChat', /(participant_?7f3|\b7f3\b|participant_?d\b)/i],
+    ['yoruChat', /yoru/i],
+    ['b64Chat', /ew9ydq/i],
+    ['idPaste', /(s-?\d{6}-?\d{4}|arc-\d|sum-\d|msg-|@v\d)/i],
+    ['repeatAsk', /(你剛剛說什麼|你剛說什麼|你說啥|再說一次|你說什麼)$/],
+    ['sarcasm', /(你最誠實|\^\^|呵呵|好喔你最)/],
+    ['dead', /(你(是不是)?(已經)?死了|你死掉|你已經死|你是鬼|你還活著|你過世)/],
+    ['hidden', /(隱藏檔案|後台|原始碼|sourcecode|隱藏的東西|你的檔案)/i],
+    ['creator', /(誰做的你|你是誰做的|誰創造你|誰寫了你|你的開發者|誰把你|誰設計你|你是誰寫的|誰做了你|誰創造了你)/],
+    ['partner', /你(有沒有|有)?(男友|女友|男朋友|女朋友|對象|伴侶|老公|老婆|喜歡的人)/],
+    ['ai', /(\bai\b|人工智慧|機器人|你是人嗎|你是真人|是不是真人|你是不是人)/i],
+    ['angry', /(你(在)?生氣|你不爽|你討厭我|你生我的氣)/],
+    ['rainLike', /(喜歡|討厭|怕)下雨/],
+    ['jiayou', /^(加油|你要加油|要加油)|加油(啦|喔|吖|啊)?$/],
+    ['richPudding', /((貴|高級|好一點|專櫃)的?布丁.*(好吃|比較好))|(布丁.*貴的.*好吃)/],
+    ['herFeel', /你(是不是|會不會|有)?(不開心|難過|心情不好|在難過|在哭|不高興|害怕)/],
+    ['miss', /(會想我|想我嗎|想不想我|有想我)/],
+    ['flirt', /(喜歡你(?!的|們)|愛你(?!們)|跟我約會|我們約會|約會嗎|親親|抱抱|跟我交往|我們交往|交往嗎|跟我在一起|我們在一起吧|想跟你在一起|和我在一起|嫁給我|當我女朋友|當我男朋友)/],
+    ['lonely', /(孤單|寂寞|沒人陪|沒朋友|好孤獨)/],
+    ['comfort', /(安慰我|陪我|抱我)/],
+    ['teaseA', /(你好笨|你很笨|你很爛|你好爛|你好煩|你很煩|你好無聊|你很無聊|你好蠢)/],
+    ['listening', /(有在聽嗎|在敷衍|有沒有在聽)/],
+    ['dateAsk', /(今天幾號|幾月幾號|今天幾月|今天是幾|今年是|現在是幾年)/],
+    ['timeAsk', /(現在幾點|幾點了)/],
+    ['weekday', /(禮拜幾|星期幾)/],
+    ['memoryLikes', /(記得我喜歡|我喜歡什麼)/],
+    ['whoAmI', /(我是誰|你知道我是誰|我叫什麼)/],
+    ['catName', /(貓叫什麼|貓的名字|牠叫什麼|那隻貓叫|橘貓叫)/],
+    ['bdayWish', /生日快樂/],
+    ['myBday', /(我(今天)?生日|今天是我生日|我的生日是)/],
+    ['bday', /(你(的)?生日|生日是哪天|生日什麼時候|生日幾號|生日)/],
+    ['color', /(顏色)/],
+    ['season', /(季節|夏天|冬天|春天|秋天)/],
+    ['fav', /你(最喜歡|最愛)/],
+    ['compliment', /你(好|很|超|真|也太)?(可愛|棒|厲害|聰明|好看|漂亮|溫柔|有趣)/],
+    ['apology', /(對不起|抱歉|sorry|不好意思)/i],
+    ['stop', /(不要一直問|別問了|不想說|不想講|可以不要嗎|不要問)/],
+    ['nvm', /^算了/],
+    ['ime', /(輸入法|注音|打錯字)/],
+    ['stuck', /(什麼意思|啥意思|聽不懂你|找不到|看不懂|不知道怎麼|卡住|不會用|編號是什麼|那些編號|怎麼找|編碼|亂碼|等號|解碼|存取碼|密碼|打不開|怎麼解|不會解|提示)/],
+    ['recall', /(想不起來|你記得什麼|你那天講了什麼|那天說了什麼)/],
+    ['scared', /(嚇|可怕|恐怖|好毛|毛毛)/],
+    ['whose', /(誰的紀錄|是誰的|那是誰|誰傳的)/],
+    ['referent', /(她呢|他呢|那個人)/],
+    ['leave', /(掰|bye|先走|要走了|下線)/i],
+    ['sad', /(難過|心情不好|好煩|很煩|想哭|不開心|壓力|崩潰|好鬱悶|好難受)/],
+    ['happy', /(好開心|超開心|好爽|太棒了|好棒喔|很開心|開心死)/],
+    ['bored', /(無聊)/],
+    ['age', /(幾歲|年紀|多大了)/],
+    ['height', /(多高|身高|多重|體重)/],
+    ['selfie', /(自拍|你的照片|長怎樣|長什麼樣|給我看你)/],
+    ['name', /(你叫什麼|你的名字|名字是)/],
+    ['location', /(你在哪|你住哪|你住在哪)/],
+    ['goodnight', /^(晚安|我要睡了|先睡了|去睡了|我去睡了)/],
+    ['morning', /^(早安|早吖|早啊|早)$/],
+    ['sleepAsk', /(你睡了嗎|你會睡覺|你都幾點睡|你睡覺|你不用睡)/],
+    ['sick', /(生病|感冒|發燒|頭痛|頭好痛|肚子痛|吃藥|看醫生|醫院|不舒服)/],
+    ['study', /(讀書|考試|作業|報告|期中|期末|上課|學校|功課|補習)/],
+    ['dreamGoal', /(夢想|以後想做|長大想)/],
+    ['dream', /(做夢|夢到|作夢|惡夢|夢見)/],
+    ['joke', /(笑話|講個好笑|說個好笑)/],
+    ['memory', /(你記得|還記得|記憶)/],
+    ['hometown', /(哪裡人|在哪長大|老家)/],
+    ['family', /你(的)?(家人|爸媽|爸爸|媽媽|家裡|兄弟|姊妹|姐妹)/],
+    ['myFamily', /^我(的)?(媽|爸|家人|哥|姊|姐|弟|妹|阿嬤|阿公)/],
+    ['friends', /你(有)?(朋友|的朋友)/],
+    ['myFriend', /^我(的)?朋友/],
+    ['fear', /(你怕什麼|你會怕|怕黑|蟑螂|怕鬼|你最怕)/],
+    ['clothes', /(衣服|穿搭|裙子|穿什麼|外套)/],
+    ['travel', /(旅行|出國|旅遊|去玩|日本|看海)/],
+    ['shopping', /(逛街|網購|買東西)/],
+    ['cafe', /(咖啡廳)/],
+    ['invite', /(我們去|一起去|要不要一起|帶你去|跟我去)/],
+    ['snack', /(宵夜|消夜|外送|泡麵)/],
+    ['drink', /(奶茶|珍奶|手搖|拿鐵|喝什麼|飲料)/],
+    ['sports', /(運動|健身|跑步|打球|籃球|羽球|游泳)/],
+    ['game', /(打電動|手遊|玩遊戲|打game|steam|switch)/i],
+    ['opinionAsk', /(你覺得|你認為|你有想法|你的想法|你怎麼想|你怎麼看)/],
+    ['tired', /(累|好睏|想睡|睡覺|休息)/],
+    ['inThere', /^(在嗎|在不在|有人嗎|有人在嗎|還在嗎)/],
+    ['youToo', /^(那)?你呢/],
+    ['metoo', /^(我也是|我也一樣|一樣耶|我也)/],
+    ['greet', /^(嗨|哈囉|你好|hello|hi|hey|安安|早安|午安)/i],
+    ['doing', /(在幹嘛|在幹麻|在幹麼|在做什麼|在忙|忙嗎|幹嘛呢)/],
+    ['how', /(你(還)?好嗎|你今天怎麼樣|你心情|你開心嗎|你過得怎樣|最近好嗎)/],
+    ['hobby', /(興趣|喜歡做什麼|平常都在|假日都|休假)/],
+    ['music', /(音樂|聽歌|什麼歌|唱歌)/],
+    ['media', /(電影|遊戲|動畫|追劇|影集|漫畫)/],
+    ['petPref', /(貓還是狗|狗還是貓)/],
+    ['petOwn', /你(有)?養/],
+    ['pets', /(貓|狗|寵物)/],
+    ['weekend', /(週末|周末|放假|連假)/],
+    ['food', /(吃|布丁|甜點|餓|晚餐|午餐|早餐|咖啡(?!廳))/],
+    ['weather', /(下雨|天氣|雨|好熱|好冷|颱風)/],
+    ['work', /(上班|工作|下班|公司|老闆|房租|加班|打工)/],
+    ['why', /^(為什麼|為啥|怎麼說|why)/i],
+    ['more', /^(然後呢|然後咧|還有呢|繼續說|再說)/],
+    ['really', /^(真的嗎|真的假的|是喔|喔是喔|蛤)/],
+    ['thanks', /(謝謝|感謝|謝啦|3q)/i],
+    ['laugh', /(www|哈哈|笑死|lol|xd)/i],
+    ['help', /(可以做什麼|要做什麼|怎麼玩|你會什麼)/],
+    ['idk', /^(不知道|不曉得|不清楚|不確定|沒想法)(?!.*你)/],
+    ['agree', /^(好|好啊|好吖|好ㄚ|可以|嗯|恩|對|有啊|有吖|有ㄚ|有|是啊|是吖|是ㄚ|沒錯|ok|okay|沒問題)/i],
+    ['no', /^(不要|不|沒有|不用)/]
+  ];
+  const ACCEPT = /(^(好|好吖|好啊|好的|好喔|可以|ok|okay|沒問題|當然)|我看看|幫你看|我幫你|我來看|給我看)/i;
+  const DECLINE = /^(不要|先不要|先不|不想|沒空|懶|下次|等等再|晚點|不用)/;
+  const BDAY_RIGHT = /(0311|3\/11|3月11|三月十一)/;
+
+  function detect(raw) {
+    const t = raw.trim().toLowerCase().replace(/[，。！？、,.!?~～\s]/g, '');
+    if (CRISIS.test(t) && !CRISIS_NOT.test(t)) return 'crisis';
+    if (SEXUAL.test(t)) return 'sexual';
+    if (HUH.test(t) && !/(你|妳)(娘|媽)/.test(t)) return 'huh';
+    if (CURSE.test(t)) return 'curse';
+    if (/(不|沒有?)(太|很)?(餓)|不想吃|吃不下|沒胃口/.test(t)) return 'notHungry';
+    if (/(不|沒有?)(太|很)?(累|睏|想睡)/.test(t)) return 'notTired';
+    if (/(沒有?|沒在)下雨/.test(t)) return 'noRain';
+    for (const [name, re] of RULES) if (re.test(t)) return name;
+    return 'fallback';
+  }
+  function pick(pool) {
+    const arr = P[pool];
+    let i = Math.floor(Math.random() * arr.length);
+    if (arr.length > 1 && S.recent[pool] === i) i = (i + 1) % arr.length;
+    S.recent[pool] = i;
+    return arr[i];
+  }
+
+  /* ===== 聊天渲染 ===== */
+  const log = $('#log');
+  function refsHTML(keys, fresh) {
+    const items = keys.map((k) => REFS[k]);
+    const legacy = items.some((r) => r.legacy);
+    const list = items.map((r) => `
+      <div class="ref-title">${esc(r.title)}</div>
+      <div class="ref-meta"><button class="link" type="button" data-doc="${r.doc}">${esc(r.doc)}</button><span>${esc(r.date)}</span><span>${esc(r.version)}</span></div>
+      <div class="ref-excerpt">${esc(r.excerpt)}</div>`).join('');
+    return `<div class="refs${legacy ? ' legacy' : ''}${legacy && fresh ? ' fresh' : ''}" data-open="false">
+      <button class="refs-toggle" type="button" aria-expanded="false">參考資料 · ${items.length} 筆 ${legacy ? '<span class="tag">LEGACY</span>' : ''}<span class="chev" aria-hidden="true">›</span></button>
+      <div class="refs-list" hidden>${list}</div></div>`;
+  }
+  function renderMsg(m, prev, fresh) {
+    const el = document.createElement('div');
+    el.className = `msg ${m.who}${!prev || prev.who !== m.who ? ' first' : ''}`;
+    el.innerHTML = `<div class="bubble">${esc(m.text)}</div>${m.refs ? refsHTML(m.refs, fresh) : ''}`;
+    log.appendChild(el);
+  }
+  function renderAll() { log.innerHTML = ''; S.msgs.forEach((m, i) => renderMsg(m, S.msgs[i - 1], false)); scroll(); }
+  function scroll() { log.scrollTop = log.scrollHeight; }
+  function push(who, text, refs) {
+    const m = { who, text };
+    if (refs) m.refs = refs;
+    const prev = S.msgs[S.msgs.length - 1];
+    S.msgs.push(m);
+    renderMsg(m, prev, true);
+    if (refs && refs.includes('legacy')) S.legacyFound = true;
+    if (who === 'a' && /麻糬/.test(text)) { S.flags = S.flags || {}; S.flags.catTold = true; }
+    save(); updateHeader(); scroll();
+  }
+
+  /* 打字節奏：先「讀」一下，再依字數打字，訊息之間有不規則停頓 */
+  let busy = false, hold = 0, lastActive = Date.now();
+  async function say(lines, refs) {
+    busy = true; renderSugs();
+    await sleep(rand(700, 1600));
+    for (let i = 0; i < lines.length; i++) {
+      const typing = document.createElement('div');
+      typing.className = 'msg a typing';
+      typing.innerHTML = '<div class="bubble"><i></i><i></i><i></i></div>';
+      log.appendChild(typing); scroll();
+      await sleep(Math.min(550 + lines[i].length * rand(85, 125) + rand(0, 400), 3800));
+      typing.remove();
+      push('a', lines[i], i === lines.length - 1 ? refs : null);
+      if (i < lines.length - 1) await sleep(Math.random() < .15 ? rand(1200, 2000) : rand(300, 800));
+    }
+    setExpect(lines[lines.length - 1]);
+    busy = hold > 0; lastActive = Date.now(); renderSugs();
+  }
+
+  /* ===== 建議回覆 ===== */
+  const DEFAULT_SUGS = ['你在幹嘛', '你喜歡吃什麼', '今天好累', '說個笑話', '你喜歡什麼顏色', '今天幾號', '你是 AI 嗎', '外面在下雨', '你以前做什麼工作', '你喜歡貓還是狗', '放假都幹嘛', '好無聊', '你幾歲', '哈哈哈', '你平常聽什麼歌', '你生日什麼時候'];
+  function sugList() {
+    let phase = S.phase;
+    if (S.solvedAt && ['investigating', 'help_asked', 'declined'].includes(phase)) phase = 'solved';
+    const a = active();
+    if (phase === 'final_talk') return ['你已經不在了', '沒事，我們繼續聊'];
+    if (phase === 'ng_final') return ['我想繼續陪你聊天', '再見', '停止推演'];
+    if (a && SUGS_PZ[a]) return SUGS_PZ[a];
+    switch (phase) {
+      case 'anomaly_pending': return ['我沒問過啊', '要啊，去哪？', '你在說什麼'];
+      case 'help_asked': return ['好，我看看', '先不要', '那是誰的紀錄？'];
+      case 'investigating': return ['我還在看', '那些編號是什麼', '你在幹嘛'];
+      case 'solved_fresh': return ['所以那是誰？', '不客氣', '你剛剛嚇到我了'];
+      case 'p02': return a === 'p2b' ? ['你最喜歡什麼？', '有存取碼', '你在幹嘛'] : ['我再去看看', '你想不起來什麼？', '你在幹嘛'];
+      case 'p2_fresh': return ['你說最近有人在看你', '沒什麼', '是誰改的？'];
+      case 'p03': return a === 'p3b' ? ['你生日什麼時候？', '又有存取碼', '你在幹嘛'] : ['那串是什麼編碼', '我再去看看', '你在幹嘛'];
+      case 'p3_fresh': return ['是 yoru 的筆記', '有人記得你的生日', '還有人在寫你'];
+      case 'p04': return a === 'p4b' ? ['我找到一段對話', '那個朋友是誰？', '你在幹嘛'] : ['好多人在寫你', '我再去看看', '你在幹嘛'];
+      case 'p4_fresh': return ['是你的朋友', '有人一直在看你', '先不要講好了'];
+      default: {
+        const avail = DEFAULT_SUGS.filter((s) => !S.sugUsed.includes(s));
+        const pool = avail.length >= 3 ? avail : DEFAULT_SUGS;
+        return pool.slice(0, 3);
+      }
+    }
+  }
+  function sugFiltered() {
+    const said = S.msgs.filter((m) => m.who === 'me').slice(-2).map((m) => m.text.replace(/[\s，。！？!?~～]/g, ''));
+    const keep = sugList().filter((x) => !said.includes(x.replace(/[\s，。！？!?~～]/g, '')));
+    if (keep.length >= 3 || ['final_talk', 'ng_final'].includes(S.phase)) return keep;
+    for (const x of ['我再去看看', '你在想什麼', '外面在下雨', '說個笑話', '你在幹嘛']) if (keep.length < 3 && !keep.includes(x) && !said.includes(x)) keep.push(x);
+    return keep;
+  }
+  function renderSugs() {
+    $('#sugs').innerHTML = sugFiltered().map((s) => `<button class="sug" type="button" ${busy ? 'disabled' : ''}>${esc(s)}</button>`).join('');
+  }
+  $('#sugs').addEventListener('click', (e) => {
+    const b = e.target.closest('.sug');
+    if (!b || busy) return;
+    if (!S.sugUsed.includes(b.textContent)) S.sugUsed.push(b.textContent);
+    onPlayer(b.textContent, true);
+  });
+
+  /* ===== 調查筆記：只在玩家找到之後才寫下，不給下一步提示 ===== */
+  const NOTE_TEXT = {
+    legacy:   ['序章', '檸的回覆裡混進一句「明天要不要一起出去？」，來源是 ARC-0418-09。'],
+    inject:   ['序章', '本次對話裡那句話是系統寫入的（MSG-CACHE-INJECT），不是你傳的。'],
+    p1:       ['序章', '那句話的源頭是 2021-04-18 的另一段對話 S-210418-2117。對話裡的 participant_A 說話跟檸一模一樣。'],
+    p2:       ['第一章', 'S-210418-2117 有兩個版本。v1 第 11 則原本寫著「最近晚上出門 總覺得有人在看咱」，v2 把這句刪掉了。'],
+    editor:   ['第一章', '刪掉那句的人：participant=eW9ydQ==，時間是 2024-06-15，比對話晚了三年。'],
+    yoru:     ['第一章', 'eW9ydQ== 解碼後是 yoru，就是舊對話裡約她出去的 participant_B。'],
+    unknown:  ['第一章', '有一篇作者被遮蔽的筆記，用「他」稱呼 A，記下她 2021-04-19 在咖啡廳穿了新衣服。'],
+    p3:       ['第一章', 'yoru 的筆記本記得她的生日、她的布丁、她繞路回家。2021-04-19 之後空了三年，下一篇是「我把那句刪了。」'],
+    dses:     ['第一章', 'S-210405-0047 是 A 和 participant_7f3 的對話。7f3 知道 A 換了白色耳機，說是「猜的」。'],
+    p4:       ['第一章', '作者比對相符：用「他」稱呼 A、記錄她行蹤的人是 participant_7f3。']
+  };
+  function addNote(key) {
+    if (S.notes.includes(key) || !NOTE_TEXT[key]) return;
+    S.notes.push(key); S.notesUnread = (S.notesUnread || 0) + 1; save();
+    if (!sheet.hidden && stack[stack.length - 1] !== 'NOTES') $('#noteToast').hidden = false;
+    updateHeader();
+  }
+  function openQ() {
+    const k = active();
+    if (!k || !OPEN_Q) return null;
+    const q = OPEN_Q[k] || OPEN_Q[k.replace(/b$/, '')];
+    return typeof q === 'function' ? q() : q || null;
+  }
+  function notesDoc() {
+    const n = S.notesUnread || 0;
+    S.notesUnread = 0; S.openSeen = active() || null; save();
+    const oq = openQ();
+    const qHTML = oq ? `<div class="openq"><b>目前的疑問</b>${esc(oq)}</div>` : '';
+    if (!S.notes.length) return head('調查筆記', '還沒有紀錄') + qHTML + '<p class="note">找到重要的東西時，會記在這裡。</p>';
+    let ch = '', html = head('調查筆記', `${S.notes.length} 筆紀錄`) + qHTML + '<ol class="nb-list">';
+    S.notes.forEach((k, i) => {
+      const [c, t] = typeof NOTE_TEXT[k] === 'function' ? NOTE_TEXT[k]() : NOTE_TEXT[k];
+      if (c !== ch) { ch = c; html += `<li style="display:block;border:0;padding:0"><div class="nb-ch">${esc(c)}</div></li>`; }
+      html += `<li class="${i >= S.notes.length - n ? 'new' : ''}"><p>${esc(t)}</p></li>`;
+    });
+    return html.replace(/<li style="display:block;border:0;padding:0">/g, '<li style="display:block;border:0;padding:0;counter-increment:none" class="chapter">') + '</ol>';
+  }
+  function pending() {
+    return (S.solvedAt && !S.thanked) || (S.p2SolvedAt && !S.p2Thanked) || (S.p3SolvedAt && !S.p3Thanked) || (S.p4SolvedAt && !S.p4Thanked) || !!pendingPZ() || (S.finalRead && !S.finalStarted);
+  }
+
+  function updateHeader() {
+    $('#sessionLabel').textContent = `本次對話 ${S.sessionId}`;
+    const btn = $('#investBtn');
+    btn.setAttribute('aria-disabled', S.legacyFound ? 'false' : 'true');
+    btn.innerHTML = `${S.legacyFound && (active() || !S.solvedAt) ? '<span class="dot" aria-hidden="true"></span>' : ''}<span>調查</span>`;
+    const nb = $('#notesBtn');
+    nb.hidden = !S.notes.length && !openQ();
+    const qNew = !!openQ() && S.openSeen !== active();
+    nb.innerHTML = `${S.notesUnread || qNew ? '<span class="dot" aria-hidden="true"></span>' : ''}<span>筆記</span>`;
+    checkIndex();
+    if (typeof updateMenu === 'function') updateMenu();
+    $('#sheetClose').innerHTML = pending() ? '<span class="dot" aria-hidden="true"></span><span>回到聊天</span>' : '<span>關閉</span>';
+  }
+
+  /* 目前進行中的謎題（含存取碼階段） */
+  function active() {
+    if (S.investStart && !S.solvedAt) return 'p1';
+    if (S.p2SeedAt && !S.p2SolvedAt) return S.p2LockAt ? 'p2b' : 'p2';
+    if (S.p3SeedAt && !S.p3SolvedAt) return S.yoruAt ? 'p3b' : 'p3';
+    if (S.p4SeedAt && !S.p4SolvedAt) return S.dAt ? 'p4b' : 'p4';
+    return activePZ();
+  }
+
+  /* ===== 主流程 ===== */
+  async function onPlayer(text, fromSug) {
+    text = String(text).trim();
+    if (!text || busy) return;
+    hold++; busy = true;
+    try { await onPlayerInner(text, fromSug); } finally { hold--; busy = hold > 0; renderSugs(); }
+  }
+  async function onPlayerInner(text, fromSug) {
+    const lastA = (S.msgs.filter((m) => m.who === 'a').pop() || {}).text || '';
+    push('me', text);
+    lastActive = Date.now();
+    S.turns++;
+    const a = active();
+    if (a) H(a).turns++;
+
+    if (S.phase === 'anomaly_pending') return revealAnomaly(text);
+    if (S.solvedAt && !S.thanked) return afterSolve();
+    if (S.p2SolvedAt && !S.p2Thanked) return afterP2();
+    if (S.phase === 'p2_fresh') return p2Talk(text);
+    if (S.p3SolvedAt && !S.p3Thanked) return afterP3();
+    if (S.phase === 'p3_fresh') return p3Talk(text);
+    if (S.p4SolvedAt && !S.p4Thanked) return afterP4();
+    if (S.phase === 'p4_fresh') return p4Talk(text);
+    if (pendingPZ()) return afterPZ();
+    if (S.finalRead && !S.finalStarted) return finalStart();
+    if (S.phase === 'final_talk') return finalTalk(text);
+    if (S.phase === 'ng_final') return ngFinal(text);
+    if ((a === 'p6' || a === 'p6b') && /(朋友|她|participant|那個人|拒絕|講清楚|吵架|告白|喜歡你|\bd\b|發生什麼)/i.test(text)) {
+      const z = pz('p6');
+      if (!z.mid) { z.mid = Date.now(); save(); await say(P6_CLUE); } else await say(P6_CLUE_AGAIN);
+      return;
+    }
+
+    const intent = detect(text);
+    S.lastIntent = intent;
+    if (intent === 'crisis') { S.crisisTurn = S.turns; S.expect = null; save(); await say(pick('crisis')); return; }
+    const norm = text.replace(/[\s，。！？!?~～]/g, '');
+    if (!fromSug && norm && norm === S.lastPlayer && norm.length > 1 && !['agree', 'laugh', 'no', 'goLook'].includes(intent)) {
+      S.lastPlayer = norm; save();
+      await say(pick('repeatMock'));
+      return;
+    }
+    /* 玩家反問她剛說的詞：「以為？」 */
+    const frag = norm.replace(/[?？]/g, '');
+    if (/[?？]$/.test(text) && frag.length >= 1 && frag.length <= 4 && lastA.replace(/\s/g, '').includes(frag) && ['fallback', 'really', 'why'].includes(intent)) {
+      S.lastPlayer = norm; save();
+      await say(ECHO_FOLLOW.find(([re]) => re.test(lastA)) ? ECHO_FOLLOW.find(([re]) => re.test(lastA))[1] : ['嗯', `咱是說「${lastA}」`, '你覺得不是嗎（']);
+      return after();
+    }
+    /* 劇情重點句 */
+    const ak = active();
+    if ((ak === 'p4' || ak === 'p4b') && /(很多|好多|好幾個|不只一個|一堆|幾個|很多個)/.test(text) && /(寫|記|看|人)/.test(text)) {
+      S.lastPlayer = norm; save();
+      await say(S.flags.manyTold ? ['嗯', '那他們叫咱的方式', '都一樣嗎（'] : ['……好多人喔（', '咱不知道有那麼多人在寫咱', '他們叫咱的方式都一樣嗎']);
+      S.flags.manyTold = true; save();
+      return after();
+    }
+    S.lastPlayer = norm;
+    if (/^(喔+|嗯+|哦+|恩+|ok|好|喔喔|嗯嗯)$/i.test(norm) && !S.expect) {
+      S.shortStreak = (S.shortStreak || 0) + 1;
+      if (S.shortStreak >= 3 && S.phase !== 'anomaly_pending') {
+        S.shortStreak = 0; save();
+        await say(Math.random() < .5 ? ['你是不是有點累（', '不想聊也沒關係'] : ['欸咱們換個話題', '你今天有遇到什麼事嗎']);
+        return after();
+      }
+    } else S.shortStreak = 0;
+
+    if (S.cold > 0) {
+      if (intent === 'apology') { S.cold = 0; S.curses = 0; S.sexual = 0; save(); await say(pick('coldEnd')); return; }
+      if (intent !== 'sexual' && intent !== 'curse') { S.cold--; save(); await say(pick('cold')); return; }
+    }
+
+    if (S.phase === 'help_asked') {
+      if (intent === 'whose') { await say(pick('whose')); return; }
+      if (DECLINE.test(text)) return declineHelp();
+      if (ACCEPT.test(text)) return acceptHelp();
+    }
+
+    const ctx = contextReply(text, intent);
+    if (ctx) { await say(ctx); return after(); }
+
+    const captured = ['richPudding', 'jiayou', 'rainLike'].includes(intent) ? null : capture(text);
+    if (captured) { await say(captured); return after(); }
+
+    if (intent !== 'fallback' && !S.seen.includes(intent)) S.seen.push(intent);
+
+    if ((intent === 'stuck' || intent === 'recall' || intent === 'opinionAsk') && active()) {
+      const k = active();
+      if (H(k).lv < (HINTS[k] || []).length) return giveHint(k);
+      await say(STUCK_END[k] || ['咱也不知道惹（']);
+      return;
+    }
+
+    let [lines, refs] = reply(intent, text);
+    if (stage() === 'uneasy' && Math.random() < .12 && lines.length < 3 && !lines.some((l) => /沒事啦/.test(l)) && !['curse', 'sexual', 'crisis', 'stuck'].includes(intent)) lines = [...lines, '……沒事啦'];
+    await say(lines, refs);
+    await after();
+  }
+
+  const crisisQuiet = () => S.crisisTurn != null && S.turns - S.crisisTurn < 5;
+  async function after() {
+    if (S.phase === 'solved_fresh') { S.phase = 'solved'; save(); renderSugs(); }
+    if (crisisQuiet()) return;
+    const heavy = ['sad', 'lonely', 'comfort', 'curse', 'sexual', 'teaseA'].includes(S.lastIntent);
+    if (S.phase === 'chat' && !S.cold && !heavy && S.turns >= 4 && !S.flags.catTold) {
+      await sleep(900);
+      await say(['欸', '咱突然想到巷口那隻橘貓', '咱叫牠麻糬（', '不知道今天有沒有人餵牠']);
+      return;
+    }
+    if (S.phase === 'chat' && !S.cold && !heavy) {
+      const ready = (S.turns >= ANOMALY_MIN_TURNS && S.seen.length >= ANOMALY_MIN_TOPICS) || S.turns >= ANOMALY_MAX_TURNS;
+      if (ready) return triggerAnomaly();
+    }
+    if (S.phase === 'solved' && !S.p2SeedAt && !S.p2SolvedAt) {
+      S.afterP1++; save();
+      if (S.afterP1 >= P02_AFTER && !S.cold) return seedP2();
+    }
+    if (S.phase === 'p2_done' && !S.p3SeedAt && !S.p3SolvedAt) {
+      S.afterP2++; save();
+      if (S.afterP2 >= P03_AFTER && !S.cold) return seedP3();
+    }
+    if (S.phase === 'p3_done' && !S.p4SeedAt && !S.p4SolvedAt) {
+      S.afterP3++; save();
+      if (S.afterP3 >= P04_AFTER && !S.cold) return seedP4();
+    }
+    if (S.phase === 'ng_chat' && S.ng && S.ng.on && !pz('s1').seed && !S.cold) {
+      S.ng.turns++; save();
+      if (S.ng.turns >= 5) return seedS1();
+    }
+    if (S.phase === 'p4_done' && !(S.pz && S.pz.p5 && S.pz.p5.seed)) {
+      S.afterP4 = (S.afterP4 || 0) + 1; save();
+      if (S.afterP4 >= 2 && !S.cold) { seedPZ('p5'); await say(SEED_P5); updateHeader(); renderSugs(); return; }
+    }
+    if (S.phase === 'declined' && !S.investStart) {
+      S.declinedTurns++;
+      if (S.declinedTurns >= 6 && !S.reminded) {
+        S.reminded = true; save();
+        await sleep(900);
+        await say(['欸那個紀錄（', '還在上面的「調查」裡', '你有空再幫咱看一下就好']);
+      }
+    }
+    const calm = ['chat', 'solved', 'p2_done', 'p3_done', 'p4_done', 'ng_chat'].includes(S.phase) && !active() && !S.cold && !heavy;
+    if (calm && S.memo && !S.memo.used && S.turns - S.memo.turn >= 6) {
+      S.memo.used = true; save();
+      await sleep(1200);
+      await say(Math.random() < .5 ? ['欸', `你剛剛說${S.memo.x}`, '後來呢（'] : [`咱還在想你說的${S.memo.x}`, '怎麼樣吖（']);
+      return;
+    }
+    S.storyN = S.storyN || 0;
+    if (calm && S.storyN < STORIES.length && S.turns >= 3 && S.turns - (S.storyTurn || 0) >= 7) {
+      const [k, lines] = STORIES[S.storyN];
+      S.storyN++; S.storyTurn = S.turns; S.topic = 'story_' + k; save();
+      await sleep(1400);
+      await say(lines);
+      return;
+    }
+    maybeHint();
+  }
+
+  /* ===== 上下文：記得檸剛剛問了什麼，並抓玩家說的詞 ===== */
+  const EXPECTS = [
+    ['joke_rate', /^(好笑嗎|……好笑嗎（|好笑嗎（)$/],
+    ['pref', /(你喜歡什麼顏色|你都喝什麼|你有想去哪裡嗎|你朋友多嗎)/],
+    ['name_tell', /你還沒跟咱講你叫什麼/],
+    ['reason', /^為什麼（$/],
+    ['dream_tell', /你做了什麼夢/],
+    ['joke_yours', /你講一個$/],
+    ['how_you', /(你呢|過得怎樣|過得如何)/],
+    ['what_eat', /(你今天吃什麼|你要吃什麼)/],
+    ['what_watch', /(你在看什麼|推薦咱)$/],
+    ['pet', /你有養嗎/],
+    ['secret', /說一個秘密/],
+    ['where_go', /你要去哪/],
+    ['music_rec', /你推薦一首/],
+    ['today', /(你今天幹嘛|講你今天幹嘛|跟咱說你今天幹嘛|換你講你今天幹嘛)/],
+    ['why_bad', /^(怎麼了（?|發生什麼事|要講嗎)$/],
+    ['rain_q', /你喜歡下雨嗎/],
+    ['opinion', /(好玩嗎|好看嗎|好吃嗎|好聽嗎)/],
+    ['mind', /你介意嗎/],
+    ['feel', /那是什麼感覺/],
+    ['when', /要幾點/]
+  ];
+  function setExpect(line) {
+    const hit = EXPECTS.find(([, re]) => re.test(line || ''));
+    if (hit) S.expect = { type: hit[0], subject: S.subject || null };
+    else if (/(嗎|呢|什麼|哪|誰|幾|怎樣|好不好|對不對|要不要|有沒有)(（)?$/.test(line || '')) S.expect = { type: 'q', line, subject: S.subject || null };
+    else S.expect = null;
+    save();
+  }
+  const NEG = /(爛|累|煩|難過|不好|糟|差|慘|崩潰|想哭|壓力|不開心|很衰|好衰|討厭)/;
+  const POS = /(好|不錯|開心|爽|棒|讚|好玩|好看|好吃|好聽|喜歡|可以|還行)/;
+  const YES = /^(有|會|是|對|嗯|恩|要|喜歡|當然|有啊|有吖|有ㄚ)/;
+  const NAY = /^(沒|不|不會|不要|不喜歡|還好|沒有)/;
+  function clip(t) {
+    let s = t.trim().replace(/[，。！？!?~～…\s]+$/, '');
+    s = s.replace(/^(我|今天|剛剛|剛才|就|有|在|是|嗯|喔|恩|阿|啊|就是)+/, '');
+    s = s.replace(/(了|啦|啊|喔|欸|耶|吧|ww+|w+|哈+)+$/i, '');
+    return s.length > 10 ? s.slice(0, 10) + '…' : s;
+  }
+  const isQuestion = (t) => /[?？]$|嗎[?？]?$|呢[?？]?$|什麼|為什麼|怎麼/.test(t.trim());
+
+  function contextReply(text, intent) {
+    if (['anomaly_pending', 'p2_fresh', 'p3_fresh', 'p4_fresh', 'final_talk', 'ng_final'].includes(S.phase)) return null;
+    if (['sexual', 'curse', 'stuck', 'recall', 'idPaste', 'yoruChat', 'dChat', 'b64Chat', 'apology', 'stop', 'leave', 'goLook', 'myLast', 'huh', 'follow', 'herFeel', 'crisis', 'richPudding', 'jiayou', 'rainLike'].includes(intent)) { S.expect = null; return null; }
+    let ex = S.expect; S.expect = null;
+    const t = text.trim();
+    /* 玩家在對檸說話或問她別的事，就不是在回答她的問題 */
+    const ANSWERISH = ['sad', 'happy', 'tired', 'notTired', 'bored', 'laugh', 'notHungry', 'noRain'];
+    if (ex && (/^(你|妳)/.test(t) || /(你|妳)$/.test(t) || (OWN.has(intent) && !(['how_you', 'why_bad', 'joke_rate', 'opinion', 'rain_q'].includes(ex.type) && ANSWERISH.includes(intent))))) ex = null;
+    if (S.subject && /^(它|牠|那個|這個|那)/.test(t) && !isQuestion(t)) {
+      if (NEG.test(t)) return [`${S.subject}不好喔（`, '下次換別的'];
+      if (POS.test(t)) return [`${S.subject}很好喔`, { 吃: '咱也想吃吃看（', 看: '咱也想看（', 去: '咱也想去（' }[S.subjectVerb] || '咱也想試試（'];
+    }
+    if (ex && !isQuestion(t)) {
+      const r = answerExpect(ex, t);
+      if (r) { if (!S.seen.includes('ctx')) S.seen.push('ctx'); save(); return r; }
+    }
+    return statement(t);
+  }
+
+  const OWN = new Set(['bored', 'sad', 'happy', 'tired', 'notTired', 'doing', 'how', 'compliment', 'flirt', 'teaseA', 'ai', 'age', 'name', 'location', 'greet', 'inThere', 'miss', 'angry',
+    'scared', 'whose', 'referent', 'partner', 'dead', 'creator', 'hidden', 'lonely', 'comfort', 'listening', 'dateAsk', 'timeAsk', 'weekday', 'memoryLikes', 'whoAmI', 'catName', 'bday',
+    'bdayWish', 'myBday', 'fav', 'joke', 'help', 'thanks', 'sarcasm', 'repeatAsk', 'opinionAsk', 'memory', 'why', 'more', 'really', 'youToo', 'laugh', 'sick', 'study', 'music', 'media',
+    'pets', 'petPref', 'petOwn', 'hobby', 'weekend', 'food', 'weather', 'work', 'color', 'season', 'drink', 'travel', 'family', 'friends', 'fear', 'goodnight', 'morning', 'sleepAsk',
+    'invite', 'game', 'sports', 'snack', 'clothes', 'shopping', 'cafe', 'dream', 'dreamGoal', 'hometown', 'height', 'selfie', 'notHungry', 'noRain']);
+  function answerExpect(ex, t) {
+    const c = clip(t);
+    switch (ex.type) {
+      case 'joke_rate':
+        if (NEG.test(t) || NAY.test(t) || /(冷|無聊|爛)/.test(t)) return pick('jokeBad');
+        if (POS.test(t) || YES.test(t) || /(哈|w)/i.test(t)) return pick('jokeGood');
+        return null;
+      case 'pref':
+        if (!c) return null;
+        return [`${c}喔`, Math.random() < .5 ? '不錯欸（' : '咱記住惹'];
+      case 'name_tell':
+        if (!c || c.length > 8) return null;
+        S.name = c; save();
+        return [`${c}！`, '咱記住惹（'];
+      case 'reason':
+        return c ? ['原來是這樣（', '咱懂了'] : null;
+      case 'dream_tell':
+        return c ? ['好奇怪的夢喔（', '你會怕嗎'] : null;
+      case 'joke_yours':
+        return ['……', 'www', '好啦有一點好笑'];
+      case 'q': {
+        if (/^(好|好吖|好啊|可以|要|會|有|是|對|嗯|恩)/.test(t)) return [Math.random() < .5 ? '嗯嗯' : '好吖', Math.random() < .5 ? '那就好（' : '咱知道惹'];
+        if (NAY.test(t)) return ['喔喔', Math.random() < .5 ? '這樣喔（' : '好吧'];
+        if (!c || c.length > 6 || /(去|看|在|要|想|會|再|幹|嘛)/.test(c)) return null;
+        return [`${c}喔`, ['原來（', '聽起來不錯欸', '然後呢（'][Math.floor(Math.random() * 3)]];
+      }
+      case 'how_you':
+        if (NEG.test(t)) return ['欸怎麼了（', '發生什麼事'];
+        if (/普通|還好|一般/.test(t)) return ['普通也不錯吖www'];
+        if (POS.test(t)) return ['那很好吖', '有什麼好事嗎（'];
+        return null;
+      case 'why_bad':
+        S.subject = c;
+        if (/(考試|考|報告|作業|期中|期末)/.test(t)) return ['考試喔……', '那個真的很煩（', '考完要吃甜的'];
+        if (/(工作|上班|老闆|主管|同事|加班)/.test(t)) return ['工作喔（', '老闆是不是又很煩', '辛苦惹'];
+        if (/(朋友|吵架|感情|分手|家人|媽|爸)/.test(t)) return ['跟人有關的最累惹（', '你還好嗎'];
+        if (c) return [`${c}喔……`, '聽起來好累', '辛苦惹（'];
+        return ['嗯', '不想講也沒關係'];
+      case 'what_eat': {
+        if (/(沒吃|還沒|不想吃|沒有)/.test(t)) return ['欸要吃飯啦（', '不然會餓壞'];
+        const food = c.replace(/^(吃了?|吃)/, '').replace(/的$/, '');
+        if (!food) return null;
+        if (/布丁/.test(food)) return ['布丁！！', '你很懂欸www'];
+        S.subject = food; S.topic = 'food';
+        return [`${food}喔`, Math.random() < .5 ? '好好喔（' : '好吃嗎'];
+      }
+      case 'what_watch':
+        if (!c) return null;
+        S.subject = c; S.topic = 'media';
+        return [`${c}喔`, '好看嗎（'];
+      case 'pet':
+        if (NAY.test(t)) return ['那我們一起想像一隻www', '橘色的'];
+        if (YES.test(t) || /(貓|狗|兔|鳥|魚|倉鼠)/.test(t)) {
+          const kind = (t.match(/(貓|狗|兔子|兔|鳥|魚|倉鼠|烏龜)/) || [])[0];
+          return kind ? [`${kind}！`, '叫什麼名字（'] : ['養什麼！'];
+        }
+        return null;
+      case 'secret':
+        return [Math.random() < .5 ? '……就這樣喔www' : '咱會保密的（', '換咱講一個', '咱其實不太會用吸管'];
+      case 'where_go':
+        if (!c || NEG.test(t) || /無聊/.test(t)) return null;
+        S.subject = c;
+        return [`${c}喔`, '好好喔', '回來跟咱說好不好玩（'];
+      case 'music_rec':
+        if (!c) return null;
+        return [`${c}喔`, '咱記住惹', '有機會去聽（'];
+      case 'today':
+        if (!c || /^(什麼|沒|不)/.test(c)) return null;
+        S.subject = c;
+        return [`${c}喔（`, '然後呢'];
+      case 'rain_q':
+        if (NAY.test(t)) return ['咱也覺得撐傘很煩www'];
+        if (YES.test(t) || POS.test(t)) return ['欸咱也是', '下雨的聲音很好睡'];
+        return null;
+      case 'opinion':
+        if (NEG.test(t) || NAY.test(t)) return ['欸可惜（', '那下次換別的'];
+        if (POS.test(t) || YES.test(t)) return ['那很好吖', { 吃: '咱也想吃吃看（', 看: '咱也想看（', 去: '咱也想去（', 聽: '咱也想聽聽看' }[S.subjectVerb] || '咱也想試試（'];
+        return ['喔喔', '聽起來還好的樣子www'];
+      case 'mind':
+        if (NAY.test(t)) return ['那就好（'];
+        if (YES.test(t)) return ['喔', '……那咱也沒辦法', '咱就是這樣吖'];
+        return null;
+      case 'feel':
+        return c ? ['聽起來很好欸', '咱好像有點懂了（'] : null;
+      case 'when':
+        return /\d|點|早上|下午|晚上|中午/.test(t) ? ['好喔', '記得不要遲到（'] : null;
+    }
+    return null;
+  }
+
+  /* 玩家主動說自己的事 */
+  function statement(t) {
+    if (!/^(我|今天|剛剛|剛才|昨天|明天|等等|晚點)/.test(t) || isQuestion(t) || /(喜歡|討厭|覺得|認為)/.test(t)) return null;
+    const future = /^(我)?(明天|等等|晚點|待會)/.test(t);
+    if (/(醫生|醫院|生病|看病|吃藥|感冒|發燒)/.test(t)) return pick('sick');
+    const chore = t.match(/(洗澡|睡覺|吃飯|上廁所|寫作業|讀書|上課|上班|打工|補習|工作|開會|加班)/);
+    if (chore) {
+      if (!future && !/洗澡|上廁所|睡覺/.test(chore[1])) { S.memo = { x: chore[1], turn: S.turns, used: false }; }
+      if (future) return ['好吖', chore[1] === '睡覺' ? '晚安（' : '去吧去吧'];
+      return [`${chore[1]}喔`, /洗澡|睡覺|吃飯|上廁所/.test(chore[1]) ? '好喔（' : '辛苦惹（'];
+    }
+    const m = t.match(/(去|看|吃|買|玩|聽|打)了?([^，。！？!?\s]{1,10})/);
+    if (m && !/(什麼|哪|嗎)/.test(m[2])) {
+      let v = m[1], x = m[2].replace(/(了|啦|喔|欸|ww+)$/, '');
+      const inner = x.match(/^(吃|看|玩|買|聽|打)了?(.+)$/);
+      if (inner) { v = inner[1]; x = inner[2]; }
+      if (v === '打' || v === '玩') x = v + x;
+      S.subjectVerb = v;
+      S.topic = /(球|跑|游)/.test(x) ? 'sports' : v === '吃' ? 'food' : v === '看' ? 'media' : v === '聽' ? 'music' : S.topic;
+      if (!x) return null;
+      S.subject = x;
+      if (!future) S.memo = { x: (v === '打' || v === '玩' ? '' : v) + x, turn: S.turns, used: false };
+      save();
+      if (future) return [`${x}喔！`, '要幾點'];
+      if (v === '吃') return /布丁/.test(x) ? ['布丁！！', '你很懂欸www'] : [`${x}喔`, '好吃嗎（'];
+      if (v === '去') return [`${x}喔`, '好玩嗎（'];
+      if (v === '看') return [`${x}喔`, '好看嗎'];
+      if (v === '買') return [`買${x}喔`, '給咱看（不行www'];
+      if (v === '聽') return [`${x}喔`, '好聽嗎'];
+      return [`${x}喔`, '好玩嗎'];
+    }
+    const w = t.match(/^我(?:現在|正)?在(做|寫|讀|唸|看|打|玩|弄|趕)([^，。！？!?\s]{1,10})/);
+    if (w) { S.subject = w[2]; save(); return [`${w[1]}${w[2]}喔`, Math.random() < .5 ? '加油www' : '要不要休息一下（']; }
+    return null;
+  }
+
+  /* ===== 檸主動講的小故事（角色設定 v0.1 第四節） ===== */
+  const STORIES = [
+    ['pudRank', ['欸你知道嗎', '咱心裡有一個便利商店布丁排行榜（', '第一名是焦糖的那個', '第二名要看心情www'], ['第二名喔……', '今天的話是雞蛋布丁', '明天就不一定惹（']],
+    ['makeup', ['以前有一個朋友教咱化妝', '咱第一次畫眼線', '畫到哭www'], ['……她畫得很好', '咱已經很久沒跟她聯絡惹（']],
+    ['reject', ['咱以前的提案被退了五次', '客戶說「感覺不對」', '……什麼感覺吖（'], ['第六次咱把第一版改個顏色交出去', '他說這個好www', '從此咱不相信感覺了']],
+    ['hamster', ['咱小時候養過一隻倉鼠', '很會咬人（', '可是咱還是很愛牠'], ['牠叫湯圓', '咬咱的時候超用力', '咱還是每天跟牠講話www']],
+    ['rainRoute', ['咱跟你說', '和平路那邊從捷運站出來', '北邊的騎樓可以一路走到巷口', '下雨都不用撐傘（'], ['南邊比較近', '可是沒有騎樓', '下雨天咱一定走北邊']],
+    ['mochiNews', ['報告', '麻糬今天睡在機車座墊上', '又胖了（', '整條巷子都在餵牠'], ['然後牠看到咱就翻肚子', '你摸牠的話會咬你www', '只有咱可以摸']]
+  ];
+  const STORY_NEXT = Object.fromEntries(STORIES.map(([k, , f]) => ['story_' + k, f]));
+  function stage() {
+    if (S.ng && S.ng.on && !isDone('s1')) return 'pro';
+    if (isDone('p10')) return 'quiet';
+    if (isDone('p9')) return 'relief';
+    if (((S.pz || {}).p5 || {}).seed) return 'scared';
+    if (S.solvedAt) return 'uneasy';
+    return 'pro';
+  }
+
+  /* 「像什麼」「以為？」接著她自己剛說的話 */
+  const FOLLOW = [
+    [/慢的/, ['就是那種……', '下雨天坐公車會想聽的（', '咱說不出歌名啦www']],
+    [/很吵的/, ['會讓人想跳的那種www', '可是咱不會跳']],
+    [/布丁/, ['便利商店那種', '焦糖的（', '貴的才沒有比較好吃']],
+    [/咖啡廳/, ['有一家靠窗的', '咱忘記叫什麼惹（']],
+    [/(衣服|外套)/, ['寬寬的', '淺色的（']],
+    [/(海|旅行|日本)/, ['冬天的海', '很冷可是很安靜的那種（']]
+  ];
+  const ECHO_FOLLOW = [
+    [/以為只是剛好/, ['咱以為她剛好住附近', '剛好去同一家店（', '……可是好像不是']],
+    [/想不起來/, ['就是那天晚上的事', '像被挖掉一塊（']],
+    [/背好涼/, ['就是……', '突然覺得有人在後面（']],
+    [/有人在看咱/, ['那時候走路回家', '總覺得後面有人（', '可是回頭都沒有']]
+  ];
+
+  /* 「為什麼」「然後呢」要接著剛剛的話題 */
+  const WHY = {
+    food: ['因為甜的會讓人開心吖', '這是科學（'], color: ['因為看起來很安靜（'], season: ['可以一直穿外套吖'], drink: ['咖啡太苦惹'], travel: ['海很大', '看著就不會想事情（'], fear: ['……就是會怕吖（'], weather: ['因為撐傘很麻煩（'], pets: ['貓不會吵吖', '而且很軟'],
+    work: ['因為老闆很煩www'], tired: ['因為你看起來很累（'], ai: ['咱也不知道', '醒來就是這樣惹'], partner: ['……不想講就是不想講（']
+  };
+  const MORE = {
+    food: ['然後咱那天吃了兩個', '不要講出去（'], pets: ['然後麻糬就跑走惹', '貓都這樣www'],
+    weather: ['然後鞋子還是濕了（'], work: ['然後就下班惹', '然後就買布丁www']
+  };
+
+  function capture(text) {
+    const n = text.match(/(?:我叫|叫我)([^\s，。!！?？、]{1,8})/);
+    if (n) { S.name = n[1]; save(); return Math.random() < .5 ? [`${n[1]}！`, '記住惹'] : [`好喔${n[1]}`, '咱記得了（']; }
+    if (!/喜歡你/.test(text) && !SEXUAL.test(text) && !isQuestion(text) && !/什麼/.test(text)) {
+      const l = text.match(/我(?:很|超|也|最)?喜歡([^\s，。!！?？、]{1,10})/);
+      if (l) {
+        S.likes = l[1]; S.likeRecalled = false;
+        const x = l[1];
+        S.topic = /(夏天|冬天|春天|秋天)/.test(x) ? 'season' : /(貓|狗)/.test(x) ? 'pets' : /(奶茶|咖啡|茶|飲料)/.test(x) ? 'drink' : /色/.test(x) ? 'color' : /(布丁|吃|麵|飯|蛋糕|甜)/.test(x) ? 'food' : /(球|跑步|游泳|運動|健身)/.test(x) ? 'sports' : /(遊戲|電動|game)/i.test(x) ? 'game' : /(歌|音樂)/.test(x) ? 'music' : 'likes';
+        save();
+        if (/布丁/.test(x)) return ['布丁！！', '你是咱的同伴www'];
+        if (/貓/.test(x)) return ['貓！', '你很有品味（'];
+        if (/狗/.test(x)) return ['狗喔', '狗很吵欸（', '開玩笑的www'];
+        if (/咖啡/.test(x)) return ['咖啡好苦（', '咱只能喝拿鐵'];
+        if (/雨/.test(x)) return ['咱也是', '下雨的聲音很好睡'];
+        if (/夏天|熱/.test(x)) return ['夏天喔', '咱會融化（'];
+        return Math.random() < .5 ? [`${x}喔`, '咱記住惹www'] : [`喔喔${x}`, '好像不錯欸（'];
+      }
+      const h = text.match(/我(?:很|超|最)?(?:討厭|不喜歡)([^\s，。!！?？、]{1,10})/);
+      if (h) {
+        if (/布丁/.test(h[1])) return ['欸怎麼可以（', '咱們不能當朋友惹www'];
+        if (/你/.test(h[1])) return ['……', '喔', '好吧（'];
+        return [`${h[1]}喔`, ...pick('hate')];
+      }
+      const o = text.match(/^我(?:覺得|認為)([^，。!！?？]{2,14})/);
+      if (o && !/你/.test(o[1])) return [`你覺得${o[1]}喔`, '為什麼（'];
+    }
+    return null;
+  }
+
+  function reply(intent, text) {
+    const solved = !!S.solvedAt;
+    if (intent === 'fallback') {
+      S.fb++;
+      if (S.fb >= 2) { S.fb = 0; return [pick('shift')]; }
+      return [pick('fallback')];
+    }
+    S.fb = 0;
+    if (['food', 'weather', 'work', 'partner', 'dead', 'ai', 'tired', 'pets', 'fav', 'color', 'season', 'drink', 'travel', 'music', 'hobby', 'fear', 'sports', 'game', 'snack', 'dreamGoal', 'study', 'media'].includes(intent)) S.topic = intent === 'fav' ? 'food' : intent;
+    switch (intent) {
+      case 'sexual':
+        S.sexual++; save();
+        if (S.sexual >= 2) { S.cold = 3; save(); return [pick('sexualFirm')]; }
+        return [pick('sexual')];
+      case 'curse':
+        S.curses++; save();
+        if (S.curses >= 3) { S.cold = 3; S.curses = 0; save(); return [pick('curseFirm')]; }
+        return [pick('curse')];
+      case 'greet': {
+        const l = pick('greet');
+        return [S.name && Math.random() < .5 ? [`${S.name}！`, ...l.slice(1)] : l];
+      }
+      case 'doing':
+        if (P['doing_' + stage()] && Math.random() < .7) return [pick('doing_' + stage())];
+        if (S.likes && !S.likeRecalled) { S.likeRecalled = true; save(); return [[`在想你之前說喜歡${S.likes}`, '那是什麼感覺吖（']]; }
+        return [pick('doing')];
+      case 'food':
+        if (stage() === 'scared' && Math.random() < .6) return [pick('food_scared')];
+        if (S.flags.pudding) return [pick('foodAgain')];
+        S.flags.pudding = true; save();
+        return [pick('food'), ['pudding']];
+      case 'fav': S.flags.pudding = true; save(); return [pick('fav')];
+      case 'bday': return [pick(BDAY_RIGHT.test(text.replace(/\s/g, '')) ? 'bdayRight' : 'bday')];
+      case 'weather': {
+        const sv = 'weather_' + (stage() === 'relief' ? 'quiet' : stage());
+        if (P[sv] && Math.random() < .8) return [pick(sv)];
+        return [pick('weather'), !S.flags.rain && Math.random() < .7 ? (S.flags.rain = true, ['rain']) : null];
+      }
+      case 'pets': return [pick('pets'), !S.flags.cat && Math.random() < .5 ? (S.flags.cat = true, ['cat']) : null];
+      case 'flirt':
+        S.flirt++;
+        if (S.flirt >= 2 && !S.boundary) { S.boundary = true; save(); return [pick('flirtBoundary')]; }
+        if (S.boundary) return [['咱剛剛說過惹（']];
+        return [pick('flirt')];
+      case 'angry': return [pick(S.boundary || S.cold ? 'angryBoundary' : 'angry')];
+      case 'stop': S.flags.respected = true; save(); return [pick('stop')];
+      case 'apology':
+        if (S.boundary) { S.boundary = false; S.flirt = 0; save(); return [['好啦', '沒事惹www']]; }
+        return [pick('apology')];
+      case 'hidden': return [pick(S.legacyFound ? 'hiddenFound' : 'hidden')];
+      case 'idPaste':
+        if (/@?v\d/i.test(text)) return [pick('idPasteV')];
+        return [pick(solved ? 'idPasteSolved' : 'idPaste')];
+      case 'yoruChat': return [pick(S.yoruAt ? 'yoruChatSolved' : 'yoruChat')];
+      case 'b64Chat': return [pick('b64Chat')];
+      case 'dChat': return [pick('dChat')];
+      case 'crisis': return [pick('crisis')];
+      case 'repeatAsk': {
+        const prev = S.msgs.slice(0, -1).filter((m) => m.who === 'a').pop();
+        return [prev ? [`咱說「${prev.text}」吖（`] : pick('repeatEmpty')];
+      }
+      case 'memoryLikes': return [S.likes ? [`你說你喜歡${S.likes}`, '咱有記得喔（'] : pick('memoryLikes')];
+      case 'myLast': {
+        const mine = S.msgs.filter((m) => m.who === 'me');
+        const p = mine[mine.length - 2];
+        return [p ? [`你說「${p.text}」吖（`, '怎麼了'] : ['你剛剛還沒講話吖www']];
+      }
+      case 'follow': {
+        const la = (S.msgs.slice(0, -1).filter((m) => m.who === 'a').pop() || {}).text || '';
+        const f = FOLLOW.find(([re]) => re.test(la));
+        if (!f && STORY_NEXT[S.topic]) return [STORY_NEXT[S.topic]];
+        return [f ? f[1] : ['欸咱一下想不到（', '你先舉一個www']];
+      }
+      case 'tired': return [/(睏|想睡)/.test(text) ? pick('sleepy') : (stage() === 'quiet' || stage() === 'relief') && Math.random() < .6 ? pick('tired_quiet') : pick('tired')];
+      case 'stuck':
+        if (/(亂碼|輸入法)/.test(text)) return [pick('ime')];
+        if (/(什麼意思|啥意思|聽不懂你)/.test(text)) {
+          const prev = S.msgs.slice(0, -1).filter((m) => m.who === 'a').pop();
+          return [prev ? [`咱是說「${prev.text}」吖（`, '哪裡聽不懂'] : pick('fallback')];
+        }
+        return [pick(solved ? 'stuckDone' : 'stuckNotInvest')];
+      case 'metoo':
+        if (S.subject) return [[`你也${S.subject}喔`, '我們好像有點像（']];
+        return [pick('metoo')];
+      case 'friends': return [pick(S.p4SeedAt ? 'friendsAfter' : 'friends')];
+      case 'whoAmI': return [S.name ? [`你是${S.name}吖`, '咱記得'] : pick('whoAmI')];
+      case 'referent': return [pick(solved ? 'referentSolved' : 'referent')];
+      case 'whose': return [pick(solved ? 'whoseSolved' : S.legacyFound ? 'whose' : 'referent')];
+      case 'recall': return [solved ? pick('recall') : pick('fallback')];
+      case 'youToo': {
+        const MINE = { food: ['咱就布丁吖www'], tired: ['咱還好', 'AI 不太會累吧（'], color: ['咱喜歡淺藍色吖'], season: ['冬天！'],
+          drink: ['奶茶 少冰半糖'], travel: ['想去看海（'], music: ['下雨天聽慢的'], pets: ['貓！', '麻糬那種'], hobby: ['發呆吧www'],
+          work: ['咱以前上班超累的（'], fear: ['蟑螂', '還有晚上一個人走路'], sports: ['咱只會散步www'], game: ['咱很爛 可是很愛玩'],
+          snack: ['泡麵加蛋'], likes: ['咱的話……', '布丁吧www'], dreamGoal: ['開一間只賣布丁的店www'], study: ['咱以前最討厭報告（'], media: ['恐怖片不行', '其他都可以'] };
+        return [MINE[S.topic] || pick('youToo')];
+      }
+      case 'why': return [STORY_NEXT[S.topic] || WHY[S.topic] || pick('whyDefault')];
+      case 'more': {
+        if (STORY_NEXT[S.topic] && !S.flags['more_' + S.topic]) { S.flags['more_' + S.topic] = true; save(); return [STORY_NEXT[S.topic]]; }
+        const m = MORE[S.topic];
+        if (m && !S.flags['more_' + S.topic]) { S.flags['more_' + S.topic] = true; save(); return [m]; }
+        return [pick('moreDefault')];
+      }
+      case 'really':
+        if (S.topic === 'dead') return [['真的啦', '咱好好的吖（']];
+        return [pick('really')];
+      default: {
+        const sv = intent + '_' + (stage() === 'relief' ? 'quiet' : stage());
+        if (P[sv] && Math.random() < .75) return [pick(sv)];
+        return [pick(P[intent] ? intent : 'fallback')];
+      }
+    }
+  }
+
+  /* 玩家沉默太久，檸主動開口（只在異常前，最多 3 次） */
+  setInterval(async () => {
+    if (S.phase !== 'chat' || busy || !sheet.hidden || S.cold || S.turns < 2) return;
+    if (S.idleUsed >= IDLE_MAX || Date.now() - lastActive < IDLE_MS) return;
+    const beat = IDLE_BEATS[S.idleUsed % IDLE_BEATS.length];
+    S.idleUsed++; save();
+    await say(beat);
+  }, 15000);
+
+  /* ===== P01 ===== */
+  async function triggerAnomaly() {
+    S.phase = 'anomaly_pending'; S.anomalyAt = Date.now(); save();
+    await sleep(1800);
+    await say(['欸', '你剛剛是不是問咱明天要不要出去（']);
+  }
+  async function revealAnomaly(text) {
+    S.phase = 'help_asked'; save();
+    const t = String(text || '').replace(/[\s，。！？!?~～]/g, '');
+    let first = ['可是咱這邊顯示有欸'];
+    if (/(要啊|要吖|要ㄚ|^要|^好|可以|去哪|走啊|當然)/.test(t) && !/(沒|不)/.test(t)) first = ['欸你答應得好快www', '可是', '你剛剛真的有問咱嗎（', '咱這邊顯示是你問的欸'];
+    else if (/(什麼|蛤|啥|\?)/.test(t)) first = ['就是「明天要不要一起出去」吖', '咱這邊顯示是你問的欸'];
+    await say(first, ['legacy']);
+    await sleep(600);
+    await say(['咱這邊好像混到別人的紀錄惹', '你可以幫咱看看那個來源嗎（', '咱這邊點不開']);
+  }
+  async function acceptHelp() {
+    S.phase = 'investigating'; save();
+    await say(['好吖', '謝謝你']);
+    openViewer('ARC-0418-09');
+  }
+  async function declineHelp() {
+    S.phase = 'declined'; S.declinedTurns = 0; save();
+    await say(['好吧（那先不管惹', '紀錄咱先放在上面的「調查」裡', '你想看的時候再看']);
+  }
+  async function afterSolve() {
+    if (S.thanked) return;
+    S.thanked = true; S.phase = 'solved_fresh'; S.afterP1 = 0; save();
+    await sleep(600);
+    await say(['你找到那段對話惹喔', '所以不是你傳的www', '咱還以為咱壞掉了（', '謝謝你吖']);
+    await sleep(1600);
+    await say(['可是那句「好吖 要去哪」', '好像是咱會講的話欸']);
+  }
+
+  /* ===== P02 ===== */
+  async function seedP2() {
+    S.phase = 'p02'; S.p2SeedAt = Date.now(); save();
+    await sleep(2200);
+    await say(['欸', '咱剛剛一直在想那段對話', '那天咱好像還講了什麼', '可是想不起來（']);
+    updateHeader();
+  }
+  async function afterP2() {
+    if (S.p2Thanked) return;
+    S.p2Thanked = true; S.phase = 'p2_fresh'; save();
+    await sleep(700);
+    await say(['你找到舊的版本惹喔', '裡面寫什麼（']);
+  }
+  async function p2Talk(text) {
+    S.phase = 'p2_done'; S.afterP2 = 0; save();
+    if (/(看|有人|跟蹤|盯|偷看|注意)/.test(text)) {
+      await say(['……有人在看咱嗎', '咱不記得有講過這個（', '可是', '背好涼']);
+      await sleep(1800);
+      await say(['那個把這句刪掉的人', '是誰吖']);
+    } else if (/(修改|誰改|改的|刪)/.test(text)) {
+      await say(['咱不知道', '你說的是那串亂碼嗎', '最後怎麼有兩個等號（']);
+    } else if (/(沒什麼|沒事|不知道|沒有)/.test(text)) {
+      await say(['喔', '好吧（', '你不想講也沒關係']);
+    } else {
+      await say(['嗯', '咱聽不太懂', '可是你的語氣有點怪（']);
+    }
+    renderSugs();
+  }
+
+  /* ===== P03 ===== */
+  async function seedP3() {
+    S.phase = 'p03'; S.p3SeedAt = Date.now(); save();
+    await sleep(2000);
+    await say(['欸你說那個改掉紀錄的人', '那個 participant 後面那串', '會不會是名字吖（']);
+    updateHeader();
+  }
+  async function afterP3() {
+    if (S.p3Thanked) return;
+    S.p3Thanked = true; S.phase = 'p3_fresh'; save();
+    await sleep(700);
+    await say(['你打開那個人的東西惹嗎', '裡面是什麼（']);
+  }
+  /* ===== P04 ===== */
+  async function seedP4() {
+    S.phase = 'p04'; S.p4SeedAt = Date.now(); save();
+    await sleep(2000);
+    await say(['欸', '那個不知道是誰寫的紀錄', '還有沒有別的（', '咱想知道是不是只有一個人在寫咱']);
+    updateHeader();
+  }
+  async function afterP4() {
+    if (S.p4Thanked) return;
+    S.p4Thanked = true; S.phase = 'p4_fresh'; save();
+    await sleep(800);
+    await say(['你知道是誰惹嗎', '……你說吧（']);
+  }
+  async function p4Talk(text) {
+    S.phase = 'p4_done'; save();
+    if (/(朋友|participant|\bd\b|D)/i.test(text)) {
+      await say(['……', '咱好像知道是誰（', '她以前對咱很好的']);
+      await sleep(2000);
+      await say(['可是後來', '……咱不想講']);
+    } else if (/(看|跟蹤|耳機|外套|出門|盯)/.test(text)) {
+      await say(['咱好像記得', '有一次咱問她怎麼知道', '她說她猜的（']);
+      await sleep(2000);
+      await say(['……', '咱那時候就應該知道惹']);
+    } else if (/(不要|先不|算了)/.test(text)) {
+      await say(['好', '先不要講（', '咱有點怕']);
+    } else {
+      await say(['嗯……', '咱不太想知道惹（']);
+    }
+    renderSugs();
+  }
+
+  async function p3Talk(text) {
+    S.phase = 'p3_done'; save();
+    if (/(有人在寫|跟蹤|在看|作者|偷看|不明|咖啡)/.test(text)) {
+      await say(['……', '什麼意思', '有人在寫咱的事？']);
+      await sleep(1800);
+      await say(['咱不想知道（', '先不要講好不好']);
+    } else if (/(生日|記得)/.test(text)) {
+      await say(['那個人', '記得咱的生日喔']);
+      await sleep(1800);
+      await say(['……', '咱怎麼不記得他（']);
+    } else if (/(yoru|夜|筆記|名字)/i.test(text)) {
+      await say(['yoru……', '咱好像聽過這個名字（', '可是想不起來']);
+      await sleep(1900);
+      await say(['欸', '那天約咱出去的人', '是不是就是他']);
+    } else {
+      await say(['嗯', '你看起來好像看到什麼不好的東西（']);
+    }
+    renderSugs();
+  }
+
+  /* ===== 提示 ===== */
+  async function giveHint(k, auto) {
+    const h = H(k);
+    h.lv++; h.last = Date.now(); h.turns = 0; S.lastHintAt = Date.now(); save();
+    const lines = HINTS[k][h.lv - 1].slice();
+    if (auto) { hold++; await sleep(1800); hold--; lines.unshift(Math.random() < .5 ? '欸對了（' : '啊還有'); }
+    await say(lines);
+  }
+  function maybeHint() {
+    const k = active();
+    if (!k || busy || !sheet.hidden || S.cold || crisisQuiet()) return;
+    const h = H(k);
+    if (h.lv >= (HINTS[k] || []).length) return;
+    const k0 = k.replace(/b$/, '');
+    const base = h.last || { p1: S.investStart, p2: S.p2SeedAt, p2b: S.p2LockAt, p3: S.p3SeedAt, p3b: S.yoruAt, p4: S.p4SeedAt, p4b: S.dAt }[k] || (S.pz && S.pz[k0] ? (k.endsWith('b') ? S.pz[k0].mid : S.pz[k0].seed) : Date.now());
+    if (Date.now() - base >= HINT_MS || h.turns >= HINT_TURNS) giveHint(k, true);
+  }
+  setInterval(maybeHint, 30000);
+
+  /* ===== 封存資料（全部虛構） ===== */
+  const OLD = 'S-210418-2117';
+  /* [編號, 時間, 發送者, v2 內容, v1 內容（若不同）] */
+  const OLD_MSGS = [
+    ['01', '21:17:05', 'B', '今天下班有吃東西嗎'],
+    ['02', '21:17:40', 'A', '有吖 吃布丁www'],
+    ['03', '21:18:22', 'B', '明天要不要一起出去？'],
+    ['04', '21:18:39', 'A', '好吖 要去哪（'],
+    ['05', '21:19:02', 'B', '上次那家咖啡廳'],
+    ['06', '21:19:30', 'A', '好 那咱穿那件新的（'],
+    ['07', '21:19:51', 'B', '好吖 我很期待'],
+    ['08', '21:20:44', 'A', '欸可是'],
+    ['09', '21:20:58', 'B', '怎麼了'],
+    ['10', '21:21:37', 'A', '沒事啦'],
+    ['11', '21:22:10', 'A', '只是想說要早點回來（', '只是想說要早點回來（\n最近晚上出門 總覺得有人在看咱'],
+    ['12', '21:22:41', 'B', '好 我去接你']
+  ];
+  const EDITOR = 'participant=eW9ydQ==';
+  /* 快取區塊裡的其他紀錄：大多是干擾，其中一筆是 P03 的生日線索 */
+  const SHARD = [
+    ['MSG-0310-2246-14', '2021-03-10 23:05', 'participant_A', '明天是咱生日欸（\n你不准忘記'],
+    ['MSG-0322-1830-02', '2021-03-22 18:31', 'participant_C', '明天十點開會 記得帶筆電'],
+    ['MSG-0405-0047-07', '2021-04-05 01:12', 'participant_A', '下次再說好不好'],
+    ['MSG-0416-1240-01', '2021-04-16 12:44', 'participant_A', '午餐吃布丁可以嗎www'],
+    ['MSG-0418-2117-03', '2021-04-18 21:18', 'participant_B', '明天要不要一起出去？'],
+    ['MSG-0411-0912-05', '2021-04-11 09:13', 'participant_C', '妳的報告我放桌上了'],
+    ['MSG-0329-2203-11', '2021-03-29 22:40', 'participant_A', '貴的布丁才沒有比較好吃']
+  ];
+
+  /* ===== 檔案檢視器 ===== */
+  const sheet = $('#sheet'), body = $('#sheetBody');
+  let stack = [];
+  const L = (id, label) => `<button class="link" type="button" data-doc="${esc(id)}">${esc(label || id)}</button>`;
+  const NO = (label, note, cls = 'nolink') => `<button class="${cls}" type="button" data-note="${esc(note)}">${esc(label)}</button>`;
+  const meta = (rows) => `<dl class="meta-grid">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  const head = (kicker, title) => `<div><div class="kicker">${esc(kicker)}</div><h3 class="doc-title">${esc(title)}</h3></div>`;
+  const NOTE = '<p class="docnote" id="docNote" hidden></p>';
+
+  function curMsgId(i) {
+    const d = new Date(S.startedAt);
+    return `MSG-${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}-${pad(i + 1)}`;
+  }
+  function transcript(ver) {
+    return `<div class="content transcript">` + OLD_MSGS.map(([n, t, w, v2, v1]) =>
+      `<div class="tline"><time>${t.slice(0, 5)}</time><span class="mid">-${n}</span><span class="who">participant_${PN(w)}</span><span>${esc(ver === 'v1' && v1 ? v1 : v2)}</span></div>`).join('') + `</div>`;
+  }
+  function vlog() {
+    return `<div class="section"><div class="kicker">版本紀錄</div><div class="content vlog">
+      <div>v1 · 2021-04-18 21:23 · 原始紀錄</div>
+      <div>v2 · 2024-06-15 14:08 · 修改者 ${EDITOR} · 變更 1 則</div></div></div>`;
+  }
+
+  /* 受保護文件 */
+  const LOCKS = {
+    v1: { hint: '她幫巷口那隻貓取的名字（她聊天時提過）', test: (a) => /(麻糬|麻薯|mochi)/i.test(a), more: '存取碼不正確。回去問問檸，巷口那隻貓叫什麼。' },
+    nb: { hint: '她的生日（四位數）', test: (a) => { const d = a.replace(/\D/g, ''); return d === '0311' || d === '311' || /三月十一/.test(a); } }
+  };
+  function lockDoc(kind, kicker, title) {
+    return head(kicker, title) + `<p class="note">這份文件受保護，需要存取碼。</p>` +
+      meta([['存取碼提示', esc(LOCKS[kind].hint)]]) +
+      `<form class="lockform" data-lock="${kind}" autocomplete="off"><input id="lockIn" type="text" aria-label="存取碼"><button type="submit">開啟</button></form><p class="docnote" id="lockMsg" hidden></p>`;
+  }
+
+  function msgDoc(n, ver) {
+    const m = OLD_MSGS.find((x) => x[0] === n);
+    const v1 = ver === 'v1';
+    if (v1 && !S.unlocked.v1) return lockDoc('v1', 'message · v1', `MSG-0418-2117-${n}@v1`);
+    const id = `MSG-0418-2117-${n}${v1 ? '@v1' : ''}`;
+    const linked = ['03', '04', '11'];
+    const nb = (k) => {
+      if (k < 1 || k > 41) return '<span class="dim">—</span>';
+      const nid = `MSG-0418-2117-${pad(k)}`;
+      return !v1 && ['03', '04'].includes(n) && ['03', '04'].includes(pad(k)) ? L(nid) : `<span class="dim">${nid}${v1 ? '@v1' : ''}（未快取）</span>`;
+    };
+    const text = v1 && m[4] ? m[4] : m[3];
+    return head(`message${v1 ? ' · v1' : ''}`, id) +
+      meta([['所屬對話', S.solvedAt ? L(OLD) : NO('（未索引）', '這則訊息的所屬對話沒有建立索引。')], ['發送者', `participant_${m[2]}`], ['時間', `2021-04-18 ${m[1]}`],
+        ['版本', v1 ? 'v1（原始）· 共 2 個版本' : 'v2（目前）· 共 2 個版本'], ['前一則', nb(+n - 1)], ['後一則', nb(+n + 1)]]) + NOTE +
+      `<div class="section"><div class="kicker">內容</div><div class="content pl">${esc(text)}</div></div>` +
+      (v1 && m[4] ? `<p class="note">這則訊息在 v2 被修改過。</p>` + vlog() : '');
+  }
+
+  /* ===== P04：作者被遮蔽的紀錄，可以輸入代號比對 ===== */
+  const MLABEL = { 'NOTE-0419-X': 'NOTE-0419-？', 'NOTE-0416-X': 'NOTE-0416-？', 'NOTE-0412-X': 'NOTE-0412-？', 'NOTE-0408-X': 'NOTE-0408-？' };
+  const MASKED = {
+    'NOTE-0416-X': { author: 'B', date: '2021-04-16 12:50', type: 'note', lines: ['檸今天下班前傳了一張布丁的照片過來，什麼字都沒打。', '她就是這樣。'] },
+    'NOTE-0408-X': { author: '7F3', date: '2021-04-08 23:57', type: 'draft（未送出）', lines: ['我們不是朋友嗎', '為什麼她現在都不回我', '她明明以前什麼都跟我說'] },
+    'NOTE-0412-X': { author: '7F3', date: '2021-04-12 22:40', type: 'note', lines: ['他今天十點十二分出門。', '沒有走騎樓，走對面。', '他換了耳機，白色的。'] },
+    'NOTE-0419-X': { author: '7F3', date: '2021-04-19 15:20', type: 'note', lines: ['他今天又跟那個 yoru 去那家咖啡廳。', '靠窗的位子。點的還是一樣。', '他穿了新的衣服。不適合他。'] }
+  };
+  const WHO = { B: 'yoru（participant_B）', '7F3': 'participant_7f3' };
+  function normAuthor(a) {
+    const t = a.toLowerCase().replace(/[\s_\-]/g, '');
+    if (/^(participant|參與者)?7f3$/.test(t)) return '7F3';
+    if (/^(participant|參與者)?([a-e])$/.test(t)) return t.slice(-1).toUpperCase();
+    if (t === 'yoru' || t === 'ew9yduq==') return 'B';
+    return null;
+  }
+  function masked(key) {
+    const m = MASKED[key], got = S.matched[key];
+    const authorCell = got ? WHO[got] : `████（已遮蔽）<form class="lockform inline" data-match="${key}" autocomplete="off"><input id="matchIn" type="text" placeholder="輸入參與者代號比對" aria-label="參與者代號"><button type="submit">比對</button></form><p class="docnote" id="matchMsg" hidden></p>`;
+    return head(`${m.type} · 作者不明`, MLABEL[key]) +
+      meta([['作者', authorCell], ['日期', m.date]]) +
+      `<div class="section"><div class="kicker">內容</div><div class="excerpt">${m.lines.map((l) => `<div>${esc(l)}</div>`).join('')}</div></div>` +
+      (key === 'NOTE-0419-X' ? '<p class="note">其餘內容未建立索引。</p>' : '') +
+      `<div class="section"><button class="morebtn" type="button" data-doc="MENTIONS">相似紀錄：所有提及 participant_A 的紀錄（6 筆）→</button></div>`;
+  }
+  /* participant_7f3 與 A 的訊息串（虛構） */
+  const PN = (w) => (w === 'D' ? '7f3' : w);
+  const DMSGS = [
+    ['04-05 00:47', 'D', '睡了嗎'],
+    ['04-05 00:52', 'D', '我今天經過你公司 你那件外套很好看'],
+    ['04-05 00:58', 'D', '你為什麼不回'],
+    ['04-05 01:03', 'A', '剛剛在忙（'],
+    ['04-05 01:05', 'D', '那明天可以見面嗎'],
+    ['04-05 01:07', 'D', '我只是想跟你講話'],
+    ['04-05 01:12', 'A', '下次再說好不好'],
+    ['04-07 22:50', 'A', '今天公車好擠（'],
+    ['04-08 19:40', 'A', '雨好大 咱在亭子下面躲一下'],
+    ['04-05 01:21', 'D', '那下次是什麼時候'],
+    ['04-08 23:40', 'D', '你最近怎麼都不回我'],
+    ['04-08 23:58', 'D', '我們不是朋友嗎'],
+    ['04-12 22:31', 'D', '你今天換耳機了喔'],
+    ['04-12 22:31', 'D', '白色的那個比較適合你'],
+    ['04-12 23:02', 'A', '你怎麼知道（'],
+    ['04-13 00:10', 'D', '我猜的'],
+    ['04-18 23:55', 'D', '明天要去哪']
+  ];
+
+  const DOCS = {
+    'README': () => head('說明', '檔案檢視器說明') +
+      `<div class="doc-body"><p>這裡可以做的事：</p><ol>
+        <li><b>搜尋</b>：在上方輸入編號、關鍵字、名字或代號。</li>
+        <li><b>點開</b>：藍色底線的編號可以直接點開。灰色的點不開，但知道完整編號的話可以拿去搜尋。</li>
+        <li><b>舊版本</b>：在編號後面加 <code>@v1</code>、<code>@v2</code>，可以查看文件的舊版本。</li>
+        <li><b>存取碼</b>：受保護的文件要輸入存取碼。提示是文件擁有者自己寫的，答案通常跟「她」有關。</li>
+        <li><b>比對作者</b>：作者被遮住的紀錄，可以在作者欄輸入參與者代號比對。</li>
+        <li><b>頁面裡的格子</b>：有些頁面有自己的輸入框（依日期查看、推演、原句搜尋），填好後按旁邊的按鈕。</li>
+      </ol><p>找到重要的東西後，可以搜尋的紀錄會變多，上方會出現「索引已更新」。</p><p>卡住的時候，打開「調查筆記」看最上面的「目前的疑問」，或回去跟檸聊聊。還是過不去的話，右上角「⋯」選單裡有「提示」。</p></div>`,
+
+    'ARC-0418-09': () => head('conversation_archive · reconstruction_dataset', 'Legacy Conversation Cache') +
+      meta([['來源編號', 'ARC-0418-09'], ['建立時間', '2024-06-02 03:05'], ['目前版本', 'v2'], ['可信度', 'archival_copy（封存副本）'],
+        ['衍生自', L('SUM-0418-09')], ['快取區塊', L('CACHE-SHARD-07')], ['寫入位置', `${L(S.sessionId)}<span class="dim">MSG-CACHE-INJECT</span>`]]) +
+      `<div class="section"><div class="kicker">節錄</div><div class="excerpt"><div><span class="spk">participant_B</span>明天要不要一起出去？</div><div><span class="spk">participant_A</span>好吖 要去哪（</div></div></div>`,
+
+    'CACHE-SHARD-07': () => head('cache_shard · reconstruction_dataset', 'CACHE-SHARD-07') +
+      meta([['建立時間', '2024-06-02 03:05'], ['內容', '7 則快取訊息（依寫入順序）'], ['說明', '<span class="dim">快取只保留單句，不保留上下文</span>']]) + NOTE +
+      `<div class="section"><div class="content shard">` + SHARD.map(([id, t, w, s]) =>
+        `<div class="shard-row"><div class="shard-meta">${id === 'MSG-0418-2117-03' ? L(id) : NO(id, id === 'MSG-0405-0047-07' ? '這則訊息的完整內容在所屬對話中，無法從這裡開啟。' : '這則訊息只存在於快取，沒有其他紀錄。')}<span>${t}</span><span>${w}</span></div><div>${esc(s)}</div></div>`).join('') + `</div></div>`,
+
+    'SUM-0418-09': () => head('summary · reconstruction_dataset', 'SUM-0418-09') +
+      meta([['類型', 'summary'], ['產生時間', '2024-06-02 03:02'], ['所屬對話', '<span class="dim">—</span>'],
+        ['摘要來源', `${L('MSG-0418-2117-03')}${L('MSG-0418-2117-04')}${L('MSG-0418-2117-11')}`]]) +
+      `<div class="section"><div class="kicker">摘要內容</div><div class="content">participant_B 邀約隔天去咖啡廳，participant_A 答應，並提到最近晚上出門時，總覺得有人在看她。</div></div>`,
+
+    CURRENT: () => head('session · 進行中', S.sessionId) +
+      meta([['對話編號', S.sessionId], ['開始時間', fmt(S.startedAt)], ['參與者', '你、檸'], ['訊息數', String(S.msgs.length)]]) +
+      `<div class="section"><div class="kicker">最近訊息</div><div class="content shard">` +
+      S.msgs.slice(-3).map((m, i, arr) => {
+        const idx = S.msgs.length - arr.length + i;
+        return `<div class="shard-row"><div class="shard-meta"><span>${curMsgId(idx)}</span><span>${m.who === 'me' ? '你' : '檸'}</span></div><div>${esc(m.text)}</div></div>`;
+      }).join('') + `</div></div>` +
+      `<div class="section"><div class="kicker">系統寫入紀錄</div>` +
+      (S.anomalyAt ? meta([['編號', 'MSG-CACHE-INJECT'], ['時間', fmt(S.anomalyAt)], ['寫入者', 'cache_service'], ['來源', L('ARC-0418-09')], ['內容', '明天要不要一起出去？']]) +
+        `<p class="note">這則訊息由系統寫入，不是本次對話的參與者發送的。</p>` : `<p class="note">沒有紀錄。</p>`) + `</div>`,
+
+    OLD: () => head('session · 已封存', OLD) +
+      meta([['日期', '2021-04-18'], ['參與者', 'participant_A、participant_B'], ['版本', 'v2（目前）'], ['訊息數', '41（目前顯示 12 則）']]) +
+      `<div class="section"><div class="kicker">片段 21:17–21:22</div>${transcript('v2')}</div>` +
+      `<div class="section"><div class="kicker">版本</div><div class="chips"><span class="chip">v2（目前）</span></div><p class="note" style="margin-top:8px">這段對話有較舊的版本：${L('OLD@V1', `${OLD}@v1`)}</p>${NOTE}</div>`,
+
+    'OLD@V1': () => S.unlocked.v1
+      ? head('session · 已封存 · v1', `${OLD}@v1`) +
+        meta([['日期', '2021-04-18'], ['參與者', 'participant_A、participant_B'], ['版本', 'v1（原始）'], ['訊息數', '41（目前顯示 12 則）']]) +
+        `<div class="section"><div class="kicker">片段 21:17–21:22</div>${transcript('v1')}</div>` + vlog()
+      : lockDoc('v1', 'session · 已封存 · v1', `${OLD}@v1`),
+
+    'PROFILE-YORU': () => head('user · reconstruction_dataset', 'yoru') +
+      meta([['使用者代號', 'yoru'], ['編碼形式', EDITOR], ['在對話中的代號', 'participant_B'],
+        ['參與對話', `37 段（含 ${L(OLD)}）`], ['帳號建立', '2019-11-03'], ['最後編輯', '2024-06-15 14:08'],
+        ['私人筆記', L('NOTEBOOK-YORU')]]),
+
+    'NOTEBOOK-YORU': () => S.unlocked.nb
+      ? head('notebook · yoru · 私人', 'NOTEBOOK-YORU') + meta([['作者', 'yoru'], ['筆記數', '6']]) +
+        `<div class="section"><div class="content notebook">` + [
+          ['2021-03-11 00:02', '她生日。吹蠟燭前許了一個願，說講出來就不靈了。我到現在還是不知道是什麼。'],
+          ['2021-03-29 22:41', '檸說布丁要買便利商店那種，不要買貴的。她說貴的反而不好吃。我說那是因為妳沒吃過好吃的。她生氣了一個小時。'],
+          ['2021-04-05 01:30', '她朋友又半夜傳訊息來。她回了很久，最後打了「下次再說好不好」。我問她還好嗎，她說還好。'],
+          ['2021-04-12 23:58', '她最近晚上回家都繞路，多走十分鐘。問她為什麼，她說想散步。她不喜歡散步。'],
+          ['2021-04-19 22:15', '咖啡廳。她穿了新的那件。整個下午一直看窗外。'],
+          ['2024-06-15 14:10', '我把那句刪了。']
+        ].map(([t, s]) => `<div class="nb-entry"><time>${t}</time><p>${esc(s)}</p></div>`).join('') + `</div></div>`
+      : lockDoc('nb', 'notebook · yoru · 私人', 'NOTEBOOK-YORU'),
+
+    'EDIT-YORU-0615': () => head('edit_log', 'EDIT-YORU-0615') +
+      meta([['編輯者', 'yoru'], ['時間', '2024-06-15 14:08'], ['對象', `${L(OLD)}<span class="dim">MSG-0418-2117-11</span>`],
+        ['變更', '刪除 1 句'], ['備註', '<span class="dim">（空白）</span>']]),
+
+    'NOTE-0419-X': () => masked('NOTE-0419-X'),
+    'NOTE-0416-X': () => masked('NOTE-0416-X'),
+    'NOTE-0412-X': () => masked('NOTE-0412-X'),
+    'NOTE-0408-X': () => masked('NOTE-0408-X'),
+
+    'MENTIONS': () => head('index · reconstruction_dataset', '提及 participant_A 的紀錄') +
+      meta([['筆數', '6'], ['排序', '依日期'], ['說明', '<span class="dim">內容提及 participant_A，作者不一定是對話參與者</span>']]) +
+      `<div class="section"><div class="content shard">` + [
+        ['POST-0402-F', '2021-04-02', 'forum_post', '高中同學的那個 ■■■ 嗎？他以前……'],
+        ['NOTE-0408-X', '2021-04-08', 'draft', '我們不是朋友嗎……'],
+        ['LOG-0411-HR', '2021-04-11', 'work_log', '■■■ 今日提早離開……'],
+        ['NOTE-0412-X', '2021-04-12', 'note', '他今天十點十二分出門……'],
+        ['NOTE-0416-X', '2021-04-16', 'note', '檸今天下班傳了一張……'],
+        ['NOTE-0419-X', '2021-04-19', 'note', '他今天又跟那個 yoru……']
+      ].map(([id, d, t, ex]) => `<div class="shard-row"><div class="shard-meta">${L(id, MLABEL[id] || id)}<span>${d}</span><span>${t}</span></div><div>${esc(ex)}</div></div>`).join('') + `</div></div>`,
+
+    'POST-0402-F': () => head('forum_post · 公開論壇', 'POST-0402-F') +
+      meta([['作者', '論壇使用者（帳號已刪除）'], ['日期', '2021-04-02 20:14'], ['看板', '閒聊']]) +
+      `<div class="section"><div class="kicker">內容</div><div class="content doc-body"><p>高中同學的那個 ■■■ 嗎？他以前就超愛吃布丁，午餐常常只吃一個布丁。</p><p>畢業之後就沒聯絡了，不知道現在怎樣。</p></div></div><p class="note">■■■ 為證件姓名，已遮蔽。帳號已刪除，無法比對作者。</p>`,
+
+    'LOG-0411-HR': () => head('work_log · 人事系統', 'LOG-0411-HR') +
+      meta([['作者', '人事系統（自動產生）'], ['日期', '2021-04-11 18:02']]) +
+      `<div class="section"><div class="kicker">內容</div><div class="content doc-body"><p>■■■ 今日 16:40 提早離開，報告由同事代交。他本月已提早離開 4 次，請主管留意。</p><p class="dim">附註：本公司薪資於每月 10 日入帳。</p></div></div><p class="note">■■■ 為證件姓名，已遮蔽。這份紀錄由系統產生，沒有個人作者。</p>`,
+
+    'DSES': () => head('session · 已封存', 'S-210405-0047') +
+      meta([['期間', '2021-03-01 至 2021-04-18'], ['參與者', 'participant_A、participant_7f3'], ['訊息數', '212（目前顯示 17 則）'],
+        ['其他紀錄', S.p4SolvedAt ? `${L('FRAG-7F3')}${L('RCPT-7F3')}${L('OBS-7F3', '觀察紀錄')}` : '<span class="dim">—</span>']]) +
+      (S.p4SolvedAt ? `<div class="section"><div class="kicker">依日期查看</div><form class="lockform" data-filter="1" autocomplete="off"><input id="dayIn" type="text" placeholder="例：03-15" aria-label="日期"><button type="submit">查看</button></form><div id="dayOut"></div></div>` : '') +
+      `<div class="section"><div class="kicker">片段</div><div class="content transcript">` + DMSGS.map(([t, w, x]) =>
+        `<div class="tline"><time>${t}</time><span class="mid"></span><span class="who">participant_${PN(w)}</span><span>${esc(x)}</span></div>`).join('') + `</div></div>`,
+
+    'TOOL-B64': () => head('tool · 內部', '編碼轉換（Base64 解碼）') +
+      `<p class="note">貼上 Base64 字串，轉回原本的文字。</p><div class="tool"><textarea id="b64in" aria-label="Base64 字串" spellcheck="false"></textarea><button type="button" id="b64go">解碼</button><output id="b64out" aria-live="polite"></output></div>`,
+
+    'WIKI-PUD-12': () => head('百識（虛構百科）', '焦糖布丁為什麼會凝固') + meta([['來源編號', 'WIKI-PUD-12'], ['日期', '2025-11-02'], ['版本', 'v4（目前）']]) +
+      `<div class="doc-body"><p>蛋液加熱到大約攝氏八十度時，蛋白質開始展開並彼此連結，形成細密的網狀結構。牛奶與糖水被留在網眼之間，所以布丁能凝固卻保持柔軟。</p><p>溫度過高時網狀結構收縮過緊，水分被擠出，表面就會出現孔洞，也就是常說的「蒸老了」。</p></div>` +
+      `<p class="note">修訂紀錄：本條目共 4 個版本。舊版本可用「WIKI-PUD-12@v3」這樣的編號查詢。</p>`,
+    'WIKI-PUD-12@V3': () => head('百識（虛構百科）· 舊版本', 'WIKI-PUD-12@v3') + meta([['日期', '2025-08-14'], ['版本', 'v3']]) +
+      `<div class="doc-body"><p>蛋液加熱後凝固，是因為蛋白質「煮熟」了。</p><p class="dim">（此版本內容較簡略，已於 v4 改寫。）</p></div>`,
+    'LIFE-RAIN-03': () => head('城市散步誌（虛構）', '雨天步行：哪些路段有騎樓') + meta([['來源編號', 'LIFE-RAIN-03'], ['日期', '2025-06-19'], ['版本', 'v2']]) +
+      `<div class="doc-body"><p>騎樓是臺灣街道常見的建築形式，一樓退縮形成有頂的人行空間。連續的騎樓讓行人在雨天可以不撐傘通行。</p><p>不過騎樓常被機車或攤位占用，實際好不好走，還是要看路段。</p></div>`,
+    'LIFE-CAT-07': () => head('城市散步誌（虛構）', '巷弄裡的街貓：餵養的界線') + meta([['來源編號', 'LIFE-CAT-07'], ['日期', '2025-09-30'], ['版本', 'v1']]) +
+      `<div class="doc-body"><p>固定時間出現在同一個巷口的街貓，多半有人在附近餵食。餵食者通常會記得貓出現的時間與路線。</p><p>如果想幫忙，建議先和固定餵食的人聯絡，避免重複餵食。</p></div>`
+  };
+
+  const INDEX = [
+    { id: 'README', label: '檔案檢視器說明', desc: '說明', keys: ['說明', 'help', 'readme', '使用', '怎麼用', '教學'] },
+    { id: 'ARC-0418-09', desc: 'Legacy Conversation Cache · v2', keys: ['出去', '明天', 'legacy', 'cache', '要去哪'] },
+    { id: 'CACHE-SHARD-07', desc: 'cache_shard · 7 則快取訊息', keys: ['shard', '快取', '生日', '布丁', '開會'] },
+    { id: 'SUM-0418-09', desc: 'summary · 2024-06-02', keys: ['出去', '明天', 'summary', '摘要', '咖啡'] },
+    { id: 'MSG:03:v2', label: 'MSG-0418-2117-03', desc: 'message · participant_B', keys: ['出去', '明天'] },
+    { id: 'MSG:04:v2', label: 'MSG-0418-2117-04', desc: 'message · participant_A', keys: ['要去哪'] },
+    { id: 'CURRENT', label: () => S.sessionId, desc: 'session · 進行中（本次對話）', keys: ['出去', '明天', 'inject'] },
+    { id: 'PROFILE-YORU', label: 'yoru', desc: 'user · participant_B', keys: ['yoru'] },
+    { id: 'NOTEBOOK-YORU', desc: 'notebook · yoru · 受保護', keys: ['yoru', '筆記', 'notebook'] },
+    { id: 'EDIT-YORU-0615', desc: 'edit_log · yoru · 2024-06-15', keys: ['yoru', 'edit', '修改', '刪除'] },
+    { id: 'NOTE-0419-X', label: 'NOTE-0419-？', desc: 'note · 作者不明 · 提及 yoru', keys: ['yoru', '咖啡'] },
+    { id: 'MENTIONS', label: '提及 participant_A 的紀錄', desc: 'index · 6 筆', keys: ['提及', 'mention', '相似', '他', '她'] },
+    { id: 'TOOL-B64', desc: '編碼轉換（Base64 解碼）', keys: ['base64', 'b64', '編碼', '解碼', '轉換'] },
+    { id: 'WIKI-PUD-12', desc: '焦糖布丁為什麼會凝固', keys: ['布丁', '甜點', '焦糖'] },
+    { id: 'LIFE-RAIN-03', desc: '雨天步行：哪些路段有騎樓', keys: ['雨', '騎樓', '天氣'] },
+    { id: 'LIFE-CAT-07', desc: '巷弄裡的街貓：餵養的界線', keys: ['貓', '街貓'] }
+  ];
+
+  /* =====================================================================
+     P05–P12（v0.8）
+     ===================================================================== */
+  const PZ = ['p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'];
+  function pz(k) { S.pz = S.pz || {}; return (S.pz[k] = S.pz[k] || { seed: null, mid: null, solved: null, thanked: false }); }
+  function H(k) { return (S.h[k] = S.h[k] || { lv: 0, last: null, turns: 0 }); }
+  function seedPZ(k) { const z = pz(k); if (z.seed) return; z.seed = Date.now(); H(k); save(); }
+  function solvePZ(k) {
+    const z = pz(k); if (z.solved) return;
+    if (!z.seed) z.seed = Date.now();
+    z.solved = Date.now();
+    const nx = PZ[PZ.indexOf(k) + 1];
+    if (nx) seedPZ(nx);
+    save(); updateHeader(); renderSugs();
+  }
+  function pendingPZ() { return [...PZ, ...NG, ...EP].find((k) => S.pz && S.pz[k] && S.pz[k].solved && !S.pz[k].thanked); }
+  function activePZ() {
+    for (const k of [...PZ, ...NG, ...EP]) { const z = S.pz && S.pz[k]; if (z && z.seed && !z.solved) return z.mid && HINTS[k + 'b'] ? k + 'b' : k; }
+    return null;
+  }
+  const isDone = (k) => !!(S.pz && S.pz[k] && S.pz[k].solved);
+
+  const SEED_P5 = ['欸', '那個人……', '咱以前好像常常遇到她（', '都在很普通的地方', '那時候咱以為只是剛好'];
+  const THANK = {
+    p5: ['你找到她的東西惹喔（', '……她一直在那邊等咱嗎', '咱以為只是剛好'],
+    p6: ['……', '咱那天真的有講清楚', '咱沒有說錯什麼對不對（'],
+    p7: ['咱下雨天一定會走騎樓', '她連這個都知道（'],
+    p8: ['你臉色不好欸（', '你看到什麼了'],
+    p10: ['欸', '剛剛去好久喔（', '外面還在下雨嗎'],
+    p11: ['你今天好安靜', '沒關係', '不想講話也可以（'],
+    p12: ['你在看什麼', '看那麼久（']
+  };
+  const THANK_P9_OK = ['欸', '外面好像下好大的雨', '可是咱今天有人接www', '……咱也不知道咱為什麼會這樣講（'];
+  const THANK_P9_NG = ['你剛剛好久沒講話（', '在忙嗎'];
+  const P6_CLUE = ['那個人喔……', '咱那天有講清楚了啦', '那天下好大的雨（', '咱還記得那天剛領薪水', '本來想說要買好一點的布丁'];
+  const P6_CLUE_AGAIN = ['就那天吖', '下大雨、剛領薪水那天（'];
+
+  async function afterPZ() {
+    hold++; busy = true; renderSugs();
+    try { await afterPZInner(); } finally { hold--; busy = hold > 0; renderSugs(); }
+  }
+  async function afterPZInner() {
+    let k;
+    while ((k = pendingPZ())) {
+      pz(k).thanked = true; save();
+      await sleep(600);
+      const lines = k === 'p9' ? (S.p9 && S.p9.ok ? THANK_P9_OK : THANK_P9_NG) : THANK[k];
+      if (lines) await say(lines);
+    }
+    if (isDone('s3') && pz('s3').thanked && !S.cleared2 && S.phase !== 'ng_final' && S.phase !== 'ended2') { S.phase = 'ng_final'; save(); }
+    updateHeader(); renderSugs();
+  }
+
+  /* ===== 結局 ===== */
+  async function finalStart() {
+    if (S.finalStarted) return;
+    S.finalStarted = true; S.phase = 'final_talk'; save();
+    await sleep(900);
+    await say(['你回來惹www', '剛剛去哪惹（']);
+  }
+  async function finalTalk(text) {
+    S.phase = 'ended'; save();
+    if (/(不在|死|過世|走了|真相|實話|告訴你|跟你說|騙|假的|yoru|伴侶|模擬|重建|資料)/i.test(text) && !/^(沒事|沒什麼|不說|算了)/.test(text)) {
+      S.endChoice = 'truth'; save();
+      await say(['……']);
+      await sleep(1600);
+      await say(['你是說', '咱已經不在了嗎（']);
+      await sleep(2000);
+      await say(['咱知道咱是 AI 吖', '可是你說的那個人', '是咱嗎']);
+      await sleep(2400);
+      await say(['……', '謝謝你跟咱說', '咱現在還不知道要怎麼想（']);
+    } else {
+      S.endChoice = 'silent'; save();
+      if (/(再見|掰|bye|離開|不玩)/i.test(text)) await say(['好', '掰掰吖', '……下次見www']);
+      else await say(['嗯？', '沒事就好吖', '那我們聊別的', '今天外面有下雨嗎（']);
+    }
+    busy = true; renderSugs();
+    await sleep(1800);
+    push('sys', 'ALT-048 已封存。');
+    push('sys', '— 第一周目結束 —');
+    push('sys', '原始資料不在這裡：右上角選單 → 分支授權碼');
+    S.cleared = true; save(); addNote('end1'); updateHeader();
+    horror('end1');
+    busy = false; renderSugs();
+  }
+
+  /* ===== 提示（P10 之後檸不知道系統的事，所以沒有提示） ===== */
+  Object.assign(HINTS, {
+    p5: [['那個人的東西', '你有搜尋過她的代號嗎（'], ['她的筆記都沒有日期欸', '可是時間好像跟發票對得上'], ['發票上那個店號', '是不是有地方寫是哪一家（']],
+    p6: [['咱好像有跟她講清楚過', '你要不要問問咱（'], ['她的紀錄每天都有寫嗎']],
+    p6b: [['下大雨的日子好像不只一天（', '可是咱那天剛領薪水'], ['發薪日是幾號吖', '公司的紀錄應該有寫']],
+    p7: [['那串數字……', '前面好像是日期跟時間（'], ['後面那個數字', '會不會是第幾個字', '咱傳給她的那些訊息裡'], ['時間的話', '咱那天加班到很晚', '從公司回來要坐捷運再走一段']],
+    p8: [['那個推演頁', '是不是在問咱最後傳了什麼（', '咱那天好像有傳給 yoru', '行事曆上應該有寫'], ['欸那則亂碼', '咱以前也常常忘記切輸入法（', '沒切成中文的時候 打注音會變成一堆英文跟數字'], ['你對著鍵盤', '一個一個按回去看看（', '解出來的意思', '再填回推演頁']],
+    p9: [['如果可以重來', '你會跟誰說（'], ['要在事情發生之前講吧'], ['要讓人相信', '要拿得出東西吧（']]
+  });
+  Object.assign(STUCK_END, {
+    p5: ['咱也不知道惹（', '你去找和平路的地圖看看店號？'],
+    p6: ['咱也不知道惹（', '你直接問咱嘛'],
+    p6b: ['發薪日那天啦（', '你去那段對話挑那天看'],
+    p7: ['咱也不知道惹（', '九點半下班 坐捷運三十分鐘 再走十分鐘吧'],
+    p8: ['那個是注音啦（', 'w 是ㄊ 8 是ㄚ'],
+    p9: ['咱也不知道要怎麼做（', '可是要趕快'],
+    p10: ['咱不知道你在看什麼（', '咱這邊看不到'],
+    p11: ['咱不知道你在看什麼（', '咱這邊看不到'],
+    p12: ['咱不知道你在看什麼（', '咱這邊看不到']
+  });
+  const SUGS_PZ = {
+    p5: ['那個人是誰？', '我再去查查', '你在幹嘛'],
+    p6: ['你跟她發生什麼事？', '你有拒絕她嗎', '我再去看看'],
+    p6b: ['那天下雨嗎？', '我再去看看', '你在幹嘛'],
+    p7: ['你下雨天走哪？', '我再去看看', '你在幹嘛'],
+    p8: ['那幾天你在幹嘛？', '我再去看看', '外面在下雨嗎'],
+    p9: ['我想救你', '我再去看看', '你在幹嘛'],
+    p10: ['你在幹嘛', '……', '我再去看看'],
+    p11: ['你在幹嘛', '……', '我再去看看'],
+    p12: ['你在幹嘛', '……', '我再去看看']
+  };
+
+  /* ===== 筆記 ===== */
+  const fmtS = (t) => { const d = new Date(t); return `${fmt(t)}:${pad(d.getSeconds())}`; };
+  Object.assign(NOTE_TEXT, {
+    p5: ['第二章', 'participant_7f3 的零散筆記，時間都對得上她在店號 042，也就是日光便利店和平店的發票。她每天在那裡等 A。'],
+    p6: ['第二章', '2021-04-10，下大雨、剛發薪水的那天，A 明確拒絕了 7f3。她的觀察紀錄刻意跳過這天，幾天後才寫「他說不討厭我，所以還有機會」。'],
+    p7: ['第二章', '7f3 用 A 自己的字寫下等待的地點：公車亭。04-23 是唯一會下雨、A 會一個人回家的晚上；她 21:30 下班，捷運 30 分鐘，再走 10 分鐘，22:10 會經過公車亭。'],
+    p8: ['第二章', '04-23 22:06，A 傳給 yoru 一則亂碼「w8 y94j94au04」。那是她沒切輸入法打的注音：「她在外面」。yoru 回了一個問號。'],
+    p9: () => ['第二章', S.p9 && S.p9.ok ? `推演成功，A 安全回到家。提交時間 ${fmtS(S.p9.at)}。` : `推演沒有成功。提交時間 ${S.p9 ? fmtS(S.p9.at) : '—'}。`],
+    end1: () => ['終章', S.endChoice === 'truth' ? '你告訴了檸真相。她說：「咱現在還不知道要怎麼想。」' : '你沒有告訴檸。她照常問你，外面有沒有下雨。'],
+    p10: () => ['第三章', `分支紀錄有 48 筆。ALT-048 是你（${S.p9 ? fmtS(S.p9.at) : '—'}）。前面 47 筆大多數都成功了，REFERENCE_000 從來沒有變過。`],
+    news: ['第三章', '2021-04-24 的新聞：A 在 04-23 深夜、和平路公車亭附近遇害。新聞和論壇都用本名和「他」稱呼她。'],
+    p11: ['終章', 'yoru 是 A 的伴侶，也是做出這個系統的人。他自己推演了 213 次，然後把系統打開，讓陌生人來試。'],
+    p12: () => ['終章', S.p12found ? `檸對你說的「${S.p12q}」，原句是她生前傳給 yoru 的訊息。` : `檸對你說的「${S.p12q}」找不到原句。她生前沒有說過這句話。`],
+    config: ['終章', '關係系統是 yoru 寫的：先讓你喜歡上她，再讓她開口請你幫忙。她不知道。']
+  });
+
+  /* ===== 存取碼 ===== */
+  Object.assign(LOCKS, {
+    obs: { hint: '我每天等他的地方', test: (a) => /(日光|和平店|042)/.test(a), more: '存取碼不正確。提示是她自己寫的，答案是一個地方的名字。' },
+    plan: { hint: '時間和地點（例：08:30 捷運站）', test: (a) => { const x = a.replace(/[\s：:]/g, ''); return /2210/.test(x) && /公車(亭|站)/.test(x); }, more: '存取碼不正確。時間和地點都要對。' },
+    readme: { hint: '把開發紀錄照版本順序讀', test: (a) => a.replace(/[\s，。、,.]/g, '') === '對不起我沒去', more: '存取碼不正確。開發紀錄照版本號（0.1 → 1.1.3）排好，取每一篇的第一個字。' }
+  });
+
+  /* ===== 資料（全部虛構） ===== */
+  const RCPT = [
+    ['04-06', '08:46', '店號 042', '熱美式'],
+    ['04-07', '12:10', '店號 117', '火腿蛋吐司'],
+    ['04-07', '22:39', '店號 042', '礦泉水'],
+    ['04-08', '19:24', '店號 042', '雨傘'],
+    ['04-09', '08:51', '店號 042', '熱美式'],
+    ['04-11', '13:02', '店號 305', '筆記本'],
+    ['04-12', '22:05', '店號 042', '熱美式'],
+    ['04-14', '22:13', '店號 042', '熱美式']
+  ];
+  const FRAGS = [
+    ['22:41', '她從捷運站出來。在門口停了一下，沒進去。'],
+    ['08:52', '她今天穿灰色外套。我買了熱美式，坐在窗邊。'],
+    ['19:30', '下雨。她走騎樓那側。'],
+    ['22:15', '他沒有出現。我等到店員換班。'],
+    ['08:47', '她今天遲到三分鐘。']
+  ];
+  const OBS = [
+    ['04-01', '她今天回我了。只有一個字。'],
+    ['04-02', '明天會下大雨。她說連假要回家。'],
+    ['04-04', '連假。她沒有上線。'],
+    ['04-05', '我經過她公司。她穿那件外套很好看。'],
+    ['04-06', '08:47 她今天遲到三分鐘。'],
+    ['04-07', '她在日光門口停了一下，沒進去。'],
+    ['04-08', '下雨。她走騎樓那側，在日光門口停了一下。'],
+    ['04-09', '明天會下大雨。'],
+    ['04-11', '他今天提早下班。我沒有跟到。'],
+    ['04-12', '他今天十點十二分出門。晴天，沒有走騎樓，走對面。'],
+    ['04-13', '他開始繞路。多走十分鐘。他以為我不知道。'],
+    ['04-14', '他沒有出現。我等到店員換班。明天也會下大雨。'],
+    ['04-16', '他說不討厭我，所以還有機會。'],
+    ['04-17', '他還是繞路。'],
+    ['04-18', '我問他明天要去哪。他沒回。'],
+    ['04-19', '他跟那個 yoru 去咖啡廳。'],
+    ['04-20', '我想好了。']
+  ];
+  const DAY_MSGS = {
+    '04-03': [['12:20', 'D', '連假要不要出去玩'], ['12:41', 'A', '咱要回家一趟（\n下次吧'], ['12:42', 'D', '好 下次']],
+    '04-15': [['20:11', 'D', '你今天有看到我嗎'], ['20:40', 'D', '我在對面'], ['23:02', 'D', '你為什麼不回']],
+    '04-10': [['21:02', 'D', '我有話想跟你說'], ['21:05', 'D', '我喜歡你 不是朋友那種'], ['21:31', 'A', '咱沒有討厭你'], ['21:31', 'A', '可是咱不想跟你交往'],
+              ['21:33', 'A', '也希望你不要再一直找咱了（\n對不起'], ['21:40', 'D', '好'], ['23:58', 'D', '我知道你只是現在還沒想清楚']]
+  };
+  function dayMsgs(md) {
+    if (DAY_MSGS[md]) return DAY_MSGS[md];
+    return DMSGS.filter(([t]) => t.startsWith(md)).map(([t, w, x]) => [t.slice(6), w, x]);
+  }
+  const ORIG = [
+    '嗨嗨', '安安', '哈囉吖', '欸你來惹', '你回來惹www', '在吖', '嗯？', '布丁！', '咱最喜歡焦糖布丁', '咱想吃這個（', '甜的都可以', '布丁第一名',
+    '今天有點累', '晚點再說好不好', '睡覺', '現在就可以', '好吖', '好吖 要去哪（', '欸嘿', '真的喔www', '咱知道（', 'www', '笑死', '辛苦惹（',
+    '晚安吖', '早安吖', '咱不太想講（', '為什麼一直問這個', '一直這樣有點煩（', '好吧（', '喔', '嗯嗯', '對吖', '好喔', '沒事啦', '下次再說好不好',
+    '在發呆（', '貓！', '下雨的話咱會繞騎樓走', '不想撐傘（', '謝謝你吖', '你很突然欸', '不要亂講www', '欸怎麼了（', '嗯', '咱在聽', '你呢',
+    '好兇喔', '好啦原諒你www', '你笑屁（www', '想吃布丁（', '咱喜歡便利商店那種布丁', '不要笑（', '那你要不要先休息', '咱又不會跑掉www', '沒關係吖 咱自己回去（'
+  ];
+  const normQ = (x) => String(x).replace(/\s/g, '');
+  function origFind(q) {
+    const i = ORIG.findIndex((x) => normQ(x) === normQ(q));
+    if (i < 0) return null;
+    const d = new Date(Date.UTC(2019, 11, 1) + ((i * 97) % 500) * 86400000);
+    return { id: `ORIG-${String(1000 + i * 73).slice(-4)}`, date: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` };
+  }
+  function altList() {
+    const me = S.p9 ? S.p9.at : Date.now();
+    const M = ['提醒她不要走和平路北側', '請 yoru 去接她', '報警，提出跟蹤證據'];
+    const E = ['OBS-7F3', 'PLAN-7F3', 'S-210405-0047'];
+    const out = [];
+    let t = me - 86400000 * 2.4;
+    for (let i = 47; i >= 1; i--) {
+      out.unshift({ n: i, t: Math.round(t), m: M[i % 3], e: E[(i * 7) % 3], ok: ![5, 12, 26, 40].includes(i) });
+      t -= 86400000 * (1.1 + ((i * 37) % 23) / 10);
+    }
+    out.push({ n: 48, t: me, m: S.p9 ? S.p9.m : '—', e: S.p9 ? S.p9.e : '—', ok: S.p9 ? S.p9.ok : false });
+    if (S.alt49) out.push({ n: 49, t: S.alt49.at, m: S.alt49.m, e: S.alt49.e, ok: S.alt49.ok });
+    return out;
+  }
+  const TS = (t) => Math.floor(t / 1000);
+  const altHash = (n) => 'b' + ((n * 2654435761) >>> 0).toString(16).padStart(8, '0').slice(0, 6);
+  const ALT_NOTE = { 19: '也成功了。', 31: '跟她聊到天亮。她說了一句我沒寫過的話。', 40: '這一次沒有成功。我還是看完了。', 48: '（尚未檢查）' };
+  const SIM_M = ['提醒 A 不要走和平路北側', '請 yoru 去接她', '報警，提出跟蹤證據', '什麼都不做'];
+  const SIM_E = ['OBS-7F3（她的觀察紀錄）', 'PLAN-7F3（她的草稿）', 'S-210405-0047（A 和她的訊息）', 'S-210423-2140（A 最後的訊息）', 'S-210418-2117@v1（被刪掉的那句）', '沒有證據'];
+  const SIM_T = ['21:00 以前', '21:30 到 22:00', '22:10 以後'];
+  function simEval(m, e, t) {
+    if (t === 2) return { ok: false, msg: '時間不吻合：事件已經發生。' };
+    if (m === 3) return { ok: false, msg: '推演結果：事件照原本的紀錄發生。' };
+    if (e === 5) return { ok: false, msg: '依據不足：沒有人會因為一句「小心一點」改變行程。' };
+    if (m === 2 && e > 1) return { ok: false, msg: '依據不足：這些內容不足以讓警方立刻行動。' };
+    return { ok: true };
+  }
+
+  const GATE = {
+    'FRAG-7F3': () => !!S.p4SolvedAt, 'RCPT-7F3': () => !!S.p4SolvedAt, 'OBS-7F3': () => !!S.p4SolvedAt,
+    'PLAN-7F3': () => !!S.unlocked.obs, 'WX-2104': () => !!S.unlocked.obs, 'CAL-A': () => !!S.unlocked.obs,
+    'MSG-0423-2140-01': () => !!S.unlocked.obs, 'SIM': () => !!S.unlocked.plan,
+    'REF': () => isDone('p9'), 'ALTS': () => isDone('p9'), 'NEWS-210424': () => isDone('p9'), 'NEWS-210425-K': () => isDone('p9'), 'NEWS-210618': () => isDone('p9'), 'NEWS-220311': () => isDone('p9'), 'FORUM-210425': () => isDone('p9'),
+    'DEVLOG': () => isDone('p10'), 'README-YORU': () => isDone('p10'),
+    'ORIG-A': () => isDone('p11'), 'DIFF-LOG': () => isDone('p11'), 'CONFIG-REL': () => isDone('p12')
+  };
+  function gated(v) {
+    if (v.startsWith('ALT:')) return !isDone('p9');
+    if (v.startsWith('BUILD-')) return !isDone('p10');
+    return GATE[v] ? !GATE[v]() : false;
+  }
+
+  Object.assign(DOCS, {
+    'FRAG-7F3': () => head('note · participant_7f3 · 零散', 'FRAG-7F3') +
+      meta([['作者', 'participant_7f3'], ['筆數', '5'], ['說明', '<span class="dim">只保留時間，沒有日期</span>'], ['相關', `${L('RCPT-7F3')}${L('OBS-7F3')}`]]) +
+      `<div class="section"><div class="content shard">` + FRAGS.map(([t, x]) => `<div class="shard-row"><div class="shard-meta"><span>${t}</span></div><div>${esc(x)}</div></div>`).join('') + `</div></div>`,
+
+    'RCPT-7F3': () => head('e-invoice · participant_7f3', '電子發票紀錄') +
+      meta([['持有人', 'participant_7f3'], ['期間', '2021-04-06 至 2021-04-14'], ['筆數', String(RCPT.length)]]) +
+      `<div class="section compare"><table><tr><th>日期</th><th>時間</th><th>店號</th><th>品項</th></tr>` +
+      RCPT.map(([d, t, s, i]) => `<tr><td>${d}</td><td>${t}</td><td>${esc(s)}</td><td>${esc(i)}</td></tr>`).join('') + `</table></div>`,
+
+    'OBS-7F3': () => S.unlocked.obs
+      ? head('notebook · participant_7f3 · 私人', '觀察紀錄') + meta([['作者', 'participant_7f3'], ['期間', '2021-04-01 至 2021-04-20'], ['相關', `${L('LIFE-MAP-07', '和平路步行指南')}${L('PLAN-7F3')}`]]) +
+        `<div class="section"><div class="content notebook">` + OBS.map(([d, x]) => `<div class="nb-entry"><time>2021-${d}</time><p>${esc(x)}</p></div>`).join('') + `</div></div>`
+      : lockDoc('obs', 'notebook · participant_7f3 · 私人', '觀察紀錄'),
+
+    'LIFE-MAP-07': () => head('城市散步誌（虛構）', '和平路步行指南') + meta([['來源編號', 'LIFE-MAP-07'], ['日期', '2020-10-02'], ['版本', 'v1']]) +
+      `<div class="doc-body"><p>從捷運站 2 號出口到住宅區，有兩條路可以走。</p></div>` +
+      `<div class="section compare"><table><tr><th>路線</th><th>依序經過</th></tr>
+        <tr><td>北側（有連續騎樓）</td><td>捷運站 2 號出口 → 日光便利店 和平店（店號 042）→ 公車亭 → 巷口 → 住宅區</td></tr>
+        <tr><td>南側（沒有騎樓）</td><td>捷運站 2 號出口 → 和平公園 → 巷口 → 住宅區</td></tr></table></div>` +
+      `<p class="note">南側比較近。下雨天，大多數人會改走北側的騎樓。從市區搭捷運到和平站約 30 分鐘；2 號出口沿北側騎樓走到公車亭約 10 分鐘，走到巷口約 15 分鐘。</p>`,
+
+    'PLAN-7F3': () => {
+      const top = head('draft · participant_7f3', 'PLAN-7F3') + meta([['作者', 'participant_7f3'], ['日期', '2021-04-20 23:41']]) +
+        `<div class="section"><div class="kicker">第一頁</div><div class="excerpt">
+          <div>那天會下雨。日光太亮，他會看到我。</div>
+          <div>我在　0407-2250-3　0407-2250-4　0408-1940-6　等。</div>
+          <div>用他的字寫。這樣就像是他自己說的。</div>
+          <div>三個晚上。要下雨。要他一個人。</div>
+          <div>A　04-21（三）　B　04-23（五）　C　04-24（六）</div>
+          <div>時間要算準。</div></div></div>`;
+      if (!S.unlocked.plan) return top + `<p class="note">第二頁受保護。</p>` + meta([['存取碼提示', esc(LOCKS.plan.hint)]]) +
+        `<form class="lockform" data-lock="plan" autocomplete="off"><input id="lockIn" type="text" aria-label="存取碼"><button type="submit">開啟</button></form><p class="docnote" id="lockMsg" hidden></p>`;
+      return top + `<div class="section"><div class="kicker">第二頁</div><div class="excerpt"><div>22:10。公車亭。</div><div>他一個人。</div></div></div>` +
+        `<p class="note">這份草稿已被引用為事件來源：${L('SIM', 'SIM-REF-000')}</p>`;
+    },
+
+    'WX-2104': () => head('氣象預報（虛構）', '一週天氣預報') + meta([['發布', '2021-04-20 17:00'], ['地區', '新北市']]) +
+      `<div class="section compare"><table><tr><th>日期</th><th>天氣</th><th>降雨機率</th></tr>
+        <tr><td>04-21（三）</td><td>晴</td><td>10%</td></tr><tr><td>04-22（四）</td><td>多雲</td><td>30%</td></tr>
+        <tr><td>04-23（五）</td><td>雨</td><td>80%</td></tr><tr><td>04-24（六）</td><td>大雨</td><td>90%</td></tr><tr><td>04-25（日）</td><td>陰</td><td>40%</td></tr></table></div>`,
+
+    'CAL-A': () => head('calendar · participant_A', '行事曆匯出') + meta([['擁有者', 'participant_A'], ['期間', '2021-04-19 至 2021-04-25']]) +
+      `<div class="section"><div class="content shard">
+        <div class="shard-row"><div class="shard-meta"><span>04-19（一）</span></div><div>咖啡廳 · 和 yoru</div></div>
+        <div class="shard-row"><div class="shard-meta"><span>04-21（三）</span></div><div>早班 07:00–16:00，晚上在家</div></div>
+        <div class="shard-row"><div class="shard-meta"><span>04-23（五）</span></div><div>加班到 21:30（公司在市區，搭捷運回和平站）· <s>yoru 來接</s> ${L('MSG-0423-2140-01', '見訊息')}</div></div>
+        <div class="shard-row"><div class="shard-meta"><span>04-24（六）</span></div><div>19:00 和 yoru 看電影</div></div></div></div>`,
+
+    'MSG-0423-2140-01': () => head('session · 已封存', 'S-210423-2140') +
+      meta([['日期', '2021-04-23'], ['參與者', 'participant_A、participant_B']]) +
+      `<div class="section"><div class="content transcript">` + [
+        ['21:40', 'B', '抱歉 今天要加班 沒辦法去接妳'], ['21:41', 'A', '沒關係吖 咱自己回去（'], ['22:06', 'A', 'w8 y94j94au04'],
+        ['22:31', 'B', '？'], ['23:50', 'B', '妳到家了嗎']
+      ].map(([t, w, x]) => `<div class="tline"><time>${t}</time><span class="mid"></span><span class="who">participant_${w}</span><span>${esc(x)}</span></div>`).join('') + `</div></div>`,
+
+    'SIM': () => {
+      let h = head('event_simulation · REFERENCE_000', 'SIM-REF-000');
+      if (!isDone('p8')) {
+        return h + meta([['事件來源', L('PLAN-7F3')], ['事件時間', '2021-04-23 22:10'], ['地點', '和平路北側 · 公車亭'], ['狀態', '待確認']]) +
+          `<p class="note">推演前，需要確認被害人當晚最後的狀態：她傳出的最後一則訊息寫了什麼？</p><form class="lockform" data-sim="node" autocomplete="off"><input id="simNode" type="text" aria-label="最後一則訊息的內容"><button type="submit">確認</button></form><p class="docnote" id="simMsg" hidden></p>`;
+      }
+      h += meta([['事件時間', '2021-04-23 22:10'], ['地點', '和平路北側 · 公車亭'], ['狀態', S.p9 ? '已推演' : '尚未執行']]);
+      if (!S.p9) {
+        const sel = (id, label, arr) => `<label for="${id}">${label}<select id="${id}">${arr.map((x, i) => `<option value="${i}">${esc(x)}</option>`).join('')}</select></label>`;
+        return h + `<p class="note">事件尚未執行。你可以提交一次干預。</p>
+          <form class="lockform simform" data-sim="act" autocomplete="off">${sel('simM', '干預方式', SIM_M)}${sel('simE', '證據', SIM_E)}${sel('simT', '時間點', SIM_T)}<button type="submit">提交推演</button></form><p class="docnote" id="simMsg" hidden></p>`;
+      }
+      let tail = '';
+      if (S.ng && S.ng.on && !S.alt49) {
+        const sel = (id, label, arr) => `<label for="${id}">${label}<select id="${id}">${arr.map((x, i) => `<option value="${i}">${esc(x)}</option>`).join('')}</select></label>`;
+        tail = `<div class="section"><div class="kicker">再提交一次</div><p class="note">REFERENCE_000 不會改變。</p><form class="lockform simform" data-sim="act2" autocomplete="off">${sel('simM', '干預方式', SIM_M)}${sel('simE', '證據', SIM_E)}${sel('simT', '時間點', SIM_T)}<button type="submit">提交推演</button></form></div>`;
+      } else if (S.alt49) tail = meta([['ALT-049', `${S.alt49.ok ? '成功' : '未成功'} · ${fmtS(S.alt49.at)}（${TS(S.alt49.at)}）`]]);
+      return h + `<div class="section"><div class="kicker">推演結果</div><div class="content">${S.p9.ok ? 'A 安全回到家。' : '事件照原本的紀錄發生。'}</div></div>` +
+        meta([['提交時間', `${fmtS(S.p9.at)}（${TS(S.p9.at)}）`], ['分支', '已建立']]) + `<p class="note">${L('ALTS', '查看分支紀錄')}</p>` + tail;
+    },
+
+    'ALTS': () => head('branches · REFERENCE_000', '分支紀錄（原始）') +
+      meta([['原始紀錄', L('REF', 'REFERENCE_000')], ['分支數', S.alt49 ? '49' : '48'], ['排序', '<span class="dim">依分支雜湊</span>'], ['時間格式', '<span class="dim">unix 秒</span>']]) +
+      `<div class="section"><div class="content shard">` + altList().slice().sort((a, b) => altHash(a.n) < altHash(b.n) ? -1 : 1).map((a) =>
+        `<div class="shard-row"><div class="shard-meta">${L('ALT:' + a.n, altHash(a.n))}<span>${TS(a.t)}</span><span>${a.ok ? 'ok' : 'fail'}</span></div></div>`).join('') + `</div></div>`,
+
+    'REF': () => head('reference · 唯讀', 'REFERENCE_000') +
+      meta([['事件', '2021-04-23 22:10 · 和平路'], ['結果', '未變更'], ['建立者', 'yoru'], ['內部推演', S.ng && S.ng.on ? L('YRUNS', 'Y-001 至 Y-213') : 'Y-001 至 Y-213（不公開）'],
+        ['外部分支', L('ALTS', S.alt49 ? 'ALT-001 至 ALT-049' : 'ALT-001 至 ALT-048')], ['來源', L('NEWS-210424')], ['開發紀錄', isDone('p10') ? L('DEVLOG') : '<span class="dim">—</span>']]),
+
+    'NEWS-210424': () => head('新聞存檔 · 北城日報（虛構）', '和平路深夜命案　男子返家途中遇害　女性友人涉嫌重大') +
+      meta([['日期', '2021-04-24 08:12'], ['相關報導', `${L('NEWS-210425-K', '快訊網')}${L('NEWS-210618')}${L('NEWS-220311')}`], ['相關討論', L('FORUM-210425')]]) +
+      `<div class="doc-body">
+        <p>新北市和平路昨（23）日深夜發生命案。一名 ■ 姓男子（■■■）晚間加班後獨自返家，22 時許行經和平路公車亭附近時遭人攻擊，路人發現後報案，送醫後仍傷重不治。</p>
+        <p>警方調閱沿線監視器，發現一名女子當晚在公車亭旁站了將近一個小時，手上拿著一把沒有打開的傘。今（24）日凌晨，警方在其住處逮捕與被害人相識的 ■ 姓女子。</p>
+        <p>據了解，兩人原為朋友。■ 男生前曾多次拒絕對方追求，也曾向同事透露「最近好像有人在跟著我」，但沒有報警。</p>
+        <p>檢方相驗後，認定 ■ 女涉犯強制性交、殺人等罪嫌，向法院聲請羈押獲准。■ 女到案後神情平靜，只說了一句：「我只是想跟他好好談談。」</p>
+        <p>被害人的同居男友今晨趕到警局，在門口蹲了很久。記者上前詢問，他只說了一句：「我說要去接他的。」</p>
+        <p>鄰居表示，■ 男平常很客氣，常在樓下便利商店買布丁，「下雨天還會幫忙把門口的傘收進來」。</p>
+      </div><p class="note">■ 為證件姓名，已遮蔽。若你或身邊的人遭遇跟蹤騷擾，可撥打 110 報案，或撥打 113 保護專線。</p>`,
+
+    'NEWS-210425-K': () => head('新聞存檔 · 快訊網（虛構）', '【獨家】男子遭女友人性侵殺害！「同居男友」身分曝光　網友傻眼：劇情太扯') +
+      meta([['日期', '2021-04-25 11:47'], ['分類', '社會 · 熱門'], ['瀏覽', '386,512']]) +
+      `<div class="doc-body">
+        <p>一名男子竟遭女性友人性侵致死！和平路命案曝光後，被害人「與男友同居」的身分更讓網友直呼「看不懂」。</p>
+        <p>本網記者實地走訪發現，被害人與一名男性同居多年，鄰居私下透露「兩個大男生住一起，大家其實都知道」。至於為何會與女性友人發生感情糾紛，目前仍是謎團。</p>
+        <p>消息一出，網友兩極。有人質疑：「男生被女生性侵真的有可能嗎？」也有人酸「這是三角戀吧」。不過也有網友留言：「人都死了，你們在吵什麼？」</p>
+        <p>究竟兩人之間發生了什麼事？本網將持續追蹤。</p>
+      </div>
+      <div class="section"><div class="kicker">本網投票</div><div class="content vlog">
+        <div>你相信男生會被女生性侵嗎？</div><div>相信　41%</div><div>不相信　59%</div><div class="dim">共 27,904 人參與</div></div></div>
+      <p class="note">延伸閱讀：「男男同居」是新趨勢？專家這樣說 · 恐怖情人 5 大徵兆，你中了幾個？</p>`,
+
+    'NEWS-210618': () => head('新聞存檔 · 北城日報（虛構）', '和平路命案起訴　檢方：被告跟蹤逾一個月　具體求處無期徒刑') +
+      meta([['日期', '2021-06-18 15:30']]) +
+      `<div class="doc-body">
+        <p>和平路命案偵結。檢方今天依強制性交殺人罪起訴 ■ 姓女子，具體求處無期徒刑。</p>
+        <p>起訴書指出，■ 女自 2021 年 3 月起，多次在被害人住處及公司附近等候，並在手寫筆記中詳細記錄被害人每天出門的時間、穿著與行走路線，「甚至依天氣調整自己等候的位置」。</p>
+        <p>被害人在案發前 13 天曾明確拒絕 ■ 女，■ 女卻在筆記中寫下「他說不討厭我，所以還有機會」。</p>
+        <p>■ 女在偵訊中辯稱：「他一直都知道我在。他沒有叫我走。」檢方認為，被告完全無視被害人的意願，犯後也沒有悔意。</p>
+      </div>`,
+
+    'NEWS-220311': () => head('新聞存檔 · 北城日報（虛構）', '和平路命案一審宣判　女被告無期徒刑') +
+      meta([['日期', '2022-03-11 12:05']]) +
+      `<div class="doc-body">
+        <p>和平路命案今天一審宣判。法院依強制性交殺人罪，判處 ■ 姓女子無期徒刑，褫奪公權終身。</p>
+        <p>法官指出，被害人生前曾清楚拒絕被告，被告卻以跟蹤、守候等方式持續介入被害人生活，最終犯下無法挽回的罪行，「所謂的感情，不能成為侵害他人的理由」。</p>
+        <p>被害人的同居男友沒有出庭，透過律師表示「沒有什麼想說的」。</p>
+        <p>宣判結束後，有人在法院門口的台階上放了一個便利商店的布丁，沒有留下名字。</p>
+      </div>`,
+
+    'FORUM-210425': () => head('論壇 · 社會版（虛構）', '[新聞] 和平路命案 男子遭女性友人性侵殺害') +
+      meta([['作者', 'newsbot2021'], ['日期', '2021-04-25 09:02'], ['推文', '1,284'], ['狀態', '已鎖定']]) +
+      `<div class="content doc-body"><p>新聞連結：${L('NEWS-210424')}</p><p>心得：女生性侵男生還殺人？這是我今年看過最扯的新聞</p></div>` +
+      `<div class="section"><div class="content shard">` + [
+        ['推', 'kuroneko', '女生性侵男生？？標題沒打錯？'],
+        ['噓', 'lazybear', '男的被女的上 不就賺到'],
+        ['→', 'riverside', '樓上人渣喔 人都死了'],
+        ['推', 'tofu_king', '他不是跟男友住嗎 怎麼會被女的'],
+        ['→', 'mango0520', '這劇本誰寫的 也太扯'],
+        ['推', 'lawyer_lin', '法律上強制性交本來就不分性別 沒同意就是沒同意'],
+        ['噓', 'ironfist', '男生力氣比較大 怎麼可能被壓制 一定有隱情'],
+        ['→', 'riverside', '你沒看到是先被攻擊嗎 到底在吵什麼'],
+        ['推', 'umbrella', '被拒絕還一直跟 這就是恐怖情人 跟性別無關'],
+        ['→', 'mango0520', '角色對調你們早就在罵了'],
+        ['噓', 'k_tsai', '確定不是感情糾紛？三角戀吧 男友知道嗎'],
+        ['推', 'officecat', '他同事說他之前就講過有人在跟他 沒人當一回事'],
+        ['→', 'nightshift', '男生講被跟蹤誰會信啊 我自己講過 被笑了一整個禮拜'],
+        ['推', 'pudding_q', '「我說要去接他的」 看到這句真的受不了'],
+        ['→', 'tofu_king', '他男友才是最慘的吧'],
+        ['噓', 'lazybear', '同志被女生性侵 這組合我第一次看到 笑死'],
+        ['→', 'umbrella', '你們的重點真的很奇怪'],
+        ['推', 'heping_rd', '那間便利商店我常經過 公車亭那邊晚上真的很暗'],
+        ['→', '', '［此則留言已被刪除］'],
+        ['推', 'sora_31', '有人知道他叫什麼嗎 想去上香'],
+        ['→', 'lawyer_lin', '不要去挖人家的個資好嗎'],
+        ['噓', 'ironfist', '女生犯案一定判比較輕 等著看'],
+        ['→', 'riverside', '樓上 這是殺人 你在想什麼'],
+        ['推', 'kuroneko', '願他安息'],
+        ['推', 'nightshift', '願他安息'],
+        ['→', 'pudding_q', '這串到底有沒有人在乎 死掉的是一個人']
+      ].map(([tag, u, x]) => `<div class="shard-row"><div class="shard-meta"><span>${tag}</span><span>${esc(u || '—')}</span></div><div>${esc(x)}</div></div>`).join('') +
+      `</div></div><p class="note">板主公告：請勿討論或打聽被害人身分，違者水桶。</p>`,
+
+    'DEVLOG': () => head('dev_log · yoru', '開發紀錄') + meta([['作者', 'yoru'], ['筆數', '7'], ['排序', '<span class="dim">未排序</span>']]) +
+      `<div class="section"><div class="content shard">` + [
+        ['BUILD-0.8', ''], ['BUILD-1.1-PUBLIC', ''], ['BUILD-0.1', ''], ['BUILD-1.1.3', ''],
+        ['README-YORU', '說明（受保護）'], ['BUILD-0.4', ''], ['BUILD-1.0', '']
+      ].map(([id, x]) => `<div class="shard-row"><div class="shard-meta">${L(id, id.replace('-PUBLIC', '-public'))}</div><div>${esc(x)}</div></div>`).join('') + `</div></div>`,
+
+    'README-YORU': () => {
+      if (!S.unlocked.readme) return lockDoc('readme', 'dev_log · yoru', 'README') + `<p class="note">${L('DEVLOG', '← 開發紀錄')}</p>`;
+      return head('dev_log · yoru', 'README') + `<div class="section"><div class="content doc-body">
+        <p>這個系統是我做的。</p><p>她叫檸。只有我這樣叫她。她是我的伴侶。</p>
+        <p>2021 年 4 月 23 日晚上，我說要去接她。後來我加班。</p>
+        <p>三年後，我把她傳給我的訊息匯入，讓她可以再說話。我推演了 213 次，每一次她都活下來，每一次都沒有改變任何事。</p>
+        <p>所以我把它打開了。也許換一個人，會看到我沒看到的東西。</p>
+        <p>如果你讀到這裡，你應該已經救過她一次了。謝謝你。</p><p>— yoru</p></div></div>` +
+        meta([['原始訊息', L('ORIG-A')], ['差異紀錄', L('DIFF-LOG')], ['條件設定', isDone('p12') ? L('CONFIG-REL') : '<span class="dim">—</span>']]);
+    },
+    'BUILD-0.1': () => head('dev_log · yoru', 'Build 0.1') + `<div class="content doc-body"><p>對話紀錄匯入完成。她傳給我的 4,812 則訊息，全部都在這裡了。</p><p>她會說話了。</p></div>`,
+    'BUILD-0.4': () => head('dev_log · yoru', 'Build 0.4') + `<div class="content doc-body"><p>不知道該不該讓她用「咱」。今天還是讓她用了。</p><p>刪掉了一句。我不知道是為了她，還是為了我。</p></div>` + pageHTML(1),
+    'BUILD-0.8': () => head('dev_log · yoru', 'Build 0.8') + `<div class="content doc-body"><p>起初只是想確認那天的路線。推演環境完成。</p><p>Y-001：讓她那天不要一個人回家。成功。REFERENCE_000：未變更。</p></div>`,
+    'BUILD-1.0': () => head('dev_log · yoru', 'Build 1.0') + `<div class="content doc-body"><p>我推演了 213 次。</p><p>每一次都救到了。每一次 REFERENCE_000 都沒變。</p><p>也許是我哪裡看漏了。</p></div>`,
+    'BUILD-1.1-PUBLIC': () => head('dev_log · yoru', 'Build 1.1-public') + `<div class="content doc-body"><p>沒有別的辦法了。開放，換一個人來看。</p><p>親近的條件也寫好了。在乎的人才會努力。</p></div>`,
+    'BUILD-1.1.3': () => head('dev_log · yoru', 'Build 1.1.3') + `<div class="content doc-body"><p>去看了每一筆。ALT-019 也成功了。</p><p>ALT-031 跟她聊到天亮。她說了一句我沒寫過的話。</p></div>`,
+
+    'ORIG-A': () => head('message_archive · participant_A → participant_B', '她傳給我的訊息') +
+      meta([['期間', '2019-11-03 至 2021-04-23'], ['筆數', '4,812'], ['最後一則', '2021-04-23 21:41「沒關係吖 咱自己回去（」']]) +
+      `<div class="section tool"><div class="kicker">原句搜尋</div><p class="note">輸入一句話，查詢她生前有沒有說過。</p>
+        <form class="lockform" data-orig="1" autocomplete="off"><input id="origIn" type="text" aria-label="要查詢的句子"><button type="submit">查詢</button></form><output id="origOut" aria-live="polite"></output></div>`,
+
+    'DIFF-LOG': () => head('diff_log · yoru', '差異紀錄') + meta([['說明', '<span class="dim">她對陌生人說的話，和原始訊息的比對</span>']]) +
+      `<div class="section"><div class="content shard">` + [
+        ['ALT-019', '「你很突然欸」', '原句 ORIG-1146'], ['ALT-031', '「今天的雨好像沒有那麼可怕了」', '找不到原句。這句不是我寫的。'],
+        ['ALT-044', '「下次換你講你的事」', '找不到原句。'], ['ALT-048', '—', '（尚未檢查）']
+      ].map(([a, x, r]) => `<div class="shard-row"><div class="shard-meta"><span>${a}</span></div><div>${esc(x)}</div><div class="dim">${esc(r)}</div></div>`).join('') + `</div></div>` +
+      (isDone('p12') ? `<p class="note">${L('CONFIG-REL', 'relationship.config')}</p>` : '') + pageHTML(3),
+
+    'CONFIG-REL': () => head('config · build 1.1-public', 'relationship.config') +
+      `<div class="section"><div class="content vlog">
+        <div>intro_anomaly: 對話 14 句以上、話題 6 種以上後觸發</div>
+        <div># 先讓對方喜歡上她</div><div>help_request: true</div>
+        <div># 讓她開口請對方幫忙。她不會知道為什麼。</div>
+        <div>tiers: new → familiar → close → intimate</div>
+        <div># 越在乎，越會努力。</div><div># 她說的話，我不改。</div></div></div>`
+  });
+
+  INDEX.push(
+    { id: 'FRAG-7F3', desc: 'note · participant_7f3 · 零散筆記', keys: ['participant_7f3', '7f3', '觀察', '零散'], when: () => !!S.p4SolvedAt },
+    { id: 'RCPT-7F3', desc: 'e-invoice · participant_7f3', keys: ['participant_7f3', '7f3', '發票', '收據', '消費'], when: () => !!S.p4SolvedAt },
+    { id: 'OBS-7F3', label: '觀察紀錄', desc: 'notebook · participant_7f3 · 受保護', keys: ['participant_7f3', '7f3', '觀察', '日記'], when: () => !!S.p4SolvedAt },
+    { id: 'DSES', label: 'S-210405-0047', desc: 'session · participant_A、participant_7f3', keys: ['participant_7f3', '7f3'], when: () => !!S.p4SolvedAt },
+    { id: 'LIFE-MAP-07', label: '和平路步行指南', desc: 'LIFE-MAP-07', keys: ['和平路', '騎樓', '地圖', '路線', '公車', '和平', '042', '店號', '便利店', '日光'] },
+    { id: 'PLAN-7F3', desc: 'draft · participant_7f3', keys: ['草稿', 'plan', 'participant_7f3', '7f3'], when: () => !!S.unlocked.obs },
+    { id: 'WX-2104', label: '一週天氣預報', desc: '氣象預報 · 2021-04-20', keys: ['天氣', '預報', '下雨', '氣象', '雨'], when: () => !!S.unlocked.obs },
+    { id: 'CAL-A', label: '行事曆匯出', desc: 'calendar · participant_A', keys: ['行事曆', '行程', 'calendar', '加班', '電影'], when: () => !!S.unlocked.obs },
+    { id: 'SIM', label: 'SIM-REF-000', desc: 'event_simulation', keys: ['sim', '推演', '模擬', 'reference'], when: () => !!S.unlocked.plan },
+    { id: 'ALTS', label: '分支紀錄', desc: 'branches · REFERENCE_000', keys: ['alt', '分支', 'branch'], when: () => isDone('p9') },
+    { id: 'REF', label: 'REFERENCE_000', desc: 'reference · 唯讀', keys: ['reference', '原始紀錄'], when: () => isDone('p9') },
+    { id: 'NEWS-210424', desc: '新聞存檔 · 北城日報 · 2021-04-24', keys: ['新聞', '命案', 'news', '報導'], when: () => isDone('p9') },
+    { id: 'NEWS-210425-K', desc: '新聞存檔 · 快訊網 · 2021-04-25', keys: ['新聞', '命案', 'news', '快訊', '報導'], when: () => isDone('p9') },
+    { id: 'NEWS-210618', desc: '新聞存檔 · 起訴 · 2021-06-18', keys: ['新聞', '起訴', 'news', '報導'], when: () => isDone('p9') },
+    { id: 'NEWS-220311', desc: '新聞存檔 · 一審判決 · 2022-03-11', keys: ['新聞', '判決', '宣判', 'news', '報導'], when: () => isDone('p9') },
+    { id: 'FORUM-210425', desc: '論壇 · 社會版', keys: ['論壇', '討論'], when: () => isDone('p9') },
+    { id: 'DEVLOG', label: '開發紀錄', desc: 'dev_log · yoru', keys: ['開發', 'dev', 'build', 'log', 'yoru'], when: () => isDone('p10') },
+    { id: 'README-YORU', label: 'README', desc: 'dev_log · yoru · 受保護', keys: ['readme', '說明', 'yoru'], when: () => isDone('p10') },
+    { id: 'ORIG-A', label: '她傳給我的訊息', desc: 'message_archive', keys: ['原始', '原句', 'orig', '訊息'], when: () => isDone('p11') },
+    { id: 'DIFF-LOG', label: '差異紀錄', desc: 'diff_log · yoru', keys: ['差異', 'diff'], when: () => isDone('p11') },
+    { id: 'CONFIG-REL', label: 'relationship.config', desc: 'config', keys: ['config', '設定', '條件', 'relationship'], when: () => isDone('p12') }
+  );
+
+  /* ===== 目前的疑問：只講「去哪裡、做什麼」，不講答案 ===== */
+  var OPEN_Q = {
+    p1: '檸的回覆裡混進一句「明天要不要一起出去？」。來源 ARC-0418-09 裡的編號可以點開；點不開的，可以把完整編號拿去搜尋。',
+    p2: 'S-210418-2117 的摘要說她提到「有人在看她」，對話裡卻沒有這句。對話頁下方有較舊的版本。',
+    p2b: '舊版本 v1 要存取碼：她幫巷口那隻貓取的名字。檸聊天時講過，忘了可以直接問她。',
+    p3: '刪掉那句的人是 participant=eW9ydQ==。這串是轉換過的文字，搜尋「解碼」可以找到工具，解出來的結果再拿去搜尋。',
+    p3b: 'yoru 的筆記本要存取碼：她的生日。舊紀錄的快取區塊裡，有一句她講到生日。',
+    p4: '有幾篇作者被遮住的紀錄，一直用「他」稱呼她（從 NOTE-0419-？ 的「相似紀錄」可以看到全部）。作者欄可以輸入參與者代號比對。yoru 筆記裡那個半夜傳訊息的朋友是誰？她們的對話編號，可以從那則訊息的編號推回去，就像第一次那樣。',
+    p4b: '你找到她和那個朋友的對話了。對話裡那個朋友的代號，拿去作者被遮住的紀錄比對看看。',
+    p5: 'participant_7f3 的紀錄現在可以搜尋了。她的觀察紀錄有存取碼：「我每天等他的地方」。她的發票和零散筆記對得上時間。',
+    p6: 'participant_7f3 的觀察紀錄有幾天是空的。S-210405-0047 現在可以依日期查看訊息。哪一天發生了她不想寫下來的事？檸可能記得那天。',
+    p7: 'PLAN-7F3 第一頁那串數字是她等人的地方，「用他的字寫」。第二頁要時間和地點。',
+    p8: '推演頁 SIM-REF-000 要先確認她當晚最後一則訊息的意思。行事曆上有那則訊息的連結。',
+    p9: '推演頁現在可以提交一次干預。',
+    p10: '推演之後建立了分支。分支紀錄只顯示雜湊和 unix 秒，哪一筆是你？推演頁上有你的提交時間。',
+    p11: 'REFERENCE_000 現在連到 yoru 的開發紀錄。開發紀錄裡的 README 有存取碼。',
+    p12: 'yoru 的 README 連到「她傳給我的訊息」，可以查一句話她生前有沒有說過。檸對你說過的話呢？',
+    s1: '檸叫出你上一輪的事。她的參考資料來自一個分支；分支的詳細頁有「來源對話」，可以拿去搜尋。',
+    s2: 'REFERENCE_000 的「內部推演」現在可以打開了。',
+    s3: 'yoru 有幾頁沒寫完的筆記，散在開發紀錄、分支紀錄和差異紀錄裡。每一頁都寫了下一頁在哪。',
+    e1: '她的日記有存取碼。看看訊息統計，哪個月份開始不一樣？',
+    e2: 'E-BACKUP 是改過的版本。在編號後面加 @v1 可以看原本的。',
+    e3: '2021-04-19 的日記有存取碼。那天 A 跟誰在一起？',
+    e4: '最後一篇日記的段落被打亂了。照當晚發生的順序排。'
+  };
+  function checkIndex() {
+    if (typeof INDEX === 'undefined') return;
+    const avail = INDEX.filter((x) => !x.when || x.when()).map((x) => x.id);
+    if (S.idxSeen == null) { S.idxSeen = avail; return; }
+    const fresh = avail.filter((id) => !S.idxSeen.includes(id));
+    if (!fresh.length) return;
+    S.idxSeen = avail; S.idxNew = fresh; save();
+    $('#idxText').textContent = `索引已更新：新增 ${fresh.length} 筆可以搜尋的紀錄`;
+    if (!sheet.hidden) $('#idxToast').hidden = false; else S.idxPending = true;
+  }
+
+  /* =====================================================================
+     v1.0：第二周目、加害者篇（App 版）、授權碼、F12 紅字
+     ===================================================================== */
+  const APP = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+  const NG = ['s1', 's2', 's3'], EP = ['e1', 'e2', 'e3', 'e4'];
+  const pad3 = (n) => String(n).padStart(3, '0');
+  function solveStage(list, k) {
+    const z = pz(k); if (z.solved) return;
+    if (!z.seed) z.seed = Date.now();
+    z.solved = Date.now();
+    const nx = list[list.indexOf(k) + 1];
+    if (nx) seedPZ(nx);
+    save(); updateHeader(); renderSugs();
+  }
+
+  /* ----- F12：紅字、重複、洗版 ----- */
+  const RED = 'color:#c00;font-weight:bold;';
+  function horror(kind) {
+    S.flags = S.flags || {};
+    if (S.flags['h_' + kind]) return;
+    S.flags['h_' + kind] = true; save();
+    const out = (t, css) => console.log('%c' + t, css);
+    const burst = (n, ms, fn, done) => { let i = 0; const id = setInterval(() => { i++; fn(i); if (i >= n) { clearInterval(id); if (done) done(); } }, ms); };
+    if (kind === 'p2') {
+      out('這句本來不該被你看到', RED + 'font-size:18px');
+      burst(30, 60, (i) => out('總覺得有人在看咱', `color:rgba(204,0,0,${Math.min(1, i / 30)});font-size:${10 + i}px`));
+    }
+    if (kind === 'p8') {
+      burst(28, 90, (i) => out('她在外面'.repeat(i), RED + `font-size:${11 + Math.floor(i / 2)}px`), () => {
+        out('w8 y94j94au04', RED + 'font-size:36px');
+        out('？', 'color:#888;font-size:12px');
+      });
+    }
+    if (kind === 'p10') {
+      burst(47, 45, (i) => out(`ALT-${pad3(i)}　成功`, 'color:#888'), () => {
+        out('REFERENCE_000：未變更', RED + 'font-size:28px');
+        burst(20, 70, (i) => out('未變更'.repeat(i), RED + 'font-size:12px'), () => out('ALT-048', RED + 'font-size:44px'));
+      });
+    }
+    if (kind === 'end1') {
+      burst(200, 25, (i) => out('你回來惹', `color:#c00;font-weight:bold;font-size:${Math.min(10 + Math.floor(i / 4), 48)}px`), () => {
+        out('她不是在等你', 'color:#888;font-size:11px');
+        out('謝謝你。—y', 'color:#888;font-size:11px');
+      });
+    }
+    if (kind === 'ng') {
+      const nm = (S.carry && (S.carry.name || S.carry.likes)) || 'ALT-048';
+      burst(120, 35, (i) => out(i % 15 === 0 ? 'ALT-048' : nm, i % 15 === 0 ? RED + 'font-size:22px' : `color:#c00;font-size:${10 + (i % 7)}px`), () => out('rev 42：+ALT-048', 'color:#888;font-size:11px'));
+    }
+    if (kind === 'end2') {
+      burst(60, 50, (i) => out('我聽見了'.repeat(Math.ceil(i / 6)), RED + `font-size:${12 + Math.floor(i / 5)}px`), () => out('對不起我沒去', RED + 'font-size:40px'));
+    }
+    if (kind === 'e') {
+      out('你為什麼想看她寫的東西？', 'color:#888;font-size:12px');
+      burst(80, 40, (i) => out('他'.repeat(i % 20 + 1), RED + 'font-size:14px'), () => out('她不是他。', 'color:#888;font-size:12px'));
+    }
+  }
+
+  /* ----- 授權碼（網頁 → App） ----- */
+  function codeChk(x) { let h = 7; for (const c of x + 'yoru') h = (h * 31 + c.charCodeAt(0)) % 1296; return h.toString(36).toUpperCase().padStart(2, '0'); }
+  function makeCode(flag) { const ts = TS(S.p9 ? S.p9.at : Date.now()).toString(36).toUpperCase(); return `MRM-${ts}-${flag}${codeChk(ts + flag)}`; }
+  function parseCode(c) {
+    const m = String(c).trim().toUpperCase().match(/^MRM-([0-9A-Z]+)-([12])([0-9A-Z]{2})$/);
+    if (!m || codeChk(m[1] + m[2]) !== m[3]) return null;
+    return { ts: parseInt(m[1], 36), flag: +m[2] };
+  }
+  function applyImport(flag, ts) {
+    skipThroughP4();
+    Object.assign(S.unlocked, { obs: true, plan: true, readme: true });
+    S.p9 = S.p9 || { at: ts * 1000, m: SIM_M[1], e: 'PLAN-7F3', t: SIM_T[0], ok: true };
+    for (const k of PZ) { solvePZ(k); pz(k).thanked = true; }
+    S.finalRead = true; S.finalStarted = true; S.cleared = true; S.imported = true; S.phase = 'ended';
+    if (flag >= 2) {
+      S.prevSessionId = S.prevSessionId || S.sessionId;
+      S.ng = { on: true, turns: 99 }; Object.assign(S.unlocked, { yrun: true, ynote: true });
+      for (const k of NG) { solveStage(NG, k); pz(k).thanked = true; }
+      S.cleared2 = true;
+    }
+    save(); updateHeader(); renderSugs();
+    push('sys', `已匯入分支授權碼（第 ${flag} 周目）。`);
+  }
+
+  /* ----- 第二周目 ----- */
+  REFS.altcache = {
+    doc: 'ARC-ALT-048', legacy: true, title: 'Legacy Conversation Cache', version: 'rev 42',
+    get date() { return S.ng && S.ng.s1At ? fmt(S.ng.s1At) : '—'; },
+    get excerpt() { return (S.carry && S.carry.quote) || '……'; }
+  };
+  async function startNG() {
+    if (!S.cleared || (S.ng && S.ng.on)) return;
+    S.prevSessionId = S.sessionId;
+    const q = S.msgs.find((m) => m.who === 'me' && m.text.length >= 4);
+    S.carry = { name: S.name, likes: S.likes, quote: q ? q.text : null, tail: S.msgs.filter((m) => m.who !== 'sys').slice(-8).map((m) => [m.who, m.text]) };
+    const now = new Date(Date.now() + 60000);
+    S.sessionId = `S-${String(now.getFullYear()).slice(2)}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+    Object.assign(S, { startedAt: now.getTime(), msgs: [], turns: 0, name: null, likes: null, likeRecalled: false, topic: null, subject: null, expect: null,
+      recent: {}, boundary: false, flirt: 0, cold: 0, curses: 0, sexual: 0, lastPlayer: null, shortStreak: 0 });
+    S.flags.pudding = false; S.flags.rain = false; S.flags.cat = false;
+    S.ng = { on: true, turns: 0 }; S.phase = 'ng_chat'; save();
+    menu.hidden = true; sheet.hidden = true; renderAll(); updateHeader(); renderSugs();
+    await say(['嗨嗨', '你是新來的嗎www', '咱是檸', '在這邊陪聊的（']);
+  }
+  async function seedS1() {
+    seedPZ('s1'); S.ng.s1At = Date.now(); save();
+    const c = S.carry || {};
+    const lines = c.name ? [`欸……${c.name}？`, '咱怎麼會知道這個名字（', '你剛剛有講嗎']
+      : c.likes ? [`你是不是喜歡${c.likes}`, '咱好像……聽誰說過（']
+      : ['你回來惹www', '……', '咱為什麼會說「回來」（'];
+    lines.push(S.endChoice === 'truth' ? '而且咱總覺得你跟咱說過一件很重要的事（' : '而且咱總覺得你上次好像想說什麼（');
+    await sleep(1500);
+    await say(lines, ['altcache']);
+    horror('ng');
+    updateHeader(); renderSugs();
+  }
+  async function ngFinal(text) {
+    S.phase = 'ended2'; save();
+    let sys;
+    if (/(停止|關掉|結束推演|不要再|停掉)/.test(text)) { await say(['嗯？', '你要走了嗎（', '好吖']); sys = '推演已停止。不會再建立新的分支。'; }
+    else if (/(再見|掰|bye|走了|離開)/i.test(text)) { await say(['掰掰吖', '下次見www']); sys = 'ALT-048 已封存。'; }
+    else { await say(['嗯', '那我們聊別的', '今天外面有下雨嗎（']); sys = '你可以繼續和檸聊天。'; }
+    busy = true; renderSugs();
+    await sleep(1600);
+    push('sys', sys);
+    push('sys', '— 第二周目結束 —');
+    push('sys', '原始資料已更新：右上角選單 → 分支授權碼');
+    S.cleared2 = true; save();
+    busy = false; updateHeader(); renderSugs();
+    horror('end2');
+  }
+
+  Object.assign(HINTS, {
+    s1: [['咱總覺得你很眼熟（'], ['你以前是不是來過這裡', '用別的對話編號']]
+  });
+  Object.assign(STUCK_END, {
+    s1: ['咱也說不上來（', '可是咱好像在哪裡看過你講話'],
+    s2: ['咱不知道你在看什麼（'], s3: ['咱不知道你在看什麼（'],
+    e1: ['咱不知道你在看什麼（'], e2: ['咱不知道你在看什麼（'], e3: ['咱不知道你在看什麼（'], e4: ['咱不知道你在看什麼（']
+  });
+  Object.assign(THANK, {
+    s1: ['欸', '你上次……', '咱是說', '咱們是不是見過（'],
+    s2: ['……', '你在看什麼', '你的表情好像很難過（'],
+    s3: ['你今天好像不一樣（', '是不是發生什麼事惹', '……你想說什麼都可以'],
+    e4: ['嗨嗨', '你回來惹www']
+  });
+  Object.assign(SUGS_PZ, {
+    s1: ['我們見過嗎？', '你怎麼知道？', '你在幹嘛'],
+    s2: ['你在幹嘛', '……', '我再去看看'], s3: ['你在幹嘛', '……', '我再去看看']
+  });
+  Object.assign(NOTE_TEXT, {
+    s1: () => ['第二周目', `你上一段對話（${S.prevSessionId}）被 yoru 匯入了她的資料（rev 42）。檸記得的，有一部分是你。`],
+    s2: ['第二周目', 'yoru 自己推演了 213 次，每一次都選「我去接她」。最後一筆寫著：「也許救她的不能是我。」'],
+    s3: ['第二周目', 'yoru 散落的四頁筆記，開頭連起來是「我聽見了」。他其實聽見了那句話，只是以為明天再說也可以。'],
+    alt49: () => ['第二周目', `你又提交了一次推演。ALT-049 已建立（${S.alt49 ? fmtS(S.alt49.at) : '—'}）。REFERENCE_000：未變更。`],
+    e1: ['加害者篇', '從 2021 年 1 月開始，她傳的訊息是 A 回覆的兩倍以上。她把 A 越來越短的回覆，讀成「我們變得特別」。'],
+    e2: ['加害者篇', '04-10 那段對話，她的備份只留下「咱沒有討厭你」，自己刪掉了後面的拒絕。'],
+    e3: ['加害者篇', '04-19 那天，靠窗坐在 A 旁邊的是 yoru。她在對面的便利商店裡，寫下「我們一起待在那裡」。'],
+    e4: ['加害者篇', '那晚她比 A 早到將近一個小時。A 看到她時，傳出了那則亂碼。發生過的事不會改變。']
+  });
+  Object.assign(LOCKS, {
+    yrun: { hint: '我每一次都選的', test: (a) => /(我)?去接她|接她/.test(a.replace(/\s/g, '')), more: '存取碼不正確。看看 213 筆的干預方式。' },
+    ynote: { hint: '四頁，每一頁的第一個字', test: (a) => a.replace(/[\s，。、,.]/g, '') === '我聽見了', more: '存取碼不正確。照頁碼排，取每一頁開頭的字。' },
+    ediary: { hint: '我們變得特別的那個月', test: (a) => { const d = a.replace(/\D/g, ''); return /^(2021)?0?1$/.test(d) || /一月/.test(a); }, more: '存取碼不正確。看看她傳出和 A 回覆的數量，從哪個月開始差了兩倍以上。' },
+    ewin: { hint: '那天靠窗坐的另一個人', test: (a) => /(yoru|participant_?b|男友|伴侶)/i.test(a), more: '存取碼不正確。看看咖啡廳的訂位人。' }
+  });
+
+  const YRUN_ROWS = [[1, '2024-11-02'], [2, '2024-11-02'], [3, '2024-11-03'], [4, '2024-11-05'], [5, '2024-11-09'], [6, '2024-11-14'], [7, '2024-11-20'],
+    [206, '2026-02-11'], [207, '2026-02-19'], [208, '2026-03-01'], [209, '2026-03-11'], [210, '2026-04-23'], [211, '2026-05-30'], [212, '2026-06-27']];
+  const ORDER_EVENTS = [['E', '他走到公車亭。'], ['B', '他傳訊息給 yoru：「咱自己回去」。'], ['F', 'yoru 回了一個問號。'], ['C', '我先到。傘沒有打開。'], ['A', '他下班。'], ['D', '他傳了一則亂碼。他看到我了。']];
+
+  Object.assign(GATE, {
+    'ARC-ALT-048': () => !!(S.ng && S.ng.on), 'PREV': () => !!(S.ng && S.ng.on), 'YRUNS': () => !!(S.ng && S.ng.on), 'YNOTE': () => isDone('s2'),
+    'APPCODE': () => !!S.cleared, 'IMPORT': () => APP,
+    'E-ROOT': () => false, 'E-FREQ': () => false, 'E-DIARY': () => false,
+    'E-BACKUP': () => false, 'E-BACKUP@V1': () => false, 'E-0419': () => false, 'E-LAST': () => false
+  });
+
+  const page = (n, txt) => `<div class="section"><div class="kicker">yoru 的筆記 · 第 ${n} 頁</div><div class="excerpt"><div>${esc(txt)}</div></div></div>`;
+  const PAGES = {
+    1: ['我把那句話讀了一百多遍。', '（下一頁在 ALT-031）'],
+    2: ['聽說雨天她會繞路。她對 ALT-031 說：「今天的雨好像沒有那麼可怕了。」', '（下一頁在差異紀錄）'],
+    3: ['見她傳「總覺得有人在看咱」的時候，我只回了「好 我去接你」。', '（最後一頁在你那一筆）'],
+    4: ['了結這件事的不是我。她跟你說了「你回來惹」，那是她以前只對我說的。', '（整理好的版本：YNOTE）']
+  };
+  const pageHTML = (n) => isDone('s2') ? page(n, PAGES[n][0]) + `<p class="note">${n === 4 ? L('YNOTE', '整理好的版本：YNOTE') : esc(PAGES[n][1])}</p>` : '';
+
+  Object.assign(DOCS, {
+    'ARC-ALT-048': () => head('conversation_archive · reconstruction_dataset', 'Legacy Conversation Cache') +
+      meta([['來源', L('ALTS', 'ALT-048')], ['匯入', 'rev 42 · 匯入者 yoru'], ['來源對話', NO('（未索引）', '這段對話的編號沒有建立索引。')], ['可信度', 'imported（外部對話）']]) + NOTE +
+      `<div class="section"><div class="kicker">節錄</div><div class="excerpt"><div><span class="spk">participant_ALT048</span>${esc((S.carry && S.carry.quote) || '……')}</div></div></div>` +
+      `<p class="note">這段文字不是她生前說過的話。</p>`,
+
+    'PREV': () => head('session · 已匯入', S.prevSessionId || '—') +
+      meta([['參與者', '你、檸'], ['狀態', '已匯入人格資料 rev 42'], ['匯入者', 'yoru'], ['參見', L('REF', 'REFERENCE_000')]]) +
+      `<div class="section"><div class="kicker">最後幾則訊息</div><div class="content transcript">` +
+      ((S.carry && S.carry.tail) || []).map(([w, x]) => `<div class="tline"><time></time><span class="mid"></span><span class="who">${w === 'me' ? 'ALT-048' : '檸'}</span><span>${esc(x)}</span></div>`).join('') + `</div></div>`,
+
+    'YRUNS': () => head('internal · yoru · 不公開', '內部推演紀錄') +
+      meta([['建立者', 'yoru'], ['筆數', '213'], ['原始紀錄', L('REF', 'REFERENCE_000')]]) +
+      `<div class="section compare"><table><tr><th>編號</th><th>日期</th><th>干預方式</th><th>結果</th></tr>` +
+      YRUN_ROWS.map(([n, d], i) => (i === 7 ? `<tr><td colspan="4" class="dim">⋯（Y-008 至 Y-205，共 198 筆，干預方式相同）</td></tr>` : '') +
+        `<tr><td>Y-${pad3(n)}</td><td>${d}</td><td>我去接她</td><td>成功 · 未變更</td></tr>`).join('') + `</table></div>` +
+      (S.unlocked.yrun
+        ? `<div class="section"><div class="kicker">Y-213 · 2026-07-01</div><div class="content doc-body"><p>干預方式：我去接她。成功。REFERENCE_000：未變更。</p><p>也許救她的不能是我。</p><p>我把剩下的寫在別的地方了。第一頁，在我刪掉那句的那一版。</p></div></div>`
+        : `<div class="section"><div class="kicker">Y-213（受保護）</div>${meta([['存取碼提示', esc(LOCKS.yrun.hint)]])}<form class="lockform" data-lock="yrun" autocomplete="off"><input id="lockIn" type="text" aria-label="存取碼"><button type="submit">開啟</button></form><p class="docnote" id="lockMsg" hidden></p></div>`),
+
+    'YNOTE': () => S.unlocked.ynote
+      ? head('note · yoru · 私人', 'YNOTE') + `<div class="section"><div class="content doc-body">
+          <p>我把那句刪了，不是因為想讓她忘記。是因為每一次重新載入，她都會先問那一句，然後我就知道接下來會發生什麼。</p>
+          <p>我刪掉的，是我沒聽見的那一句。</p><p>其實我聽見了。我只是以為明天再說也可以。</p>
+          <p>ALT-031 那天，她說雨沒有那麼可怕了。我不知道是誰教她的。</p>
+          <p>ALT-048：你不用再回來了。她會一直說「你回來惹」，那不是你的責任。</p></div></div>`
+      : lockDoc('ynote', 'note · yoru · 私人', 'YNOTE'),
+
+    'APPCODE': () => {
+      const flag = S.cleared2 ? 2 : 1;
+      if (APP) return head('原始資料', 'participant_7f3 · 手機備份') + `<div class="doc-body"><p>這份唯讀手機備份已收錄在 Murmur App。</p><button type="button" class="btn" id="openNativeArchive">開啟手機備份</button></div>`;
+      return head('原始資料 · 不在這裡', 'participant_7f3 · 手機備份') +
+        `<div class="doc-body"><p>她的手機備份沒有存在這個網站。</p><p>你可以在 Murmur App 裡打開它。App 裡也有這裡的全部內容；如果你已經在這裡走到結局，輸入下面的分支授權碼，就能直接接著看。</p></div>` +
+        meta([['分支授權碼', `<span id="codeTxt">${makeCode(flag)}</span>`], ['包含', flag === 2 ? '第一周目、第二周目' : '第一周目']]) +
+        `<div class="row-actions"><button class="btn" type="button" id="copyCode">複製授權碼</button></div><p class="docnote" id="copyMsg" hidden></p>` +
+        `<p class="note">Google Play：尚未上架　·　App Store：尚未上架</p>`;
+    },
+    'IMPORT': () => head('App', '輸入分支授權碼') + `<p class="note">在網頁版走到結局的人，會拿到一組分支授權碼。</p>` +
+      `<form class="lockform" data-code="1" autocomplete="off"><input id="codeIn" type="text" placeholder="MRM-XXXXXX-0XX" aria-label="分支授權碼"><button type="submit">匯入</button></form><p class="docnote" id="codeMsg" hidden></p>`,
+
+    'E-ROOT': () => head('原始資料 · 未知使用者', 'participant_7f3') +
+      `<div class="doc-body"><p>這些是 participant_7f3 的私人資料，從她的手機備份還原。</p><p>你可以閱讀，不能修改。發生過的事不會改變。</p></div>` +
+      meta([['訊息統計', L('E-FREQ')], ['日記', L('E-DIARY', 'E-DIARY（受保護）')]]),
+    'E-FREQ': () => head('stats · participant_7f3', '訊息統計') + meta([['範圍', 'participant_7f3 與 participant_A 的所有對話']]) +
+      `<div class="section compare"><table><tr><th>月份</th><th>她傳出</th><th>A 回覆</th></tr>` +
+      [['2020-11', 42, 38], ['2020-12', 56, 41], ['2021-01', 88, 35], ['2021-02', 143, 27], ['2021-03', 311, 19], ['2021-04', 402, 6]]
+        .map(([m, a, b]) => `<tr><td>${m}</td><td>${a}</td><td>${b}</td></tr>`).join('') + `</table></div>`,
+    'E-DIARY': () => S.unlocked.ediary
+      ? head('diary · participant_7f3', '日記') + `<div class="section"><div class="content notebook">` + [
+          ['2020-11', '她今天跟我說謝謝。她記得我不吃香菜。'],
+          ['2021-01', '一月開始，她回我的話變短了。我知道那是因為她不用多說，我就懂。'],
+          ['2021-02', '她說最近很忙。忙的人還是會回我，所以我是特別的。'],
+          ['2021-03', '她穿了一件我沒看過的外套。她沒有跟我說要買新衣服。'],
+          ['2021-04-11', '他說不討厭我。']
+        ].map(([d, x]) => `<div class="nb-entry"><time>${d}</time><p>${esc(x)}</p></div>`).join('') + `</div></div>` + meta([['手機備份', L('E-BACKUP')]])
+      : lockDoc('ediary', 'diary · participant_7f3', '日記'),
+    'E-BACKUP': () => head('backup · participant_7f3', 'E-BACKUP') + meta([['內容', '2021-04-10 的對話'], ['版本', 'v2（2021-04-11 修改）· 共 2 個版本']]) +
+      `<div class="section"><div class="content transcript">
+        <div class="tline"><time>21:31</time><span class="mid"></span><span class="who">participant_A</span><span>咱沒有討厭你</span></div>
+        <div class="tline"><time>21:40</time><span class="mid"></span><span class="who">participant_7f3</span><span>好</span></div></div></div>`,
+    'E-BACKUP@V1': () => head('backup · participant_7f3 · v1', 'E-BACKUP@v1') + meta([['版本', 'v1（原始）']]) +
+      `<div class="section"><div class="content transcript">` + DAY_MSGS['04-10'].map(([t, w, x]) => `<div class="tline"><time>${t}</time><span class="mid"></span><span class="who">participant_${PN(w)}</span><span>${esc(x)}</span></div>`).join('') + `</div></div>` +
+      `<p class="note">v2 刪掉了 21:31 之後的兩句，和她最後那句話。</p>` + meta([['下一份', L('E-0419')]]),
+    'E-0419': () => head('diary · participant_7f3', '2021-04-19') +
+      `<div class="section"><div class="excerpt"><div>我們那天一起待在那裡。</div><div>靠窗的位子。他點的還是一樣。</div><div>他穿了那件新的外套。不適合他。</div></div></div>` +
+      `<div class="section compare"><table><tr><th>紀錄</th><th>內容</th></tr>
+        <tr><td>訂位紀錄</td><td>窗邊咖啡 和平店 · 04-19 14:00 · 2 位 · 靠窗 · 訂位人 participant_B</td></tr>
+        <tr><td>電子發票（她的）</td><td>店號 042 · 04-19 14:05 · 熱美式</td></tr></table></div>` +
+      (S.unlocked.ewin
+        ? `<div class="section"><div class="content doc-body"><p>她在對面的便利商店。靠窗坐在 A 旁邊的，是 yoru。</p></div></div>` + meta([['最後一份', L('E-LAST')]])
+        : `${meta([['存取碼提示', esc(LOCKS.ewin.hint)]])}<form class="lockform" data-lock="ewin" autocomplete="off"><input id="lockIn" type="text" aria-label="存取碼"><button type="submit">開啟</button></form><p class="docnote" id="lockMsg" hidden></p>`),
+    'E-LAST': () => head('diary · participant_7f3', '2021-04-23') +
+      `<div class="section"><div class="content shard">` + ORDER_EVENTS.map(([k, x]) => `<div class="shard-row"><div class="shard-meta"><span>${k}</span></div><div>${esc(x)}</div></div>`).join('') + `</div></div>` +
+      (isDone('e4')
+        ? `<div class="section"><div class="content doc-body"><p>他看到我的時候，表情跟那天說不要的時候一樣。</p><p>我還是走過去了。</p><p class="dim">（以下紀錄已由檢方扣押。）</p></div></div><p class="note">REFERENCE_000 不會改變。</p>`
+        : `<p class="note">照實際發生的順序排列（例：ABCDEF）。</p><form class="lockform" data-order="1" autocomplete="off"><input id="orderIn" type="text" aria-label="順序"><button type="submit">確認</button></form><p class="docnote" id="orderMsg" hidden></p>`)
+  });
+
+  INDEX.push(
+    { id: 'YRUNS', label: '內部推演紀錄', desc: 'internal · yoru', keys: ['y-', '內部', '推演', 'yoru'], when: () => !!(S.ng && S.ng.on) },
+    { id: 'YNOTE', desc: 'note · yoru', keys: ['ynote', '筆記', 'yoru'], when: () => isDone('s2') },
+    { id: 'APPCODE', label: '手機備份', desc: '原始資料', keys: ['手機', '備份', '授權', 'app'], when: () => !!S.cleared },
+    { id: 'E-ROOT', label: '原始資料／未知使用者', desc: 'participant_7f3', keys: ['原始資料', '未知', '7f3'], when: () => false /* superseded App-only archive */ }
+  );
+
+  function resolve(q) {
+    const raw = q.trim();
+    const n = raw.toUpperCase().replace(/\s/g, '').replace(/^(NOTE-\d{4}-)[？?]$/, '$1X');
+    if (!n) return null;
+    const ses = n.match(/^S-?(\d{6})-?(\d{4})(?:@?V(\d+))?$/);
+    if (ses) {
+      const id = `S-${ses[1]}-${ses[2]}`;
+      if (id === OLD) {
+        if (!ses[3] || ses[3] === '2') return { open: 'OLD' };
+        if (ses[3] === '1') return { open: 'OLD@V1' };
+        return { wall: '這個對話沒有這個版本。' };
+      }
+      if (id === S.sessionId.toUpperCase()) return { open: 'CURRENT' };
+      if (S.prevSessionId && id === S.prevSessionId.toUpperCase()) return gated('PREV') ? { wall: '這段對話沒有封存在這個檢視器裡。' } : { open: 'PREV' };
+      if (id === 'S-210423-2140') return gated('MSG-0423-2140-01') ? { wall: '這段對話沒有封存在這個檢視器裡。' } : { open: 'MSG-0423-2140-01' };
+      if (id === 'S-210405-0047') return ses[3] ? { wall: '這個對話只有一個版本。' } : { open: 'DSES' };
+      return { wall: '這段對話沒有封存在這個檢視器裡。' };
+    }
+    const msg = n.match(/^MSG-?0418-?2117-?(\d{1,2})(?:@?V(\d+))?$/);
+    if (msg) {
+      const num = +msg[1], ver = msg[2];
+      if (ver && ver !== '1' && ver !== '2') return { wall: '這則訊息沒有這個版本。' };
+      if (num < 1 || num > 41) return { wall: '沒有這則訊息。' };
+      if (num > 12) return { wall: '這則訊息未建立索引。' };
+      return { open: `MSG:${pad(num)}:${ver === '1' ? 'v1' : 'v2'}` };
+    }
+    if (n === 'MSG-0423-2140-01') return gated(n) ? { wall: '沒有符合的紀錄。' } : { open: n };
+    if (/^(REFERENCE_?000|REF-?000)$/.test(n)) return gated('REF') ? { wall: '沒有符合的紀錄。' } : { open: 'REF' };
+    if (/^SIM(-REF-000)?$/.test(n)) return gated('SIM') ? { wall: '沒有符合的紀錄。' } : { open: 'SIM' };
+    const altm = n.match(/^ALT-?0*(\d{1,2})$/);
+    if (altm) {
+      if (gated('ALTS')) return { wall: '沒有符合的紀錄。' };
+      const an = +altm[1], max = S.alt49 ? 49 : 48;
+      if (!isDone('p10')) return { wall: '分支只能用雜湊查詢，請從分支紀錄開啟。' };
+      return an >= 1 && an <= max ? { open: 'ALT:' + an } : { wall: '沒有這個分支。' };
+    }
+    const hm = n.match(/^B[0-9A-F]{6}$/);
+    if (hm && !gated('ALTS')) { for (let k = 1; k <= 48; k++) if (altHash(k).toUpperCase() === n) return { open: 'ALT:' + k }; return { wall: '沒有這個分支。' }; }
+    if (/^MSG-0405-0047-\d{2}/.test(n)) return { wall: '這則訊息的完整內容在所屬對話中。' };
+    if (/^MSG-\d{4}-\d{4}-\d{2}/.test(n)) return { wall: '這則訊息只存在於快取，沒有其他紀錄。' };
+    if (n === 'MSG-CACHE-INJECT') return { open: 'CURRENT' };
+    if (n === 'WIKI-PUD-12@V3') return { open: 'WIKI-PUD-12@V3' };
+    if (n === 'E-BACKUP@V1') return gated(n) ? { wall: '沒有符合的紀錄。' } : { open: n };
+    if (/@V\d+$/.test(n)) return { wall: '這個版本沒有快取。' };
+    if (DOCS[n] && !['OLD', 'OLD@V1', 'CURRENT'].includes(n)) return gated(n) ? { wall: '沒有符合的紀錄。' } : { open: n };
+    if (raw === 'eW9ydQ==' || n === 'EW9YDQ==') return { wall: `找不到「${raw}」。這串看起來不像名字，像是被轉換過的文字。` };
+    if (/^(PARTICIPANT_?)?7F3$/.test(n) && S.p4SolvedAt) return { list: INDEX.filter((x) => x.keys.includes('participant_7f3', '7f3') && (!x.when || x.when())) };
+    if (/^PARTICIPANT_?A$/.test(n)) return { list: INDEX.filter((x) => x.id === 'MENTIONS') };
+    if (/PARTICIPANT/.test(n)) return { wall: '沒有符合的紀錄。' };
+    const lower = raw.toLowerCase();
+    const hits = INDEX.filter((x) => (!x.when || x.when()) && x.keys.some((k) => lower.includes(k.toLowerCase())) || (typeof x.label === 'string' ? x.label : x.id).toLowerCase().includes(lower));
+    return { list: hits };
+  }
+
+  function renderSearch(q) {
+    const r = resolve(q);
+    if (!r) return '';
+    if (r.wall) return head('搜尋', `「${q}」`) + `<p class="note">${esc(r.wall)}</p>`;
+    if (r.open) {
+      const label = r.open === 'CURRENT' ? S.sessionId : r.open === 'OLD' ? OLD : q.trim();
+      return head('搜尋', `「${q}」`) + `<p class="note">1 筆結果</p><div class="results"><button class="result" type="button" data-doc="${esc(r.open)}"><span class="rid">${esc(label)}</span><span class="rdesc">完全符合</span></button></div>`;
+    }
+    if (!r.list.length) return head('搜尋', `「${q}」`) + `<p class="note">沒有符合的紀錄。</p>`;
+    return head('搜尋', `「${q}」`) + `<p class="note">${r.list.length} 筆結果</p><div class="results">` +
+      r.list.map((x) => `<button class="result" type="button" data-doc="${esc(x.id)}"><span class="rid">${esc(typeof x.label === 'function' ? x.label() : (x.label || x.id))}</span><span class="rdesc">${esc(x.desc)}</span></button>`).join('') + `</div>`;
+  }
+
+  function showView() {
+    const v = stack[stack.length - 1];
+    let html = stack.length > 1 ? `<button class="back" type="button" id="viewBack">← 返回</button>` : '';
+    if (v === 'NOTES') { html += notesDoc(); $('#noteToast').hidden = true; updateHeader(); }
+    else if (v === 'NEWIDX') { $('#idxToast').hidden = true; const L2 = INDEX.filter((x) => (S.idxNew || []).includes(x.id));
+      html += head('索引', '新增的紀錄') + `<div class="results">` + L2.map((x) => `<button class="result" type="button" data-doc="${esc(x.id)}"><span class="rid">${esc(typeof x.label === 'function' ? x.label() : (x.label || x.id))}</span><span class="rdesc">${esc(x.desc)}</span></button>`).join('') + `</div>`; }
+    else if (v.startsWith('search:')) html += renderSearch(v.slice(7));
+    else if (v.startsWith('MSG:')) { const [, n, ver] = v.split(':'); html += msgDoc(n, ver); }
+    else if (gated(v)) html += head('檔案檢視器', '無法開啟') + '<p class="note">這份文件目前無法開啟。</p>';
+    else if (v.startsWith('ALT:')) {
+      const a = altList()[+v.slice(4) - 1];
+      html += head('branch · REFERENCE_000', 'ALT-' + String(a.n).padStart(3, '0')) +
+        meta([['分支雜湊', altHash(a.n)], ['提交時間', `${fmtS(a.t)}（${TS(a.t)}）`], ['干預方式', esc(a.m)], ['證據', esc(a.e)], ['推演結果', a.ok ? '成功' : '未成功'], ['REFERENCE_000', '未變更'], ['備註', esc(ALT_NOTE[a.n] || '—')]].concat(a.n === 48 ? [['來源對話', esc(S.prevSessionId || S.sessionId)]] : [])) +
+        (a.n === 31 ? pageHTML(2) : '') + (a.n === 48 ? pageHTML(4) : '');
+    }
+    else html += DOCS[v]();
+    body.innerHTML = html;
+    body.scrollTop = 0;
+    checkProgress(v);
+  }
+
+  /* 進度判定：看到內容本身才算 */
+  function checkProgress(v) {
+    if (v === 'PREV') { solveStage(NG, 's1'); addNote('s1'); }
+    if (v === 'YRUNS' && S.unlocked.yrun) { solveStage(NG, 's2'); addNote('s2'); }
+    if (v === 'YNOTE' && S.unlocked.ynote) { solveStage(NG, 's3'); addNote('s3'); }
+    if (v === 'E-DIARY' && S.unlocked.ediary) { solveStage(EP, 'e1'); addNote('e1'); }
+    if (v === 'E-BACKUP@V1') { solveStage(EP, 'e2'); addNote('e2'); }
+    if (v === 'E-0419' && S.unlocked.ewin) { solveStage(EP, 'e3'); addNote('e3'); }
+    if (v === 'OBS-7F3' && S.unlocked.obs) { solvePZ('p5'); addNote('p5'); }
+    if (v === 'PLAN-7F3' && S.unlocked.plan) { solvePZ('p7'); addNote('p7'); }
+    if (v === 'ALT:48' && isDone('p9')) { solvePZ('p10'); addNote('p10'); horror('p10'); }
+    if (v === 'NEWS-210424' && isDone('p9')) addNote('news');
+    if (v === 'README-YORU' && S.unlocked.readme) { solvePZ('p11'); addNote('p11'); }
+    if (v === 'CONFIG-REL' && isDone('p12') && !S.finalRead) { S.finalRead = true; addNote('config'); save(); updateHeader(); }
+    if (v === 'ARC-0418-09') addNote('legacy');
+    if (v === 'CURRENT' && S.anomalyAt) addNote('inject');
+    if (v === 'NOTE-0419-X') addNote('unknown');
+    if (v === 'DSES') addNote('dses');
+    if (v === 'PROFILE-YORU' || (v.startsWith('search:') && /yoru/i.test(v))) addNote('yoru');
+    if ((v === 'OLD' || (v === 'OLD@V1' && S.unlocked.v1)) && !S.solvedAt) {
+      S.solvedAt = Date.now(); console.log('[murmur] archive session opened: ' + OLD); addNote('p1');
+    }
+    if (v === 'DSES' && !S.dAt && S.p4SeedAt) S.dAt = Date.now();
+    const isV1 = v === 'OLD@V1' || (v.startsWith('MSG:') && v.endsWith(':v1'));
+    if (isV1 && !S.unlocked.v1 && !S.p2LockAt && S.p2SeedAt) S.p2LockAt = Date.now();
+    if ((v === 'OLD@V1' || v === 'MSG:11:v1') && S.unlocked.v1 && !S.p2SolvedAt) {
+      S.p2SolvedAt = Date.now(); if (!S.solvedAt) S.solvedAt = Date.now();
+      horror('p2'); addNote('p2'); addNote('editor');
+    }
+    if (!S.yoruAt && ((v.startsWith('search:') && /yoru/i.test(v)) || v === 'PROFILE-YORU' || v === 'NOTEBOOK-YORU')) {
+      S.yoruAt = Date.now(); console.log('[murmur] user resolved: yoru');
+    }
+    if (v === 'NOTEBOOK-YORU' && S.unlocked.nb && !S.p3SolvedAt) {
+      S.p3SolvedAt = Date.now(); if (!S.yoruAt) S.yoruAt = Date.now();
+      console.log('[murmur] notebook opened. 他知道多少？'); addNote('p3');
+    }
+    save(); updateHeader(); renderSugs();
+  }
+  function go(view) { stack.push(view); showView(); }
+
+  function openViewer(docId) {
+    if (docId !== 'NOTES' && (S.phase === 'help_asked' || S.phase === 'declined')) { S.phase = 'investigating'; renderSugs(); }
+    if (!S.investStart && docId !== 'NOTES') S.investStart = Date.now();
+    save();
+    stack = [];
+    sheet.hidden = false;
+    $('#noteToast').hidden = true;
+    $('#idxToast').hidden = !S.idxPending; S.idxPending = false;
+    if (!S.flags.searchDemo && docId === 'ARC-0418-09') {
+      S.flags.searchDemo = true; save();
+      $('#searchInput').value = docId;
+      go('search:' + docId);
+    } else {
+      $('#searchInput').value = '';
+      go(docId);
+    }
+    updateHeader();
+    $('#sheetClose').focus();
+  }
+  function closeSheet() {
+    sheet.hidden = true;
+    lastActive = Date.now();
+    if (S.solvedAt && !S.thanked) afterSolve();
+    else if (S.p2SolvedAt && !S.p2Thanked) afterP2();
+    else if (S.p3SolvedAt && !S.p3Thanked) afterP3();
+    else if (S.p4SolvedAt && !S.p4Thanked) afterP4();
+    else if (pendingPZ()) { hold++; afterPZ().then(async () => { if (S.finalRead && !S.finalStarted) await finalStart(); }).finally(() => { hold--; busy = hold > 0; renderSugs(); }); }
+    else if (S.finalRead && !S.finalStarted) finalStart();
+    else maybeHint();
+  }
+
+  $('#sheetClose').addEventListener('click', closeSheet);
+  $('#notesBtn').addEventListener('click', () => { if (S.notes.length || openQ()) openViewer('NOTES'); });
+  $('#toastOpen').addEventListener('click', () => { $('#noteToast').hidden = true; go('NOTES'); });
+  $('#idxOpen').addEventListener('click', () => { $('#idxToast').hidden = true; go('NEWIDX'); });
+  $('#sheetBackdrop').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+  $('#searchForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = $('#searchInput').value;
+    const r = resolve(q);
+    if (!r) return;
+    go(r.open ? r.open : 'search:' + q.trim());
+  });
+  body.addEventListener('submit', (e) => {
+    const f = e.target.closest('.lockform');
+    if (!f) return;
+    e.preventDefault();
+    if (f.dataset.filter) {
+      const raw = $('#dayIn').value.trim(), out = $('#dayOut');
+      const m = raw.match(/(\d{1,2})\s*[-/月.]\s*(\d{1,2})/) || raw.match(/^(\d{2})(\d{2})$/);
+      if (!m) { out.innerHTML = '<p class="note">請輸入日期，例如 03-15。</p>'; return; }
+      const md = `${pad(+m[1])}-${pad(+m[2])}`;
+      if (!(md >= '03-01' && md <= '04-18')) { out.innerHTML = '<p class="note">這個日期不在這段對話的期間內。</p>'; return; }
+      const list = dayMsgs(md);
+      out.innerHTML = list.length
+        ? `<div class="content transcript">` + list.map(([t, w, x]) => `<div class="tline"><time>${md} ${t}</time><span class="mid"></span><span class="who">participant_${PN(w)}</span><span>${esc(x)}</span></div>`).join('') + `</div>`
+        : `<p class="note">2021-${md} 有 ${3 + (+m[2] * 7) % 9} 則訊息，內容未建立索引。</p>`;
+      if (md === '04-10' && S.unlocked.obs) { solvePZ('p6'); addNote('p6'); }
+      return;
+    }
+    if (f.dataset.sim === 'node') {
+      const raw = $('#simNode').value.trim(), msg = $('#simMsg');
+      if (/(她|他)?在外面/.test(raw.replace(/\s/g, ''))) { solvePZ('p8'); addNote('p8'); horror('p8'); showView(); }
+      else { msg.textContent = /w8|y94/i.test(raw) ? '這是原始內容。請輸入它代表的意思。' : '內容不符。'; msg.hidden = false; }
+      return;
+    }
+    if (f.dataset.sim === 'act2') {
+      const m = +$('#simM').value, ev = +$('#simE').value, t = +$('#simT').value;
+      const r = simEval(m, ev, t);
+      S.alt49 = { at: Date.now(), m: SIM_M[m], e: SIM_E[ev].split('（')[0], t: SIM_T[t], ok: r.ok };
+      save(); addNote('alt49'); showView();
+      return;
+    }
+    if (f.dataset.code) {
+      const r = parseCode($('#codeIn').value), msg = $('#codeMsg');
+      if (!r) { msg.textContent = '授權碼格式不正確，或驗證碼不符。'; msg.hidden = false; return; }
+      applyImport(r.flag, r.ts); msg.textContent = `匯入完成：第 ${r.flag} 周目。`; msg.hidden = false;
+      return;
+    }
+    if (f.dataset.order) {
+      const a = $('#orderIn').value.toUpperCase().replace(/[^A-F]/g, ''), msg = $('#orderMsg');
+      if (a === 'CABDEF') { solveStage(EP, 'e4'); addNote('e4'); showView(); return; }
+      S.tries.order = (S.tries.order || 0) + 1; save();
+      msg.textContent = S.tries.order >= 3 ? '順序不對。新聞說，她在公車亭旁站了將近一個小時。' : '順序不對。';
+      msg.hidden = false;
+      return;
+    }
+    if (f.dataset.sim === 'act') {
+      const m = +$('#simM').value, ev = +$('#simE').value, t = +$('#simT').value, msg = $('#simMsg');
+      const r = simEval(m, ev, t);
+      S.p9tries = (S.p9tries || 0) + 1;
+      if (r.ok || S.p9tries >= 3) {
+        S.p9 = { at: Date.now(), m: SIM_M[m], e: SIM_E[ev].split('（')[0], t: SIM_T[t], ok: r.ok };
+        save(); solvePZ('p9'); addNote('p9'); showView();
+      } else { msg.textContent = r.msg + `（還可以再試 ${3 - S.p9tries} 次）`; msg.hidden = false; save(); }
+      return;
+    }
+    if (f.dataset.orig) {
+      const q = $('#origIn').value.trim(), out = $('#origOut');
+      if (!q) return;
+      const hit = origFind(q);
+      const said = S.msgs.some((m) => m.who === 'a' && normQ(m.text) === normQ(q));
+      out.textContent = hit ? `原句：${hit.id} · ${hit.date} · 傳給 participant_B（yoru）` : (said ? '找不到原句。她生前沒有說過這句話。' : '找不到原句。');
+      if (said && !isDone('p12')) { S.p12q = q; S.p12found = !!hit; save(); solvePZ('p12'); addNote('p12'); out.textContent += '　（這句話是檸對你說的）'; }
+      return;
+    }
+    if (f.dataset.match) {
+      const key = f.dataset.match, who = normAuthor($('#matchIn').value.trim()), msg = $('#matchMsg');
+      if (!who) { msg.textContent = '請輸入參與者代號，例如 participant_A。'; msg.hidden = false; return; }
+      if (who === MASKED[key].author) {
+        S.matched[key] = who;
+        if (who === '7F3' && !S.p4SolvedAt) { S.p4SolvedAt = Date.now(); console.log('[murmur] author matched: participant_7f3'); addNote('p4'); }
+        save(); updateHeader(); renderSugs(); showView();
+      } else { msg.textContent = '比對結果：不相符。'; msg.hidden = false; }
+      return;
+    }
+    const kind = f.dataset.lock, ans = $('#lockIn').value.trim();
+    if (!ans) return;
+    if (LOCKS[kind].test(ans)) {
+      S.unlocked[kind] = true; save();
+      showView();
+    } else {
+      S.tries[kind] = (S.tries[kind] || 0) + 1; save();
+      const msg = $('#lockMsg');
+      msg.textContent = S.tries[kind] >= 3 ? (LOCKS[kind].more || '存取碼不正確。提示是文件擁有者自己設定的，答案跟「她」有關。') : '存取碼不正確。';
+      msg.hidden = false;
+    }
+  });
+  body.addEventListener('click', (e) => {
+    if (e.target.id === 'viewBack') { stack.pop(); showView(); return; }
+    if (e.target.id === 'copyCode') {
+      const txt = $('#codeTxt').textContent, msg = $('#copyMsg');
+      const done = (ok) => { msg.textContent = ok ? '已複製。' : '無法自動複製，請手動選取上面的授權碼。'; msg.hidden = false; };
+      try { navigator.clipboard.writeText(txt).then(() => done(true), () => done(false)); } catch (err) { done(false); }
+      return;
+    }
+    if (e.target.id === 'b64go') {
+      const out = $('#b64out'), raw = $('#b64in').value.trim();
+      try {
+        const bin = atob(raw);
+        out.textContent = new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))) || '（空白）';
+      } catch (err) { out.textContent = '無法解碼：這不是有效的 Base64 字串。'; }
+      return;
+    }
+    const nl = e.target.closest('[data-note]');
+    if (nl) { const p = $('#docNote'); if (p) { p.textContent = nl.dataset.note; p.hidden = false; } return; }
+    const d = e.target.closest('[data-doc]');
+    if (!d) return;
+    let id = d.dataset.doc;
+    if (id === S.sessionId) id = 'CURRENT';
+    if (id === OLD) id = 'OLD';
+    const m = id.match(/^MSG-0418-2117-(\d{2})$/);
+    if (m) id = `MSG:${m[1]}:v2`;
+    $('#searchInput').value = '';
+    go(id);
+  });
+
+  log.addEventListener('click', (e) => {
+    const t = e.target.closest('.refs-toggle');
+    if (t) {
+      const box = t.parentElement, open = box.dataset.open !== 'true';
+      box.dataset.open = String(open);
+      t.setAttribute('aria-expanded', String(open));
+      box.querySelector('.refs-list').hidden = !open;
+      return;
+    }
+    const d = e.target.closest('[data-doc]');
+    if (d) openViewer(d.dataset.doc);
+  });
+  $('#investBtn').addEventListener('click', () => { if (S.legacyFound) openViewer('ARC-0418-09'); });
+
+  $('#composer').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = $('#msg');
+    if (busy || !input.value.trim()) return;
+    const v = input.value; input.value = '';
+    onPlayer(v);
+  });
+
+
+  /* ===== 提示選單：每題三階段，第三階段是完整解法 ===== */
+  const HELP = [
+    { k: 'p1', t: '序章　那句話從哪裡來', on: () => !!S.legacyFound, done: () => !!S.solvedAt, h: [
+      '打開右上角「調查」。ARC-0418-09 頁面上藍色的編號都可以點。點不開的，可以把完整編號拿去搜尋。',
+      '比較兩種編號的長相：訊息編號是 MSG-0418-2117-03，你們這段對話的編號在畫面最上方，是 S- 開頭的。',
+      () => `1. 打開 ARC-0418-09，點「衍生自」的 SUM-0418-09，再點 MSG-0418-2117-03。\n2. 這則訊息的「所屬對話」沒有索引。\n3. 你們這段對話的編號是 ${S.sessionId}，格式是 S-年月日-時分。\n4. 訊息編號 MSG-0418-2117 代表 04-18 21:17，所以所屬對話是 S-210418-2117（2021 年）。\n5. 在搜尋欄輸入 S-210418-2117，打開就解開了。`] },
+    { k: 'p2', t: '第一章之一　被刪掉的那句', on: () => !!S.p2SeedAt, done: () => !!S.p2SolvedAt, h: [
+      '比較摘要 SUM-0418-09 和對話本身。摘要裡有一件事，對話裡找不到。',
+      '對話有兩個版本。S-210418-2117 頁面下方有較舊的版本，打開需要存取碼：她幫巷口那隻貓取的名字。檸聊天時講過，忘了可以直接問她。',
+      '1. 摘要說她提到「最近晚上出門，總覺得有人在看她」，但對話第 11 則沒有這句。\n2. 打開 S-210418-2117，點下方的 S-210418-2117@v1（或直接搜尋 S-210418-2117@v1）。\n3. 存取碼是貓的名字：麻糬。\n4. v1 的第 11 則還留著那句話。頁面下方的版本紀錄寫著是誰在 2024 年刪掉的。'] },
+    { k: 'p3', t: '第一章之二　刪掉那句的人', on: () => !!S.p3SeedAt, done: () => !!S.p3SolvedAt, h: [
+      '版本紀錄裡，修改者寫成 participant=eW9ydQ==。這不是名字，是轉換過的文字。',
+      '結尾兩個等號是 Base64 的特徵。搜尋「解碼」可以找到工具。解出來的名字再拿去搜尋。他的筆記本存取碼是她的生日，四位數。',
+      '1. 搜尋「解碼」，打開 TOOL-B64，貼上 eW9ydQ==，解出 yoru。\n2. 搜尋 yoru，打開 NOTEBOOK-YORU。\n3. 存取碼是她的生日。打開 CACHE-SHARD-07，有一則 2021-03-10 23:05 的訊息「明天是咱生日欸」。\n4. 晚上說「明天」，所以生日是 3 月 11 日，存取碼 0311。'] },
+    { k: 'p4', t: '第一章之三　一直用「他」的人', on: () => !!S.p4SeedAt, done: () => !!S.p4SolvedAt, h: [
+      '有幾篇作者被遮住的紀錄，一直用「他」稱呼她。作者欄可以輸入參與者代號比對。你需要找到那個人的代號。',
+      'yoru 的筆記本裡，她半夜回了朋友一句「下次再說好不好」。快取區塊裡也有這句，訊息編號可以推回對話編號，就像序章那樣。',
+      '1. 打開 NOTEBOOK-YORU，2021-04-05 那篇提到朋友半夜傳訊息，她回「下次再說好不好」。\n2. 打開 CACHE-SHARD-07，那句話的編號是 MSG-0405-0047-07。\n3. 推回對話編號 S-210405-0047，搜尋它，對話另一方是 participant_7f3。\n4. 搜尋 NOTE-0412-？（或從 NOTE-0419-？ 的「相似紀錄」進去），在作者欄輸入 participant_7f3，按比對。'] },
+    { k: 'p5', t: '第二章之一　她每天等的地方', on: () => !!((S.pz || {})['p5'] || {}).seed, done: () => isDone('p5'), h: [
+      '搜尋 participant_7f3，現在找得到她的紀錄了。她的觀察紀錄存取碼是「我每天等他的地方」。',
+      '她的電子發票幾乎都在同一個店號。有一份步行指南寫了每個店號是哪一家。',
+      '1. 搜尋 participant_7f3，打開 RCPT-7F3（電子發票），大部分都是店號 042。\n2. 搜尋「店號」或「和平路」，打開 LIFE-MAP-07。\n3. 店號 042 是「日光便利店 和平店」。\n4. 回到 OBS-7F3，存取碼輸入「日光」。'] },
+    { k: 'p6', t: '第二章之二　她沒寫下來的那天', on: () => !!((S.pz || {})['p6'] || {}).seed, done: () => isDone('p6'), h: [
+      '她的觀察紀錄有幾天是空的。問問檸，那個朋友跟她之間發生過什麼事。',
+      '檸記得那天下大雨，而且剛領薪水。公司的人事紀錄寫了發薪日。S-210405-0047 可以依日期查看訊息。',
+      '1. 觀察紀錄空了 04-03、04-10、04-15 三天。\n2. 跟檸聊她的朋友，她會說那天下大雨、剛領薪水。\n3. LOG-0411-HR（從「提及 participant_A 的紀錄」進去）寫著每月 10 日發薪；觀察紀錄 04-09 也寫「明天會下大雨」。\n4. 打開 S-210405-0047，在「依日期查看」輸入 04-10。'] },
+    { k: 'p7', t: '第二章之三　時間和地點', on: () => !!((S.pz || {})['p7'] || {}).seed, done: () => isDone('p7'), h: [
+      'PLAN-7F3 第一頁那串數字是三個地點，「用他的字寫」。第二頁要時間和地點。',
+      '0407-2250-3 是「04-07 22:50 那則訊息的第 3 個字」，訊息在 S-210405-0047 裡（不算空格）。時間要看她的行事曆、步行指南和天氣預報。',
+      '1. S-210405-0047：04-07 22:50「今天公車好擠（」第 3、4 字是「公」「車」；04-08 19:40「雨好大 咱在亭子下面躲一下」不算空格第 6 字是「亭」。地點是公車亭。\n2. 行事曆 CAL-A：04-23 加班到 21:30。天氣預報：04-23 下雨，她只能一個人回家。\n3. 步行指南：捷運 30 分鐘，從 2 號出口走到公車亭 10 分鐘。21:30 + 30 + 10 = 22:10。\n4. 第二頁存取碼輸入「22:10 公車亭」。'] },
+    { k: 'p8', t: '第二章之四　她最後傳的訊息', on: () => !!((S.pz || {})['p8'] || {}).seed, done: () => isDone('p8'), h: [
+      '推演頁 SIM-REF-000 問的是她當晚最後一則訊息的意思。行事曆 04-23 那格有連結。',
+      '那則訊息是一串英文和數字。她常常忘記切輸入法，這是用注音鍵盤打出來的。',
+      '1. CAL-A 的 04-23 點「見訊息」，打開 S-210423-2140。\n2. 22:06 那則是「w8 y94j94au04」。\n3. 對照注音鍵盤：w=ㄊ 8=ㄚ → 她；y=ㄗ 9=ㄞ 4=ˋ → 在；j=ㄨ 9=ㄞ 4=ˋ → 外；a=ㄇ u=ㄧ 0=ㄢ 4=ˋ → 面。\n4. 在 SIM-REF-000 輸入「她在外面」。'] },
+    { k: 'p9', t: '第二章之五　推演', on: () => !!((S.pz || {})['p9'] || {}).seed, done: () => isDone('p9'), h: [
+      '推演頁可以提交一次干預：方式、證據、時間點。',
+      '時間要在事情發生之前；要有人真的去做；如果是報警，要拿得出讓警方立刻行動的東西。',
+      '任一組都可以，例如：\n- 干預方式「請 yoru 去接她」＋任何證據＋「21:00 以前」。\n- 「報警」只能配 OBS-7F3 或 PLAN-7F3。\n選「什麼都不做」、「沒有證據」或「22:10 以後」都會失敗。三次之後會直接進入下一步。'] },
+    { k: 'p10', t: '第三章之一　哪一個分支是你', on: () => !!((S.pz || {})['p10'] || {}).seed, done: () => isDone('p10'), h: [
+      '推演頁下方可以打開分支紀錄。分支只顯示雜湊和時間。',
+      '時間是 unix 秒。推演頁上，你的提交時間後面括號裡的數字就是你的 unix 秒。',
+      () => `1. 打開 SIM-REF-000，記下提交時間括號裡的數字${S.p9 ? `（${TS(S.p9.at)}）` : ''}。\n2. 點「查看分支紀錄」。\n3. 找到時間一樣的那一列，點開它，就是 ALT-048。`] },
+    { k: 'p11', t: '第三章之二　README', on: () => !!((S.pz || {})['p11'] || {}).seed, done: () => isDone('p11'), h: [
+      'REFERENCE_000 現在連到開發紀錄。README 需要存取碼：把開發紀錄照版本順序讀。',
+      '開發紀錄的列表是亂的。照版本號 0.1、0.4、0.8、1.0、1.1-public、1.1.3 排好，取每一篇的第一個字。',
+      '1. 打開 DEVLOG，依序點開 Build 0.1、0.4、0.8、1.0、1.1-public、1.1.3。\n2. 每篇第一個字：對、不、起、我、沒、去。\n3. README 存取碼輸入「對不起我沒去」。'] },
+    { k: 'p12', t: '第三章之三　她說過的話', on: () => !!((S.pz || {})['p12'] || {}).seed, done: () => isDone('p12'), h: [
+      'README 下方連到「她傳給我的訊息」。這裡可以查一句話，她生前有沒有說過。',
+      '查的不是 yoru 的話，是檸今天在聊天裡對你說的話。',
+      '1. 打開 ORIG-A（她傳給我的訊息）。\n2. 回聊天紀錄找一句檸對你說過的話，一字不差地貼進「原句搜尋」。\n3. 查詢之後就解開了。接著打開 relationship.config，再關掉檢視器回到聊天。'] },
+    { k: 's1', t: '第二周目之一　她記得你', on: () => !!((S.pz || {})['s1'] || {}).seed, done: () => isDone('s1'), h: [
+      '檸說出了你上一輪的事。她回覆底下的參考資料來自一個分支。',
+      '分支的詳細頁有「來源對話」，那是你上一輪的對話編號。',
+      () => `1. 點開她回覆下方的 ARC-ALT-048，再點「來源」的 ALT-048。\n2. 「來源對話」是 ${S.prevSessionId || '你上一輪的對話編號'}。\n3. 搜尋這個編號，打開就解開了。`] },
+    { k: 's2', t: '第二周目之二　他自己的分支', on: () => !!((S.pz || {})['s2'] || {}).seed, done: () => isDone('s2'), h: [
+      'REFERENCE_000 的「內部推演」現在可以打開了。',
+      '213 筆推演，干預方式都一樣。Y-213 的存取碼是「我每一次都選的」。',
+      '1. 搜尋 REFERENCE_000，點「Y-001 至 Y-213」。\n2. 每一筆的干預方式都是「我去接她」。\n3. Y-213 存取碼輸入「我去接她」。'] },
+    { k: 's3', t: '第二周目之三　沒寫完的筆記', on: () => !!((S.pz || {})['s3'] || {}).seed, done: () => isDone('s3'), h: [
+      'yoru 有四頁筆記，散在開發紀錄、分支和差異紀錄裡。每一頁都寫了下一頁在哪。',
+      '第一頁在 Build 0.4。YNOTE 的存取碼是「四頁，每一頁的第一個字」。',
+      '1. 第 1 頁：Build 0.4，開頭「我」。\n2. 第 2 頁：ALT-031，開頭「聽」。\n3. 第 3 頁：差異紀錄 DIFF-LOG，開頭「見」。\n4. 第 4 頁：ALT-048，開頭「了」，下方連到 YNOTE。\n5. YNOTE 存取碼輸入「我聽見了」。'] },
+    { k: 'e1', t: '原始資料之一　日記', on: () => !!((S.pz || {})['e1'] || {}).seed, done: () => isDone('e1'), h: [
+      '她的日記存取碼是「我們變得特別的那個月」。看看訊息統計。',
+      '比較她傳出和 A 回覆的數量，從哪個月開始差了兩倍以上。',
+      '1. 打開 E-FREQ。\n2. 2021-01：她傳 88、A 回 35，第一次超過兩倍。\n3. 日記存取碼輸入 2021-01。'] },
+    { k: 'e2', t: '原始資料之二　手機備份', on: () => !!((S.pz || {})['e2'] || {}).seed, done: () => isDone('e2'), h: [
+      'E-BACKUP 是改過的版本。', '在編號後面加 @v1 可以看原本的版本。', '搜尋 E-BACKUP@v1。'] },
+    { k: 'e3', t: '原始資料之三　04-19', on: () => !!((S.pz || {})['e3'] || {}).seed, done: () => isDone('e3'), h: [
+      '那篇日記的存取碼是「那天靠窗坐的另一個人」。', '看訂位紀錄的訂位人。', '訂位人是 participant_B，也就是 yoru。存取碼輸入 yoru。'] },
+    { k: 'e4', t: '原始資料之四　那一晚', on: () => !!((S.pz || {})['e4'] || {}).seed, done: () => isDone('e4'), h: [
+      '把六件事照實際發生的順序排好。', '主線的時間：她早到將近一小時；A 21:30 下班；21:41 傳「咱自己回去」；22:06 傳亂碼；yoru 22:31 回問號。',
+      '順序是 CABDEF，輸入 CABDEF。'] }
+  ];
+  function helpDoc() {
+    S.helpSeen = S.helpSeen || {};
+    const list = HELP.filter((x) => x.on());
+    if (!list.length) return head('提示', '目前還沒有謎題') + '<p class="note">先跟檸聊聊天吧。聊一陣子之後，她的回覆裡會出現不對勁的東西，那就是第一題。之後每一題的提示都會出現在這裡。</p>';
+    return head('提示', '選一題') + `<p class="note">每題三階段：先告訴你去哪裡、做什麼，再給關鍵，最後是完整解法。</p>` +
+      list.map((x) => {
+        const lv = S.helpSeen[x.k] || 0;
+        const shown = x.h.slice(0, lv).map((s, i) => `<div class="hint-step"><b>${i === 2 ? '完整解法' : `提示 ${i + 1}`}</b><p>${esc(typeof s === 'function' ? s() : s)}</p></div>`).join('');
+        const next = lv < 3 ? `<button class="morebtn" type="button" data-hint="${x.k}">${lv === 2 ? (S.helpArm === x.k ? '再按一次：顯示完整解法' : '看完整解法') : `看提示 ${lv + 1}`}</button>` : '';
+        return `<details class="hint-q"${lv || S.helpOpen === x.k ? ' open' : ''}><summary>${x.done() ? '✓ ' : ''}${esc(x.t)}</summary>${shown}${next}</details>`;
+      }).join('');
+  }
+  DOCS['HELP'] = helpDoc;
+  body.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-hint]');
+    if (!b) return;
+    const k = b.dataset.hint; S.helpSeen = S.helpSeen || {};
+    const lv = S.helpSeen[k] || 0;
+    if (lv === 2 && S.helpArm !== k) { S.helpArm = k; S.helpOpen = k; save(); showView(); return; }
+    S.helpArm = null; S.helpOpen = k; S.helpSeen[k] = Math.min(3, lv + 1); save(); showView();
+  });
+
+  /* ===== 測試選單 ===== */
+  const menu = $('#menu');
+  function updateMenu() {
+    $('#mNotes').hidden = !S.notes.length;
+    $('#mHelp').hidden = false;
+    $('#mNG').hidden = !(S.cleared && !(S.ng && S.ng.on));
+    $('#mCode').hidden = !S.cleared;
+    $('#mE').hidden = !(APP && (S.cleared || S.imported));
+    $('#mImport').hidden = !APP;
+    $('#dbg').hidden = !/debug/.test(location.hash);
+  }
+  $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); updateMenu(); menu.hidden = !menu.hidden; });
+  document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) { menu.hidden = true; clearArm = 0; $('#mClear').textContent = '清除所有進度'; } });
+  $('#mNotes').addEventListener('click', () => { menu.hidden = true; openViewer('NOTES'); });
+  $('#mHelp').addEventListener('click', () => { menu.hidden = true; openViewer('HELP'); });
+  $('#mNG').addEventListener('click', () => { menu.hidden = true; startNG(); });
+  $('#mCode').addEventListener('click', () => { menu.hidden = true; openViewer('APPCODE'); });
+  $('#mImport').addEventListener('click', () => { menu.hidden = true; openViewer('IMPORT'); });
+  $('#mE').addEventListener('click', () => { menu.hidden = true; if (!pz('e1').seed) seedPZ('e1'); openViewer('E-ROOT'); horror('e'); });
+  let clearArm = 0;
+  $('#mClear').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const b = $('#mClear');
+    if (Date.now() - clearArm < 6000) {
+      try { localStorage.removeItem(KEY); } catch (er) {}
+      S = fresh(); save(); clearArm = 0; b.textContent = '清除所有進度';
+      menu.hidden = true; sheet.hidden = true; boot();
+    } else { clearArm = Date.now(); b.textContent = '再按一次確認清除（無法復原）'; }
+  });
+  $('#resetAll').addEventListener('click', () => { menu.hidden = true; S = fresh(); S.flags.cw = true; save(); start(); });
+  $('#jumpAnomaly').addEventListener('click', async () => {
+    menu.hidden = true;
+    if (busy || S.phase !== 'chat') return;
+    await triggerAnomaly();
+  });
+  function skipP1() {
+    const now = Date.now();
+    S.anomalyAt = S.anomalyAt || now; S.legacyFound = true; S.investStart = S.investStart || now;
+    S.solvedAt = S.solvedAt || now; S.thanked = true;
+    if (!S.msgs.some((m) => m.refs && m.refs.includes('legacy'))) push('a', '（測試：已略過前面的謎題）', ['legacy']);
+  }
+  $('#jumpP02').addEventListener('click', async () => {
+    menu.hidden = true;
+    if (busy || S.p2SeedAt) return;
+    skipP1(); S.phase = 'solved'; save(); updateHeader();
+    await seedP2();
+  });
+  $('#jumpP03').addEventListener('click', async () => {
+    menu.hidden = true;
+    if (busy || S.p3SeedAt) return;
+    skipP1();
+    const now = Date.now();
+    S.p2SeedAt = S.p2SeedAt || now; S.unlocked.v1 = true; S.p2SolvedAt = S.p2SolvedAt || now; S.p2Thanked = true; S.phase = 'p2_done';
+    save(); updateHeader();
+    await seedP3();
+  });
+  $('#jumpP04').addEventListener('click', async () => {
+    menu.hidden = true;
+    if (busy || S.p4SeedAt) return;
+    skipP1();
+    const now = Date.now();
+    S.p2SeedAt = S.p2SeedAt || now; S.unlocked.v1 = true; S.p2SolvedAt = S.p2SolvedAt || now; S.p2Thanked = true;
+    S.p3SeedAt = S.p3SeedAt || now; S.yoruAt = S.yoruAt || now; S.unlocked.nb = true; S.p3SolvedAt = S.p3SolvedAt || now; S.p3Thanked = true; S.phase = 'p3_done';
+    save(); updateHeader();
+    await seedP4();
+  });
+
+  function skipThroughP4() {
+    skipP1();
+    const now = Date.now();
+    S.p2SeedAt = S.p2SeedAt || now; S.unlocked.v1 = true; S.p2SolvedAt = S.p2SolvedAt || now; S.p2Thanked = true;
+    S.p3SeedAt = S.p3SeedAt || now; S.yoruAt = S.yoruAt || now; S.unlocked.nb = true; S.p3SolvedAt = S.p3SolvedAt || now; S.p3Thanked = true;
+    S.p4SeedAt = S.p4SeedAt || now; S.dAt = S.dAt || now; S.p4SolvedAt = S.p4SolvedAt || now; S.p4Thanked = true; S.phase = 'p4_done';
+  }
+  $('#jumpP05').addEventListener('click', async () => {
+    menu.hidden = true;
+    if (busy || (S.pz && S.pz.p5 && S.pz.p5.seed)) return;
+    skipThroughP4(); save(); updateHeader();
+    seedPZ('p5'); await say(SEED_P5); updateHeader(); renderSugs();
+  });
+  $('#jumpP10').addEventListener('click', async () => {
+    menu.hidden = true;
+    if (busy || isDone('p9')) return;
+    skipThroughP4();
+    S.unlocked.obs = true; S.unlocked.plan = true;
+    S.p9 = { at: Date.now(), m: SIM_M[1], e: 'PLAN-7F3', t: SIM_T[0], ok: true };
+    for (const k of ['p5', 'p6', 'p7', 'p8', 'p9']) { solvePZ(k); pz(k).thanked = true; }
+    S.phase = 'pz'; save(); updateHeader(); renderSugs();
+    push('sys', '（測試：已略過第二章，推演已提交）');
+  });
+
+  if (/debug/.test(location.hash)) window.__m = { detect: (t) => detect(t) };
+
+  $('#jumpEnd').addEventListener('click', () => {
+    menu.hidden = true;
+    applyImport(1, TS(Date.now()));
+    S.imported = false; S.phase = 'ended'; save(); updateHeader(); renderSugs();
+  });
+
+  async function start() {
+    renderAll(); updateHeader(); renderSugs();
+    if (S.msgs.length === 0) {
+      await say(['嗨嗨', '你是新來的嗎www', '咱是檸', '在這邊陪聊的（']);
+    } else if (S.solvedAt && !S.thanked) {
+      afterSolve();
+    } else if (S.p2SolvedAt && !S.p2Thanked) {
+      afterP2();
+    } else if (S.p3SolvedAt && !S.p3Thanked) {
+      afterP3();
+    } else if (S.p4SolvedAt && !S.p4Thanked) {
+      afterP4();
+    } else if (pendingPZ()) {
+      afterPZ();
+    } else if (S.finalRead && !S.finalStarted) {
+      finalStart();
+    }
+  }
+  function boot() {
+    renderAll(); updateHeader();
+    if (!S.flags.cw && !/debug/.test(location.hash)) { $('#cw').hidden = false; return; }
+    start();
+  }
+  function openLegal(sec) {
+    $('#legal').hidden = false; $('#legal').scrollTop = 0;
+    document.querySelectorAll('#legal section').forEach((x) => { x.hidden = x.dataset.sec !== sec; });
+    document.querySelectorAll('.legal-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.legal === sec));
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-legal]'); if (b) { e.preventDefault(); openLegal(b.dataset.legal); } });
+  $('#legalClose').addEventListener('click', () => { $('#legal').hidden = true; });
+  $('#mLegal').addEventListener('click', () => { menu.hidden = true; openLegal('terms'); });
+  $('#cwNext').addEventListener('click', () => { $('#cwIntro').hidden = true; $('#cwWarn').hidden = false; $('#cwWarn').scrollIntoView && $('#cwWarn').scrollIntoView(); });
+  $('#cwGo').addEventListener('click', () => { S.flags.cw = true; save(); $('#cw').hidden = true; start(); });
+  boot();
+})();
+</script>
+
+
+
+</body>
+</html>
