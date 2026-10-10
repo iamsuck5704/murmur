@@ -1,0 +1,7 @@
+{
+  "appId":"app.murmur.story",
+  "appName":"Murmur",
+  "webDir":"www",
+  "server":{"androidScheme":"https"},
+  "plugins":{}
+}
