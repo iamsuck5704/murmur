@@ -37,6 +37,8 @@
   --legacy: #E2AA6A; --legacy-bg: #2A2119; --legacy-line: #5A4329;
   color-scheme: dark;
 }
+/* Native [hidden] is otherwise overridden by later display:grid/flex rules. */
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -97,7 +99,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cw-box ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; line-height: 1.7; }
 .cw-box .btn { justify-self: start; padding: 10px 18px; }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%; }
-.toast { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 13px; background: var(--legacy-bg); color: var(--legacy); border-bottom: 1px solid var(--legacy-line); }
+.toast { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 13px; background: var(--legacy-bg); color: var(--legacy); border-bottom: 1px solid var(--legacy-line); }
 .toast button { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; text-underline-offset: 3px; font-size: 13px; }
 .nb-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: nb; }
 .nb-list li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; border-bottom: 1px dashed var(--line); padding-bottom: 10px; }
@@ -154,14 +156,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Viewer */
 .sheet { position: fixed; inset: 0; z-index: 20; display: flex; justify-content: flex-end; }
 .sheet-backdrop { position: absolute; inset: 0; background: rgba(10, 14, 18, .45); }
-.sheet-panel { position: relative; width: min(560px, 100%); height: 100%; background: var(--surface); border-left: 1px solid var(--line); display: grid; grid-template-rows: auto auto 1fr; padding-top: env(safe-area-inset-top, 0px); }
-.sheet-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.sheet-panel { position: relative; width: min(560px, 100%); height: 100%; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); box-sizing: border-box; }
+.sheet-head { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
 .sheet-head h2 { margin: 0; font-size: 15px; font-weight: 700; flex: 1; min-width: 0; }
-.searchbar { display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.searchbar { flex: 0 0 auto; display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
 .searchbar input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
 .searchbar input:focus { border-color: var(--accent); outline: none; }
 .searchbar button { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 0 12px; font-size: 13px; }
-.sheet-body { overflow-y: auto; padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 18px; align-content: start; }
+.sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 18px; align-content: start; }
 .back { justify-self: start; background: none; border: 0; padding: 0; color: var(--muted); font-size: 13px; }
 .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .doc-title { font-size: 19px; font-weight: 700; margin: 4px 0 0; text-wrap: balance; overflow-wrap: anywhere; }
@@ -2528,6 +2530,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
      v1.0：第二周目、加害者篇（App 版）、授權碼、F12 紅字
      ===================================================================== */
   const APP = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+  // URL hashes alone must never enable development skip controls on a public build.
+  const DEV_MODE = window.MURMUR_DEV === true && /debug/.test(location.hash);
   const NG = ['s1', 's2', 's3'], EP = ['e1', 'e2', 'e3', 'e4'];
   const pad3 = (n) => String(n).padStart(3, '0');
   function solveStage(list, k) {
@@ -3208,7 +3212,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     $('#mCode').hidden = !S.cleared;
     $('#mE').hidden = !(APP && (S.cleared || S.imported));
     $('#mImport').hidden = !APP;
-    $('#dbg').hidden = !/debug/.test(location.hash);
+    $('#dbg').hidden = !DEV_MODE;
   }
   $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); updateMenu(); menu.hidden = !menu.hidden; });
   document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) { menu.hidden = true; clearArm = 0; $('#mClear').textContent = '清除所有進度'; } });
@@ -3290,7 +3294,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     push('sys', '（測試：已略過第二章，推演已提交）');
   });
 
-  if (/debug/.test(location.hash)) window.__m = { detect: (t) => detect(t) };
+  if (DEV_MODE) window.__m = { detect: (t) => detect(t) };
 
   $('#jumpEnd').addEventListener('click', () => {
     menu.hidden = true;
@@ -3318,7 +3322,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   }
   function boot() {
     renderAll(); updateHeader();
-    if (!S.flags.cw && !/debug/.test(location.hash)) { $('#cw').hidden = false; return; }
+    if (!S.flags.cw && !DEV_MODE) { $('#cw').hidden = false; return; }
     start();
   }
   function openLegal(sec) {

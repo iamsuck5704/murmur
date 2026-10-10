@@ -1,6 +1,6 @@
 {
   "name": "murmur-native-preview",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "private": true,
   "description": "Murmur full first/second playthrough and perpetrator CMD archive, Android/iOS Capacitor build",
   "scripts": {
