@@ -343,3 +343,10 @@ body.murmur-backup-active{overflow:hidden}
 #backupRoot .bp-consent-article a{color:#a2edb9}
 #backupRoot .bp-consent-article table{display:block;overflow-x:auto}
 @media(max-width:360px){#backupRoot .bp-consent-card{padding:14px 11px}#backupRoot .bp-consent-actions{flex-direction:column}}
+
+/* v1.7.4: explicit opt-in choices and readable permission results */
+#backupRoot .bp-consent-permission-note{padding:12px;border:1px solid #52765d;background:#102119;white-space:normal}
+#backupRoot .bp-consent-actions{flex-wrap:wrap}
+#backupRoot .bp-consent-actions button{flex:1 1 165px;min-height:64px}
+#backupRoot .bp-consent-actions[hidden]{display:none!important}
+#backupRoot #bp-consent-status{white-space:pre-wrap;overflow-wrap:anywhere}

@@ -173,5 +173,5 @@
  window.addEventListener('murmur:native',e=>{if(!gate()||ctx.view!=='entry'||!prefs.capture||ctx.chapter<4)return;const type=e.detail?.type;if(type==='recording')text('你想把這些都留下來嗎。');if(type==='screenshot')text('你也想把它留下來嗎。')});
  window.addEventListener('murmur:epilogue',()=>{scheduleEpilogue()});
  document.addEventListener('visibilitychange',()=>{if(document.hidden){scheduleAway();stopCamera();armedMotion=false;window.removeEventListener('devicemotion',onMotion);if(lightSensor){lightSensor.stop();lightSensor=null}}else{stopAway()}});
- window.MurmurMeta={panel,stopCamera,diagnose,enableBundle,disableBundle,version:'1.7.3'};
+ window.MurmurMeta={panel,stopCamera,diagnose,enableBundle,disableBundle,version:'1.7.4'};
 })();
