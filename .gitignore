@@ -15,3 +15,5 @@ ios/
 .DS_Store
 __pycache__/
 *.pyc
+# Local-only developer identity: never commit private drafts.
+release/individual-profile.local.json

@@ -6,6 +6,11 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const pkg=JSON.parse(read('package.json'));
 const cap=JSON.parse(read('capacitor.config.json'));
 const issues=[], warnings=[];
+const dev=JSON.parse(read('release/developer.json'));
+if(dev.developerType!=='individual')issues.push('Expected personal developer account configuration');
+const version=JSON.parse(read('release/version.json'));
+if(version.versionName!==pkg.version || !Number.isInteger(version.buildNumber) || version.buildNumber<1)issues.push('Native version config invalid or inconsistent');
+if(dev.appId!==cap.appId)issues.push('Developer profile appId mismatch');
 if(!/^[a-z][\w]*(\.[a-z][\w]*){2,}$/.test(cap.appId))issues.push('Invalid native appId');
 if(cap.appId!=='app.murmur.story')issues.push('App ID differs from current Android/iOS signing setup');
 if(cap.webDir!=='www')issues.push('Native webDir must remain www');
@@ -15,6 +20,10 @@ for(const f of ['legal/privacy.html','legal/terms.html','legal/disclaimer.html']
  const s=read(f);
  if(/【[^】]*(待填|開發者|信箱|上架日期|聯絡|客服)[^】]*】/.test(s))issues.push(`${f}: unresolved developer/contact placeholders`);
  if(/草案/.test(s))warnings.push(`${f}: still describes a draft`);
+ const kind=path.basename(f,'.html');
+ const body=s.match(/<main(?:\s[^>]*)?>([\s\S]*?)<\/main>/i)?.[1]?.trim();
+ const modal=read('www/index.html').match(new RegExp(`<section data-sec="${kind}"(?: hidden)?>([\\s\\S]*?)<\\/section>`))?.[1]?.trim();
+ if(body!==modal)issues.push(`${f}: embedded in-game legal text is out of sync (run npm run sync:legal)`);
 }
 if(/【(?:開發者|客服|隱私|聯絡|上架日期|依法應揭露)[^】]*】/.test(read('www/index.html')))issues.push('www/index.html: embedded legal pages still contain placeholders');
 for(const f of ['www/perpetrator.js','www/meta-horror.js','www/index.html','www/store-links.js']) if(!fs.existsSync(path.join(root,f)))issues.push(`Missing ${f}`);

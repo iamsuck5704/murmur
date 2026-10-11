@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./sync-legal.cjs');
 // Capacitor points to www/. This is the canonical native bundle with P1/P2/P3.
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');

@@ -1,0 +1,35 @@
+name: iOS - simulator startup smoke
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulator-smoke:
+    runs-on: macos-15
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Regression tests
+        run: |
+          npm run build:web
+          npm run test:release
+          npm run test:individual
+          npm run test:smoke-config
+      - name: Prepare Capacitor iOS project
+        run: bash scripts/ios-ci-prepare.sh
+      - name: Compile, install and verify iPhone simulator startup
+        run: bash scripts/ios-simulator-smoke.sh
+      - name: Upload iOS diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Murmur-iOS-simulator-diagnostics
+          path: build-reports/ios-*
+          if-no-files-found: warn
+          retention-days: 14

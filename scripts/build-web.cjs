@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Single source: www/; public build: dist/web/. Never publish www/ directly.
+require('./sync-legal.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');

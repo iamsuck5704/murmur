@@ -3,10 +3,24 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - 'www/**'
+      - 'scripts/**'
+      - 'legal/**'
+      - 'release/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ios-build.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   ios:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,58 +29,67 @@ jobs:
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
-      - name: Build public website and check store links
+      - name: Web build and release regression tests
         run: |
           npm run build:web
           npm run test:release
-      - name: Run platform, journey, forensic and Meta Horror tests
-        run: |
+          npm run test:individual
+          npm run test:smoke-config
           node scripts/test-platform.cjs
           node scripts/test-transfer.cjs
           node scripts/test-journey.cjs
           node scripts/test-forensics.cjs
           node scripts/test-meta-horror.cjs
           python3 scripts/test-native-patches.py
-      - name: Generate iOS native project and copy assets
-        run: |
-          npx cap add ios
-          npx cap sync ios
-          python3 scripts/patch_ios.py
-      - name: Show Xcode environment
-        run: xcodebuild -version
-      - name: Build unsigned simulator app (always)
-        run: |
-          set -o pipefail
-          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -n 65
-      - name: Import distribution signing assets (optional)
+      - name: Prepare Capacitor iOS project
+        run: bash scripts/ios-ci-prepare.sh
+      - name: Build and launch unsigned iOS simulator app
+        run: bash scripts/ios-simulator-smoke.sh
+      - name: Import Apple distribution signing assets (optional)
         if: ${{ vars.ENABLE_IOS_SIGNED == 'true' }}
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          test -n "$BUILD_CERTIFICATE_BASE64" && test -n "$BUILD_PROVISION_PROFILE_BASE64"
-          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
-          echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/build.keychain-db"
-          security set-keychain-settings -lut 21600 "$RUNNER_TEMP/build.keychain-db"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/build.keychain-db"
-          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$RUNNER_TEMP/build.keychain-db"
-          security list-keychains -d user -s "$RUNNER_TEMP/build.keychain-db"
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/build.keychain-db"
+          for var in BUILD_CERTIFICATE_BASE64 P12_PASSWORD BUILD_PROVISION_PROFILE_BASE64 KEYCHAIN_PASSWORD APPLE_TEAM_ID; do
+            test -n "${!var:-}" || { echo "Missing required iOS signing secret: $var"; exit 1; }
+          done
+          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          printf '%s' "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          PROFILE_TEAM=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
+          test "$PROFILE_TEAM" = "$APPLE_TEAM_ID" || { echo 'Provisioning profile team ID mismatch'; exit 1; }
+          PROFILE_APP=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist")
+          test "$PROFILE_APP" = "$APPLE_TEAM_ID.app.murmur.story" || { echo 'Provisioning profile bundle ID mismatch'; exit 1; }
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/murmur.keychain-db"
+          security set-keychain-settings -lut 21600 "$RUNNER_TEMP/murmur.keychain-db"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/murmur.keychain-db"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$RUNNER_TEMP/murmur.keychain-db"
+          security list-keychains -d user -s "$RUNNER_TEMP/murmur.keychain-db"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/murmur.keychain-db"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp "$RUNNER_TEMP/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/"
-      - name: Build signed archive and IPA (optional)
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
+          cp "$RUNNER_TEMP/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+      - name: Archive and export signed IPA (optional)
         if: ${{ vars.ENABLE_IOS_SIGNED == 'true' }}
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' /dev/stdin <<< "$(security cms -D -i "$RUNNER_TEMP/profile.mobileprovision")")
-          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Murmur.xcarchive" DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" archive
-          cat > "$RUNNER_TEMP/export.plist" <<EOF
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")
+          mkdir -p build-reports
+          if ! xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Murmur.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" archive \
+            > build-reports/ios-archive.log 2>&1; then
+            tail -n 120 build-reports/ios-archive.log; exit 1
+          fi
+          cat > "$RUNNER_TEMP/export.plist" <<EOF_PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
@@ -75,11 +98,25 @@ jobs:
           <key>teamID</key><string>$APPLE_TEAM_ID</string>
           <key>provisioningProfiles</key><dict><key>app.murmur.story</key><string>$PROFILE_NAME</string></dict>
           </dict></plist>
-          EOF
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Murmur.xcarchive" -exportPath "$RUNNER_TEMP/ipa" -exportOptionsPlist "$RUNNER_TEMP/export.plist"
-      - uses: actions/upload-artifact@v4
+          EOF_PLIST
+          plutil -lint "$RUNNER_TEMP/export.plist"
+          if ! xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Murmur.xcarchive" \
+            -exportPath "$RUNNER_TEMP/ipa" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            > build-reports/ios-export.log 2>&1; then
+            tail -n 120 build-reports/ios-export.log; exit 1
+          fi
+      - name: Upload signed IPA (optional)
         if: ${{ vars.ENABLE_IOS_SIGNED == 'true' }}
+        uses: actions/upload-artifact@v4
         with:
           name: Murmur-iOS-IPA
           path: ${{ runner.temp }}/ipa/*.ipa
           if-no-files-found: error
+      - name: Upload iOS build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Murmur-iOS-build-diagnostics
+          path: build-reports/ios-*
+          if-no-files-found: warn
+          retention-days: 14

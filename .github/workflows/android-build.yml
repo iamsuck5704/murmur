@@ -24,6 +24,7 @@ jobs:
         run: |
           npm run build:web
           npm run test:release
+          npm run test:individual
       - name: Run platform, journey, forensic and Meta Horror tests
         run: |
           node scripts/test-platform.cjs
@@ -38,6 +39,7 @@ jobs:
           npx cap sync android
           python3 scripts/patch_android.py
           python3 scripts/patch_android_release.py
+          python3 scripts/set-native-version.py android
       - name: Prepare optional Android signing keystore
         if: ${{ vars.ENABLE_ANDROID_SIGNED == 'true' }}
         env:
@@ -76,7 +78,16 @@ jobs:
         with:
           name: Murmur-Android-debug-APK
           path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
+        if: ${{ vars.ENABLE_ANDROID_SIGNED != 'true' }}
         with:
-          name: Murmur-Android-release-AAB-check-signature-before-upload
+          name: Murmur-Android-UNSIGNED-AAB-NOT-FOR-PLAY
           path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ vars.ENABLE_ANDROID_SIGNED == 'true' }}
+        with:
+          name: Murmur-Android-SIGNED-AAB-verify-in-Play-Console
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
