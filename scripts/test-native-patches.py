@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory() as temp:
     for imp in ['android.app.Activity','android.os.Build','android.view.WindowManager','java.util.function.Consumer']:
         assert s.count('import '+imp+';')==1,imp
     x=manifest.read_text()
-    for perm in ['DETECT_SCREEN_CAPTURE','DETECT_SCREEN_RECORDING','RECORD_AUDIO','CAMERA','ACCESS_COARSE_LOCATION']:
+    for perm in ['DETECT_SCREEN_CAPTURE','DETECT_SCREEN_RECORDING','RECORD_AUDIO','CAMERA','ACCESS_COARSE_LOCATION','ACCESS_FINE_LOCATION']:
         assert x.count('android.permission.'+perm)==1,(perm,x)
     s=delegate.read_text()
     assert s.count('murmurObserveCapture()')==2

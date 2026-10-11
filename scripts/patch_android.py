@@ -133,6 +133,7 @@ if '<application' not in m:
 permissions = [
     'android.permission.RECORD_AUDIO', 'android.permission.CAMERA',
     'android.permission.ACCESS_COARSE_LOCATION',
+    'android.permission.ACCESS_FINE_LOCATION',
     'android.permission.DETECT_SCREEN_CAPTURE',
     'android.permission.DETECT_SCREEN_RECORDING',
 ]

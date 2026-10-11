@@ -1,4 +1,4 @@
-/* Murmur v1.6.6 META control: optional, on-device, foreground only. No analytics or uploads. */
+/* Murmur v1.7.3 META control: optional, on-device, foreground only. No analytics or uploads. */
 (function(){'use strict';
  const KEY='murmur_meta_v12';let prefs={camera:false,location:false,light:false,motion:false,weather:false,notifications:false,capture:false,icon:false};
  try {prefs={...prefs,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(_){ }
@@ -110,6 +110,48 @@
   }catch(e){if(active())diagText(desc+'測試：失敗（'+String(e?.name||'unknown')+'）。請檢查系統權限及 WebView 授權。')}
   finally{stream?.getTracks().forEach(t=>t.stop())}
  }
+ function disableBundle(){
+  Object.keys(prefs).forEach(k=>prefs[k]=false);save();
+  stopCamera();armedMotion=false;window.removeEventListener('devicemotion',onMotion);
+  if(lightSensor){try{lightSensor.stop()}catch(_){}lightSensor=null}
+  cancelNotifications();
+ }
+ // Entry consent is one explicit user action. Android/iOS still decide each runtime grant.
+ // Camera/microphone streams are stopped immediately; geolocation is not sent anywhere here.
+ async function enableBundle(report=()=>{}){
+  const result={camera:false,microphone:false,location:false,notifications:false};
+  if(!isNativeApp()){report('只有原生 App 可以啟用裝置效果。');return result;}
+  const active=()=>ctx.open&&!document.hidden;
+  for(const kind of ['camera','microphone']){
+   const label=kind==='camera'?'相機':'麥克風';report('正在詢問'+label+'權限…');
+   let stream;
+   try{
+    if(!active())break;
+    if(!navigator.mediaDevices?.getUserMedia)throw new Error('WebView API unavailable');
+    stream=await navigator.mediaDevices.getUserMedia(kind==='camera'?{video:{facingMode:'user'},audio:false}:{video:false,audio:true});
+    result[kind]=true;
+   }catch(e){report(label+'未授權（'+String(e?.name||e?.message||'unknown')+'），可到 Android 設定重新開啟。')}
+   finally{stream?.getTracks().forEach(t=>t.stop())}
+  }
+  if(active()){
+   report('正在詢問定位權限…');
+   result.location=await new Promise(resolve=>{
+    if(!navigator.geolocation){resolve(false);return}
+    navigator.geolocation.getCurrentPosition(()=>resolve(true),()=>resolve(false),{enableHighAccuracy:false,timeout:12000,maximumAge:0});
+   });
+  }
+  if(active()){
+   report('正在詢問通知權限…');
+   try{result.notifications=await notifyConsent()}catch(_){result.notifications=false}
+  }
+  // Keep declined OS permissions disabled even if the initial opt-in was selected.
+  prefs.camera=result.camera;prefs.location=result.location;prefs.weather=result.location;
+  prefs.notifications=result.notifications;
+  prefs.capture=true;prefs.motion=(typeof DeviceMotionEvent!=='undefined');
+  prefs.light=('AmbientLightSensor' in window);prefs.icon=false;save();
+  report('相機 '+(result.camera?'允許':'未啟用')+'／麥克風 '+(result.microphone?'允許':'未啟用')+'／定位 '+(result.location?'允許':'未啟用')+'／通知 '+(result.notifications?'允許':'未啟用'));
+  return result;
+ }
  const permissionExplanations={
   camera:'前鏡頭鏡子：僅在指定日記內開啟即時前鏡頭預覽，關閉頁面立即停止。不拍照、不錄影、不上傳。系統可能會再詢問相機權限。拒絕不影響通關。',
   location:'E5 排序完成後的行政區演出：另外徵求同意才取得一次約略位置，並向 OpenStreetMap Nominatim 傳送四捨五入的座標以取得行政區。不保留座標。拒絕不影響通關。',
@@ -131,5 +173,5 @@
  window.addEventListener('murmur:native',e=>{if(!gate()||ctx.view!=='entry'||!prefs.capture||ctx.chapter<4)return;const type=e.detail?.type;if(type==='recording')text('你想把這些都留下來嗎。');if(type==='screenshot')text('你也想把它留下來嗎。')});
  window.addEventListener('murmur:epilogue',()=>{scheduleEpilogue()});
  document.addEventListener('visibilitychange',()=>{if(document.hidden){scheduleAway();stopCamera();armedMotion=false;window.removeEventListener('devicemotion',onMotion);if(lightSensor){lightSensor.stop();lightSensor=null}}else{stopAway()}});
- window.MurmurMeta={panel,stopCamera,diagnose,version:'1.6.6'};
+ window.MurmurMeta={panel,stopCamera,diagnose,enableBundle,disableBundle,version:'1.7.3'};
 })();
