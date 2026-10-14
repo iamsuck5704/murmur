@@ -3,6 +3,7 @@
 require('./sync-legal.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const root = path.resolve(__dirname, '..');
 const src = path.join(root, 'www');
 const out = path.join(root, 'dist', 'web');
@@ -22,7 +23,15 @@ if (!index.includes("window.Capacitor.isNativePlatform()")) {
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 let html = index;
-for (const tag of nativeAssets) html = html.replace(tag, '');
+// The public website keeps P1/P2 for ordinary visitors. An explicit QA search
+// unlocks the P3 archive in this browser only. The code is intentionally public.
+const qaCode = 'MURMUR-QA-123012301230';
+const qaHash = crypto.createHash('sha256').update(qaCode).digest('hex');
+const bootstrap = `<script>window.MURMUR_TESTER_WEB=true;window.MURMUR_APP_PREVIEW=true;window.MURMUR_TESTER_AUTO_OPEN=false;window.MurmurTesterGate=(()=>{let unlocked=false;const expected='${qaHash}';return Object.freeze({isUnlocked:()=>unlocked,verify:async code=>{if(!/^MURMUR-QA-[A-Z0-9]{12,40}$/.test(code)||!globalThis.crypto?.subtle)return false;const digest=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(code));const actual=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');unlocked=actual===expected;return unlocked;}})})();</script>`;
+html = html.replace('<script src="perpetrator.js"></script>', bootstrap + '\n<script src="perpetrator.js"></script>');
+for (const name of ['perpetrator.js','perpetrator.css','meta-horror.js','meta-horror.css']) {
+  fs.copyFileSync(path.join(src,name),path.join(out,name));
+}
 // Strip obsolete inline third-playthrough archive from the public artifact.
 // The native app keeps this legacy block for old-save compatibility.
 const startMarker = '    /* BEGIN_NATIVE_LEGACY_ARCHIVE: excluded from public web build */';
@@ -46,13 +55,10 @@ for (const name of ['privacy.html', 'terms.html', 'disclaimer.html']) {
 }
 fs.writeFileSync(path.join(out, '_headers'),
   '/index.html\n  Cache-Control: no-cache\n\n/*\n  X-Content-Type-Options: nosniff\n', 'utf8');
+// Do not ship stand-alone developer previews or the old inline archive.
 for (const file of fs.readdirSync(out)) {
-  if (/perpetrator|meta-horror|preview/i.test(file)) {
-    throw new Error(`Private native-only asset leaked to web build: ${file}`);
-  }
+  if (/^preview/i.test(file)) throw new Error(`Developer preview leaked to public web: ${file}`);
 }
-if (/perpetrator\.js|meta-horror\.js|perpetrator\.css|BEGIN_NATIVE_LEGACY_ARCHIVE/.test(html)) {
-  throw new Error('Native-only references leaked into web HTML');
-}
-console.log('Web P1/P2 ready:', out);
+if (/BEGIN_NATIVE_LEGACY_ARCHIVE/.test(html)) throw new Error('Legacy inline archive leaked');
+console.log('Web P1/P2 + explicit QA-code P3 ready:', out);
 console.log('Cloudflare Pages: build command = npm run build:web; output directory = dist/web');

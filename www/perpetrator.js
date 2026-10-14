@@ -151,7 +151,7 @@
     try { const s=JSON.parse(localStorage.getItem('murmur_p01_v7')||'{}'); return !!(s && s.cleared2); }
     catch (_) { return false; }
   }
-  const canEnter = () => (isNativeApp() && mainIsCleared()) || PREVIEW;
+  const canEnter = () => (isNativeApp() && mainIsCleared()) || (PREVIEW && window.MurmurTesterGate?.isUnlocked() === true);
   const root=document.createElement('section');
   root.id='backupRoot'; root.hidden=true; root.setAttribute('role','dialog'); root.setAttribute('aria-modal','true');
   root.setAttribute('aria-label','Murmur 加害者篇手機備份'); document.body.appendChild(root);
@@ -723,6 +723,6 @@
   });
   document.addEventListener('click', e=>{ const b=e.target.closest && e.target.closest('#mE, #openNativeArchive'); if(!b) return; if(open()){ e.preventDefault(); e.stopImmediatePropagation(); const menu=document.getElementById('menu'); if(menu) menu.hidden=true; if(b.id==='openNativeArchive'){ const sheet=document.getElementById('sheet'); if(sheet) sheet.hidden=true; } } }, true);
   document.addEventListener('keydown', e=>{ if(root.hidden || e.key!=='Escape') return; e.preventDefault(); back(); });
-  if(PREVIEW) requestAnimationFrame(()=>open());
+  if(PREVIEW && window.MURMUR_TESTER_AUTO_OPEN === true) requestAnimationFrame(()=>open());
   window.MurmurBackupPreview=Object.freeze({open,close,enableSessionMicrophone:()=>{state.microphone=true;soundApprovedThisSession=true;save();},getStatus:()=>({unlocked:state.unlocked,completed:[...state.completed],visited:structuredClone(state.visited),puzzles:structuredClone(state.puzzles)})});
 })();

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-Hant" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="google" content="notranslate">
+<title>Murmur · CMD 風格手機備份預覽</title>
+<link rel="stylesheet" href="perpetrator.css">
+<style>
+html,body{margin:0;min-height:100%;background:#080d0d;color:#dbefe0;font-family:'Noto Sans TC','Noto Sans CJK TC',system-ui,sans-serif}
+.preview-info{max-width:480px;margin:10vh auto;padding:25px;line-height:1.9}
+.preview-info button{border:1px solid #56866a;color:#b8edc7;background:#15271a;border-radius:2px;padding:13px 19px;font:inherit}
+.preview-info p{color:#a7c1ab}
+</style>
+<link rel="stylesheet" href="meta-horror.css">
+</head>
+<body>
+<main class="preview-info">
+<h1>&gt; MURMUR / 7F3_BACKUP.CMD</h1>
+<p>這是加害者篇的「CMD 風格獨立介面預覽」，含完整 v0.5 加害者篇劇情與新增演出。可以直接用手機瀏覽器測試，不需要通關第一周目。</p>
+<button type="button" id="openBackup">[OPEN] 讀取備份</button>
+</main>
+<script>window.MURMUR_APP_PREVIEW=true;</script>
+<script src="meta-horror.js"></script>
+<script src="perpetrator.js"></script>
+<script>document.getElementById('openBackup').addEventListener('click',function(){window.MurmurBackupPreview.open()});</script>
+</body>
+</html>

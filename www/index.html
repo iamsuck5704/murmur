@@ -2555,6 +2555,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   /* =====================================================================
      v1.0：第二周目、加害者篇（App 版）、授權碼、F12 紅字
      ===================================================================== */
+  const TESTER_WEB = window.MURMUR_TESTER_WEB === true;
   const APP = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
   // URL hashes alone must never enable development skip controls on a public build.
   const DEV_MODE = window.MURMUR_DEV === true && /debug/.test(location.hash);
@@ -2769,6 +2770,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
     'APPCODE': () => {
       const flag = S.cleared2 ? 2 : 1;
+      if (TESTER_WEB && S.cleared2) return head('測試人員專用', 'participant_7f3 · 測試入口') + `<div class="doc-body"><p>已完成第二周目。此入口只供受邀測試人員使用，請輸入獨立測試授權碼。</p><form class="lockform" id="testerAccessForm" autocomplete="off"><input id="testerAccessCode" type="password" autocomplete="off" placeholder="MURMUR-QA-…" aria-label="測試授權碼"><button type="submit">驗證並開啟</button></form><p class="docnote" id="testerAccessMsg" role="status"></p></div>`;
       if (APP) return head('原始資料', 'participant_7f3 · 手機備份') + (S.cleared2 ? `<div class="doc-body"><p>這份唯讀手機備份已收錄在 Murmur App。</p><button type="button" class="btn" id="openNativeArchive">開啟手機備份</button></div>` : `<div class="doc-body"><p>原始資料尚未解鎖。請先完成第二周目。</p></div>`);
       return head('原始資料 · 不在這裡', 'participant_7f3 · 手機備份') +
         `<div class="doc-body"><p>她的手機備份沒有存在這個網站。</p><p>你可以在 Murmur App 裡打開它。App 裡也有這裡的全部內容；如果你已經在這裡走到結局，輸入下面的分支授權碼，就能直接接著看。</p></div>` +
@@ -2991,9 +2993,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
   $('#idxOpen').addEventListener('click', () => { $('#idxToast').hidden = true; go('NEWIDX'); });
   $('#sheetBackdrop').addEventListener('click', closeSheet);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
-  $('#searchForm').addEventListener('submit', (e) => {
+  // Tester-only shortcut: the investigation search bar accepts a QA code.
+  // Never runs in public Web or native builds. No QA token is saved or shown in results.
+  $('#searchForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const q = $('#searchInput').value;
+    const q = $('#searchInput').value.trim();
+    if (TESTER_WEB && /^MURMUR-QA-/i.test(q)) {
+      $('#searchInput').value = '';
+      const gate = window.MurmurTesterGate;
+      const ok = gate && await gate.verify(q.toUpperCase());
+      if (!ok) {
+        body.innerHTML = head('測試授權', '驗證失敗') + '<p class="note" role="status">測試授權碼無效，請向測試負責人確認。</p>';
+        return;
+      }
+      if (!S.cleared2) applyImport(2, Math.floor(Date.now() / 1000));
+      sheet.hidden = true;
+      menu.hidden = true;
+      updateMenu();
+      window.MurmurBackupPreview?.open();
+      return;
+    }
     const r = resolve(q);
     if (!r) return;
     go(r.open ? r.open : 'search:' + q.trim());
@@ -3250,6 +3269,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
   $('#mNG').addEventListener('click', () => { menu.hidden = true; startNG(); });
   $('#mCode').addEventListener('click', () => { menu.hidden = true; openViewer('APPCODE'); });
   $('#mImport').addEventListener('click', () => { menu.hidden = true; openViewer('IMPORT'); });
+  document.addEventListener('submit', async (ev) => {
+    if (ev.target?.id !== 'testerAccessForm') return;
+    ev.preventDefault();
+    const msg = document.getElementById('testerAccessMsg');
+    const code = document.getElementById('testerAccessCode')?.value.trim().toUpperCase() || '';
+    if (!TESTER_WEB || !S.cleared2 || !window.MurmurTesterGate) { if(msg)msg.textContent='測試入口不可用。'; return; }
+    const ok = await window.MurmurTesterGate.verify(code);
+    if (!ok) { if(msg)msg.textContent='測試授權碼無效。'; return; }
+    if (msg)msg.textContent='已驗證，正在開啟測試篇章。';
+    window.MurmurBackupPreview?.open();
+  });
   $('#mE').addEventListener('click', () => { menu.hidden = true; if (!APP || !S.cleared2) return; if (!pz('e1').seed) seedPZ('e1'); openViewer('E-ROOT'); horror('e'); });
   let clearArm = 0;
   $('#mClear').addEventListener('click', (e) => {

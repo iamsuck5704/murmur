@@ -7,7 +7,9 @@ assert(source.includes('<script src="store-links.js"></script>'));
 assert(web.includes('<script src="store-links.js"></script>'));
 assert(fs.existsSync(path.join(root,'dist/web/store-links.js')));
 assert(source.includes('storeLinksMarkup()'));
-assert(!web.includes('<script src="perpetrator.js"></script>'));
+assert(web.includes('<script src="perpetrator.js"></script>'));
+assert(web.includes('window.MURMUR_TESTER_WEB=true'));
+assert(!web.includes('MURMUR-QA-123012301230')); // only the digest is embedded
 const sandbox={window:{}};
 vm.runInNewContext(fs.readFileSync(path.join(root,'www/store-links.js'),'utf8'),sandbox);
 assert.equal(sandbox.window.MURMUR_STORES.android,null);

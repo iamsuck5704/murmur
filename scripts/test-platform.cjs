@@ -12,10 +12,11 @@ assert.equal(get({isNativePlatform:()=>false}),false);
 assert.equal(get({isNativePlatform:()=>true}),true);
 const web=path.join(root,'dist','web');
 assert(fs.existsSync(path.join(web,'index.html')),'Build web first');
-for(const f of ['perpetrator.js','perpetrator.css','meta-horror.js','meta-horror.css','preview.html','preview-standalone.html']){
+for(const f of ['preview.html','preview-standalone.html']){
   assert(!fs.existsSync(path.join(web,f)),`Web includes native file: ${f}`);
 }
 const webHTML=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(!/perpetrator\.js|meta-horror\.js/.test(webHTML));
+assert(/perpetrator\.js|meta-horror\.js/.test(webHTML));
+assert(webHTML.includes('window.MURMUR_TESTER_WEB=true')); // public opt-in QA gate
 assert(webHTML.includes('makeCode(flag)'),'Branch code must remain');
 console.log('Platform gating + web/native separation checks passed.');

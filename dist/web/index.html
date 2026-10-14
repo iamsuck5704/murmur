@@ -220,8 +220,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 </style>
-
-
+<link rel="stylesheet" href="perpetrator.css">
+<link rel="stylesheet" href="meta-horror.css">
 <script src="store-links.js"></script>
 </head>
 <body>
@@ -328,24 +328,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
         <button type="button" data-legal="privacy">隱私政策</button>
         <button type="button" data-legal="disclaimer">免責聲明</button>
       </div>
+      <a id="legalPermalink" href="https://murmur1.pages.dev/terms/" target="_blank" rel="noopener noreferrer" style="font-size:.8rem;margin-inline:8px">獨立網址 ↗</a>
       <button type="button" class="icon-btn" id="legalClose">關閉</button>
     </div>
     <div class="legal-body">
       <section data-sec="terms">
 <h1>Murmur 使用條款</h1>
-<p><strong>版本：</strong> 草案 1.7.5｜<strong>更新日期：</strong> 2026-10-10｜<strong>生效日期：</strong>【上架日期待填】</p>
-<p><strong>提供者：</strong>【開發者／公司完整名稱】（以下稱「我們」）｜<strong>電子郵件：</strong>【客服與隱私聯絡信箱】｜<strong>所在地：</strong>【依法應揭露之營業資訊】</p>
+<p><strong>版本：</strong> 草案 1.7.1｜<strong>更新日期：</strong> 2026-10-12｜<strong>生效日期：</strong>2026-10-12</p>
+<p><strong>提供者：</strong>Murmur（由個人開發者經營）（以下稱「我們」）｜<strong>電子郵件：</strong>moku6366@gmail.com｜<strong>其他法定營業資訊：</strong>正式發行前依適用法規補充</p>
 <blockquote>
 <p>上架前必須填妥方括號欄位並由熟悉實際發行地法規的專業人士審閱。這份草案不構成律師意見。</p>
 </blockquote>
+<p>「Murmur」為對外使用的服務名稱，並非已登記公司名稱；正式上架前仍須核對法定揭露資料與商店開發者身分。</p>
 <h2>一、服務性質與適用範圍</h2>
 <p>Murmur 是虛構的互動式心理恐怖、聊天敘事與 ARG 解謎作品，可能包含第一、第二周目及通關後的加害者篇。內容中出現的裝置備份、檔案、時間、訊息、通知與角色均為戲劇性表現，除經明確告知的裝置互動外，不表示有人實際監控玩家。使用本作前請閱讀本條款、隱私政策與內容警示。使用者對個別選用的裝置權限另行決定，不以同意條款代替權限同意。</p>
 <h2>二、適用年齡與內容分級</h2>
 <p>本作含心理恐怖、情緒操縱、跟蹤／控制、親密關係暴力、失落、強迫性文字、自傷相關非方法性描述與令人不安的音畫效果。<strong>建議 18 歲以上</strong>。最終分級以各商店審查與適用地區分級制度為準；未成年人不得以不實資訊規避商店年齡限制。家長應評估適齡性。</p>
 <h2>三、授權範圍</h2>
 <p>在遵守本條款與法律前提下，我們授予使用者有限、非專屬、不可轉讓、可撤銷的個人使用授權。著作權、商標、劇情、美術、音訊與程式的權利歸權利人所有。法律允許的備份、合理使用及其他法定權利不因本條款而受剝奪。實況、評論與非商業同人創作可在不冒充官方、不洩漏他人隱私的前提下進行；商業授權請聯絡我們。</p>
-<h2>四、沉浸式演出與裝置權限</h2>
-<p>遊戲可能包含沉浸式心理恐怖、畫面與音效變化，以及明確選用的裝置互動。可能使用使用者<strong>主動啟用</strong>的麥克風音量分析等功能。拒絕選用權限不影響主要劇情完成；系統級權限可隨時撤回。請勿誤將劇情台詞當作真實警告、官方安全通知或專業建議。系統安全提示不會被本作偽裝或攔截。</p>
+<h2>四、遊戲與 Meta Horror 的同意</h2>
+<p>遊戲可能在特定時機顯示虛構的監視、重複訊息、資料錯置、假故障、螢幕扭曲、震動、時間提示、檔案重讀變化等效果。可能使用使用者<strong>主動啟用</strong>的麥克風音量分析等功能。拒絕選用權限不影響主要劇情完成；系統級權限可隨時撤回。請勿誤將劇情台詞當作真實警告、官方安全通知或專業建議。系統安全提示不會被本作偽裝或攔截。</p>
 <h2>五、使用者責任與禁止行為</h2>
 <p>請在安全環境遊玩，不得於駕駛、騎乘、穿越道路或操作危險機具時使用。不得以手機撞擊頭部、身體、牆面或其他物體，不得因故事提示執行任何危險行為。不得以本作進行騷擾、散布個資、冒用身份、惡意攻擊或侵犯第三方權利。請勿在遊戲內輸入密碼、身分證號、真實地址、銀行資料或他人的敏感資訊。</p>
 <h2>六、遊戲資料與設備</h2>
@@ -359,26 +361,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <h2>十、免責與責任限制</h2>
 <p>我們將以合理注意義務維護作品，但在法律容許範圍內，不保證所有裝置都無錯誤、不中斷或完全相容。對於不可歸責於我們的第三方故障、使用者自行違反安全提醒、非預期網路中斷等，依法律判斷責任。<strong>本條款不免除我們因故意、重大過失、違反法定安全義務或其他依法不得排除的責任，也不排除消費者依法享有的權利。</strong> 若有爭議，將依實際損害、因果關係、可歸責性及強制法規處理，而非預先概括免責。</p>
 <h2>十一、智慧財產、侵權與申訴</h2>
-<p>如認為本作侵害權利，請透過【聯絡信箱】提供具體資料。經查證後得依法修正或移除內容。使用者對作品的評論與批評不因此受不當限制。</p>
+<p>如認為本作侵害權利，請透過moku6366@gmail.com提供具體資料。經查證後得依法修正或移除內容。使用者對作品的評論與批評不因此受不當限制。</p>
 <h2>十二、終止與資料刪除</h2>
 <p>使用者可停止遊玩、關閉選用權限、於設定中清除加害者篇進度或刪除 App。第一、第二周目資料另依遊戲選單的清除功能處理。解除安裝通常會移除 App 沙盒資料，但作業系統備份或平台保留的資料不一定同步消除，應依系統設定管理。</p>
 <h2>十三、條款變更</h2>
 <p>我們可能更新條款；重大變更將在合理可行範圍內於 App 或官方發布管道通知。依法須取得同意的變更將另行取得同意。更新後日期將同步修正。</p>
 <h2>十四、準據法、消費者權利與爭議處理</h2>
-<p>在不違反適用的強制性消費者保護、個資與管轄規範下，以中華民國（臺灣）法律為準據法。雙方先透過【聯絡信箱】協商；法院管轄依法律規定，不以定型化條款剝奪消費者法定管轄權。</p>
+<p>在不違反適用的強制性消費者保護、個資與管轄規範下，以中華民國（臺灣）法律為準據法。雙方先透過moku6366@gmail.com協商；法院管轄依法律規定，不以定型化條款剝奪消費者法定管轄權。</p>
 <h2>十五、聯絡資訊</h2>
-<p>【開發者名稱】｜【客服／隱私信箱】｜【其他依法應揭露的商業資訊】</p>
-<h2>加害者篇首次進入與選用權限</h2><p>首次進入加害者篇時，遊戲會提供使用條款、隱私政策與免責聲明全文。玩家可以選擇只接受條款，或另行嘗試啟用相機、麥克風、約略位置及通知。<strong>接受條款不代表授予系統權限</strong>；系統會分別處理權限請求，玩家可以拒絕，且拒絕不影響通關。其他裝置感測功能需另外主動選擇，所有權限均可事後撤回。</p>
+<p>Murmur（個人開發者）｜moku6366@gmail.com｜其他依法須揭露的資訊將於正式發行前依適用法規補充</p>
 
 </section>
 
       <section data-sec="privacy" hidden>
 <h1>Murmur 隱私政策</h1>
-<p><strong>版本：</strong> 草案 1.7.5｜<strong>更新日期：</strong> 2026-10-10｜<strong>生效日期：</strong>【上架日期待填】</p>
-<p><strong>資料控制者：</strong>【開發者／公司完整名稱】｜<strong>聯絡信箱：</strong>【隱私聯絡信箱】｜<strong>聯絡地址：</strong>【依法應揭露之地址或聯絡方式】</p>
+<p><strong>版本：</strong> 草案 1.7.1｜<strong>更新日期：</strong> 2026-10-12｜<strong>生效日期：</strong>2026-10-12</p>
+<p><strong>資料控制者：</strong>Murmur（由個人開發者經營）｜<strong>聯絡信箱：</strong>moku6366@gmail.com｜<strong>其他法定聯絡資訊：</strong>正式發行前依適用法規補充</p>
 <blockquote>
-<p>本政策描述 v1.7.8 程式設計與可選功能。相機、定位、天氣、通知、動作、環境光與截圖／錄影事件是否可用，仍取決於裝置、系統權限及原生建置；尚未完成全平台實機驗證。正式上架前須依實際安裝的 SDK、權限、網路封包及商店設定逐項更新。</p>
+<p>本政策描述 v1.7.1 程式設計與可選功能。相機、定位、天氣、通知、動作、環境光與截圖／錄影事件是否可用，仍取決於裝置、系統權限及原生建置；尚未完成全平台實機驗證。正式上架前須依實際安裝的 SDK、權限、網路封包及商店設定逐項更新。</p>
 </blockquote>
+<p>「Murmur」為本服務的對外名稱，並非宣稱已登記之公司名稱。實際個人開發者身分將依適用法令與上架平台規定提供；隱私相關請求可寄至上述信箱。</p>
 <h2>一、範圍與基本原則</h2>
 <p>Murmur 是虛構敘事遊戲，不要求建立帳號。設計原則為本機優先、最少權限、選用感測、清楚告知、可撤回及不以權限作為通關門檻。本政策適用 App 內遊戲功能；App Store、Google Play、GitHub 或網站主機的獨立資料處理依各平台政策。</p>
 <h2>二、目前處理的資料類型與目的</h2>
@@ -409,7 +411,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 </tr>
 <tr>
   <td>檔案開啟次數、閱讀事件</td>
-  <td>遊戲內互動及呈現</td>
+  <td>重讀變化、Meta Horror 演出</td>
   <td>裝置本機</td>
   <td>本版本不傳送</td>
   <td>同上</td>
@@ -435,18 +437,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
   <td>本版本不傳送</td>
   <td>不保存截圖、錄影檔或影像內容</td>
 </tr>
-<tr><td>前鏡頭即時影像（選用）</td><td>玩家同意時提供前鏡頭即時預覽</td><td>僅裝置前景即時預覽</td><td>遊戲程式不傳送影像</td><td>關閉預覽或離開頁面即停止</td></tr>
-<tr><td>大略位置與行政區（選用）</td><td>玩家再次同意時查詢約略行政區</td><td>約略座標送 OpenStreetMap Nominatim</td><td>不送遊戲伺服器，但第三方接收請求</td><td>遊戲不保存座標；第三方可能記錄 IP、查詢資料</td></tr>
+<tr><td>前鏡頭即時影像（選用）</td><td>特定日記鏡子效果</td><td>僅裝置前景即時預覽</td><td>遊戲程式不傳送影像</td><td>關閉鏡子或離開場景即停止</td></tr>
+<tr><td>大略位置與行政區（選用）</td><td>E5 排序完成後顯示行政區</td><td>約略座標送 OpenStreetMap Nominatim</td><td>不送遊戲伺服器，但第三方接收請求</td><td>遊戲不保存座標；第三方可能記錄 IP、查詢資料</td></tr>
 <tr><td>大略位置與天氣（選用）</td><td>查詢當下是否下雨</td><td>約略座標送 Open-Meteo</td><td>第三方接收查詢</td><td>遊戲不保存座標；第三方依其政策處理</td></tr>
-<tr><td>本機劇情通知（選用）</td><td>可選的虛構本機訊息</td><td>裝置本機排程</td><td>遊戲不主動遠端推播</td><td>可關閉並取消尚未發送的通知</td></tr>
+<tr><td>本機劇情通知（選用）</td><td>離開後與結局後的虛構訊息</td><td>裝置本機排程</td><td>遊戲不主動遠端推播</td><td>可關閉並取消尚未發送的通知</td></tr>
 </tbody>
 </table>
 <h2>三、麥克風權限的具體說明</h2>
-<p>此功能<strong>預設關閉</strong>。玩家可在首次進入時主動選擇啟用麥克風，或在設定中另外啟用並同意本次使用。系統權限仍由作業系統逐項確認。僅在 App 前景、玩家啟用且需要音量功能的閱讀頁面運作，離開頁面、切換背景、開啟實況模式或關閉功能即停止音訊串流。僅以即時音訊取樣估算音量強度與持續時間，不做語音辨識、聲紋比對、逐字稿、錄音、背景收音、儲存或上傳。持續聲音可能來自電視、音樂、風扇等，劇情台詞不是對現實情境的準確判斷。系統可能顯示麥克風使用指示燈。</p>
+<p>此功能<strong>預設關閉</strong>。玩家須先在加害者篇設定啟用，再按「本次遊玩允許環境聲量演出」，系統才可能要求麥克風權限。僅在 App 前景、加害者篇 E4／E5 的閱讀頁面運作，離開頁面、切換背景、開啟實況模式或關閉功能即停止音訊串流。僅以即時音訊取樣估算音量強度與持續時間，不做語音辨識、聲紋比對、逐字稿、錄音、背景收音、儲存或上傳。持續聲音可能來自電視、音樂、風扇等，劇情台詞不是對現實情境的準確判斷。系統可能顯示麥克風使用指示燈。</p>
 <h2>四、螢幕擷取事件</h2>
 <p>玩家另行啟用「截圖／錄影劇情反應」後，若平台支援，App 可能得知使用者<strong>在本 App 畫面</strong>截圖，或目前畫面正被錄製／投放的狀態，用以顯示虛構台詞。偵測能力依 iOS／Android 版本、裝置與平台 API 而異；並非所有螢幕錄影都可偵測。不存取圖片、影片內容、相簿或其他 App 的擷取內容。實況模式可停用此類演出。</p>
 <h2>五、其他可選裝置效果與第三方</h2>
-<p>前鏡頭、定位、天氣、通知、環境亮度與動作感測均預設關閉；啟用時會先告知用途，可能再出現系統授權。拒絕不影響通關。位置相關功能僅在玩家另外確認後使用，取得的約略座標（小數點後兩位）會傳送至 OpenStreetMap Nominatim 查詢行政區；天氣效果則會向 Open-Meteo 傳送約略座標。這些第三方可能依其隱私政策處理請求 IP 與相關紀錄，遊戲本身不保存定位歷史。動作感測在支援的 Android 與 iOS 裝置上，會在玩家主動啟用並開始監聽後，以原生感測器讀取加速度及陀螺儀角速度；環境光僅在具備光線感測器的 Android 裝置提供，iOS 不提供公開環境光線感測 API。感測數值不儲存或上傳，離開相關畫面或 App 進入背景後會停止讀取。App 圖示切換尚未啟用。</p>
+<p>前鏡頭、定位、天氣、通知、環境亮度與動作感測均預設關閉；啟用時會先告知用途，可能再出現系統授權。拒絕不影響通關。E5 定位演出只在完成最後排序後詢問，取得的約略座標（小數點後兩位）會傳送至 OpenStreetMap Nominatim 查詢行政區；天氣效果則會向 Open-Meteo 傳送約略座標。這些第三方可能依其隱私政策處理請求 IP 與相關紀錄，遊戲本身不保存定位歷史。環境光感測在部分 Android WebView 與 iOS 不支援。App 圖示切換尚未啟用。</p>
 <h2>六、資料儲存、保護與保留期間</h2>
 <p>進度與設定使用 App 沙盒或瀏覽器本機儲存，不是端對端加密的秘密保管箱；持有已解鎖裝置、系統備份或惡意程式者可能接觸到本機資料。請勿輸入敏感個資。資料原則上保留至使用者刪除、重設或裝置清除為止；系統備份保留時間由使用者的系統設定與平台政策決定。本版本未設計接收玩家資料的後端，也未整合第三方廣告／分析 SDK；若未來變更，必須重新稽核。</p>
 <h2>七、資料分享與跨境傳輸</h2>
@@ -454,22 +456,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <h2>八、權限撤回與資料刪除</h2>
 <p>可於遊戲設定關閉所有選用裝置效果、截圖／錄影劇情反應、麥克風音量演出、驚嚇效果或開啟實況模式，亦可於 Android／iOS 系統設定撤回相機、定位、麥克風及通知權限。加害者篇可使用「清除加害者篇進度」；第一、第二周目請使用遊戲主選單的清除選項。解除安裝或清除 App 資料可移除本機資料，但系統雲端備份可能另有保存。若本版本未收集可識別的伺服器資料，我們可能無法從遠端辨識或刪除特定玩家的本機資料。</p>
 <h2>九、使用者權利</h2>
-<p>依適用的個資法規，使用者可能享有查詢、閱覽、複製、更正、停止利用及刪除等權利。若要詢問我們實際持有的資料，請透過【隱私信箱】聯絡；我們將在法定期限內回覆。對於僅存在使用者裝置的資料，會提供自行刪除方式。適用法域的申訴及救濟權利不受本政策限制。</p>
+<p>依適用的個資法規，使用者可能享有查詢、閱覽、複製、更正、停止利用及刪除等權利。若要詢問我們實際持有的資料，請透過moku6366@gmail.com聯絡；我們將在法定期限內回覆。對於僅存在使用者裝置的資料，會提供自行刪除方式。適用法域的申訴及救濟權利不受本政策限制。</p>
 <h2>十、兒童與未成年人</h2>
 <p>本作不以兒童為目標受眾，建議 18 歲以上。未成年人請依當地規範與商店分級使用。我們不故意透過本版本收集兒童個資；若未來啟用帳號或線上功能，須另行處理兒少保護與監護人同意問題。</p>
 <h2>十一、安全事件與政策更新</h2>
 <p>若發生依法應通報的個資安全事件，我們會依適用法令通知主管機關及受影響者。重大政策變更會於 App 或官方管道公告；依法需要重新同意的用途不會僅憑公告自動啟用。</p>
 <h2>十二、聯絡方式</h2>
-<p>【開發者名稱】｜【隱私信箱】｜【其他依法應揭露資訊】</p>
-<h2>加害者篇首次授權流程</h2><p>首次進入加害者篇會顯示條款、隱私政策與免責聲明的全文閱讀入口。玩家確認文件後，只有在玩家選擇「確認並啟用裝置效果」時，才依序請求相機、麥克風、定位及通知的系統權限。未勾選、拒絕任何系統權限或裝置不支援時，相關效果保持關閉且不影響通關。</p><p>首次授權測試時，相機與麥克風串流僅短暫取得以確認系統授權，立即停止，不儲存影像或音訊；定位測試僅確認系統回應，不保存或傳送座標。只有在後續玩家另外同意的 E5 行政區或天氣劇情時，才可能向 Nominatim 或 Open-Meteo 傳送約略座標。通知使用裝置本機排程。玩家可在遊戲設定關閉裝置效果，並在系統設定撤銷權限。</p>
+<p>Murmur（個人開發者）｜moku6366@gmail.com｜其他依法須揭露的資訊將於正式發行前依適用法規補充</p>
 
 </section>
 
       <section data-sec="disclaimer" hidden>
 <h1>Murmur 內容警示、免責聲明與安全指南</h1>
-<p><strong>版本：</strong> 草案 1.7.5｜<strong>更新日期：</strong> 2026-10-10｜<strong>聯絡：</strong>【客服信箱】</p>
+<p><strong>版本：</strong> 草案 1.7.1｜<strong>更新日期：</strong> 2026-10-12｜<strong>聯絡：</strong>moku6366@gmail.com</p>
 <h2>一、虛構作品與沉浸式演出</h2>
-<p>本作角色、聊天、備份、通知、檔案、偵測台詞及相關事件均為虛構敘事；任何角色對玩家或裝置的描述都屬虛構演出，不應理解為真實監視或威脅。即時聲量偵測只能判斷聲音強度，不能確認玩家是否與他人對話。角色觀點不代表開發者認同。</p>
+<p>本作角色、聊天、備份、通知、檔案、偵測台詞及相關事件均為虛構敘事；任何角色聲稱「知道你在哪裡」「看到你」「正在聽你說話」皆屬戲劇表現，不應理解為真實監視或威脅。即時聲量偵測只能判斷聲音強度，不能確認玩家是否與他人對話。角色觀點不代表開發者認同。</p>
 <h2>二、敏感內容</h2>
 <p>作品涉及心理恐怖、親密關係中的控制與操縱、跟蹤、拒絕與失落、強迫性重複、暴力暗示、死亡與自傷相關的非操作性描寫，可能觸發創傷記憶、焦慮或睡眠不適。若不適，請立即暫停、關閉驚嚇效果或停止遊玩；作品不是心理治療或醫療、法律、危機處置建議。</p>
 <h2>三、光敏、動態與感官風險</h2>
@@ -477,7 +478,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <h2>四、絕不要求危險動作</h2>
 <p><strong>禁止以手機撞擊頭部、臉部、身體、牆壁或其他物體。</strong> 不得模仿故事角色的自傷、暴力、跟蹤、侵犯隱私或危險行為。手機感測器如被使用，僅能以安全、輕微的手持動作觸發；拒絕權限或不進行動作不會影響通關。勿在行走、駕駛、騎車或不安全環境遊玩。</p>
 <h2>五、麥克風、相機、位置與通知</h2>
-<p>可選感測功能預設關閉，啟用前會說明用途；麥克風音量偵測不等於監聽語音內容。位置相關功能僅在玩家另外同意後才會請求大略位置，並可能向 OpenStreetMap Nominatim 傳送約略座標。天氣查詢使用 Open-Meteo。相機、位置、通知、動作與環境光的實際支援仍取決於系統與原生建置。使用者可於 App 或系統設定撤回授權；拒絕不影響通關。</p>
+<p>可選感測功能預設關閉，啟用前會說明用途；麥克風音量偵測不等於監聽語音內容。E5 的行政區演出在玩家完成排序且另行同意後才會請求大略位置，並可能向 OpenStreetMap Nominatim 傳送約略座標。天氣查詢使用 Open-Meteo。相機、位置、通知、動作與環境光的實際支援仍取決於系統與原生建置。使用者可於 App 或系統設定撤回授權；拒絕不影響通關。</p>
 <h2>六、錄影與直播</h2>
 <p>可使用系統功能截圖或錄影；遊戲內的劇情反應不代表 App 取得影像檔。實況模式可關閉個人化與感測演出。直播或分享前請避免揭露自己或他人的真實姓名、住址、私人對話與通知內容。</p>
 <h2>七、危機與求助</h2>
@@ -485,8 +486,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <h2>八、責任與法律權利</h2>
 <p>我們將採取合理安全措施，但無法保證任何人完全不受驚嚇或不適。使用者應遵守安全提醒。<strong>本聲明不排除開發者依法應負的故意、重大過失、產品安全、消費者保護或其他不得預先排除的責任</strong>。個別責任應依適用法律、實際事實與因果關係判斷。</p>
 <h2>九、聯絡與內容回報</h2>
-<p>如發現安全問題、內容錯誤、疑似侵權或權限異常，請寄信至【客服信箱】，附上版本、裝置型號、重現步驟與不包含敏感資訊的畫面說明。</p>
-<h2>裝置權限與自願參與</h2><p>加害者篇首次進入時會提供條款、隱私政策及本警示全文。確認閱讀不會自動授予系統權限；玩家可自行選擇是否啟用選用裝置功能，並逐項接受或拒絕 Android／iOS 系統提示。拒絕後仍可通關。所有裝置事件的恐怖台詞均為虛構演出，不表示真實監視。</p>
+<p>如發現安全問題、內容錯誤、疑似侵權或權限異常，請寄信至moku6366@gmail.com，附上版本、裝置型號、重現步驟與不包含敏感資訊的畫面說明。</p>
 
 </section>
     </div>
@@ -2555,6 +2555,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   /* =====================================================================
      v1.0：第二周目、加害者篇（App 版）、授權碼、F12 紅字
      ===================================================================== */
+  const TESTER_WEB = window.MURMUR_TESTER_WEB === true;
   const APP = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
   // URL hashes alone must never enable development skip controls on a public build.
   const DEV_MODE = window.MURMUR_DEV === true && /debug/.test(location.hash);
@@ -2769,6 +2770,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
     'APPCODE': () => {
       const flag = S.cleared2 ? 2 : 1;
+      if (TESTER_WEB && S.cleared2) return head('測試人員專用', 'participant_7f3 · 測試入口') + `<div class="doc-body"><p>已完成第二周目。此入口只供受邀測試人員使用，請輸入獨立測試授權碼。</p><form class="lockform" id="testerAccessForm" autocomplete="off"><input id="testerAccessCode" type="password" autocomplete="off" placeholder="MURMUR-QA-…" aria-label="測試授權碼"><button type="submit">驗證並開啟</button></form><p class="docnote" id="testerAccessMsg" role="status"></p></div>`;
       if (APP) return head('原始資料', 'participant_7f3 · 手機備份') + (S.cleared2 ? `<div class="doc-body"><p>這份唯讀手機備份已收錄在 Murmur App。</p><button type="button" class="btn" id="openNativeArchive">開啟手機備份</button></div>` : `<div class="doc-body"><p>原始資料尚未解鎖。請先完成第二周目。</p></div>`);
       return head('原始資料 · 不在這裡', 'participant_7f3 · 手機備份') +
         `<div class="doc-body"><p>她的手機備份沒有存在這個網站。</p><p>你可以在 Murmur App 裡打開它。App 裡也有這裡的全部內容；如果你已經在這裡走到結局，輸入下面的分支授權碼，就能直接接著看。</p></div>` +
@@ -2955,9 +2957,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
   $('#idxOpen').addEventListener('click', () => { $('#idxToast').hidden = true; go('NEWIDX'); });
   $('#sheetBackdrop').addEventListener('click', closeSheet);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
-  $('#searchForm').addEventListener('submit', (e) => {
+  // Tester-only shortcut: the investigation search bar accepts a QA code.
+  // Never runs in public Web or native builds. No QA token is saved or shown in results.
+  $('#searchForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const q = $('#searchInput').value;
+    const q = $('#searchInput').value.trim();
+    if (TESTER_WEB && /^MURMUR-QA-/i.test(q)) {
+      $('#searchInput').value = '';
+      const gate = window.MurmurTesterGate;
+      const ok = gate && await gate.verify(q.toUpperCase());
+      if (!ok) {
+        body.innerHTML = head('測試授權', '驗證失敗') + '<p class="note" role="status">測試授權碼無效，請向測試負責人確認。</p>';
+        return;
+      }
+      if (!S.cleared2) applyImport(2, Math.floor(Date.now() / 1000));
+      sheet.hidden = true;
+      menu.hidden = true;
+      updateMenu();
+      window.MurmurBackupPreview?.open();
+      return;
+    }
     const r = resolve(q);
     if (!r) return;
     go(r.open ? r.open : 'search:' + q.trim());
@@ -3214,6 +3233,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
   $('#mNG').addEventListener('click', () => { menu.hidden = true; startNG(); });
   $('#mCode').addEventListener('click', () => { menu.hidden = true; openViewer('APPCODE'); });
   $('#mImport').addEventListener('click', () => { menu.hidden = true; openViewer('IMPORT'); });
+  document.addEventListener('submit', async (ev) => {
+    if (ev.target?.id !== 'testerAccessForm') return;
+    ev.preventDefault();
+    const msg = document.getElementById('testerAccessMsg');
+    const code = document.getElementById('testerAccessCode')?.value.trim().toUpperCase() || '';
+    if (!TESTER_WEB || !S.cleared2 || !window.MurmurTesterGate) { if(msg)msg.textContent='測試入口不可用。'; return; }
+    const ok = await window.MurmurTesterGate.verify(code);
+    if (!ok) { if(msg)msg.textContent='測試授權碼無效。'; return; }
+    if (msg)msg.textContent='已驗證，正在開啟測試篇章。';
+    window.MurmurBackupPreview?.open();
+  });
   $('#mE').addEventListener('click', () => { menu.hidden = true; if (!APP || !S.cleared2) return; if (!pz('e1').seed) seedPZ('e1'); openViewer('E-ROOT'); horror('e'); });
   let clearArm = 0;
   $('#mClear').addEventListener('click', (e) => {
@@ -3322,6 +3352,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
     $('#legal').hidden = false; $('#legal').scrollTop = 0;
     document.querySelectorAll('#legal section').forEach((x) => { x.hidden = x.dataset.sec !== sec; });
     document.querySelectorAll('.legal-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.legal === sec));
+    const legalUrls = { terms: 'https://murmur1.pages.dev/terms/', privacy: 'https://murmur1.pages.dev/privacy/', disclaimer: 'https://murmur1.pages.dev/disclaimer/' };
+    const permalink = document.getElementById('legalPermalink');
+    if (permalink && legalUrls[sec]) permalink.href = legalUrls[sec];
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-legal]'); if (b) { e.preventDefault(); openLegal(b.dataset.legal); } });
   $('#legalClose').addEventListener('click', () => { $('#legal').hidden = true; });
@@ -3332,7 +3365,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 })();
 </script>
 
-
-
+<script src="meta-horror.js"></script>
+<script>window.MURMUR_TESTER_WEB=true;window.MURMUR_APP_PREVIEW=true;window.MURMUR_TESTER_AUTO_OPEN=false;window.MurmurTesterGate=(()=>{let unlocked=false;const expected='83df2d1a5992ca5625d7b975ef231bf6a1c87c88e03cff752d492c53fcdbec57';return Object.freeze({isUnlocked:()=>unlocked,verify:async code=>{if(!/^MURMUR-QA-[A-Z0-9]{12,40}$/.test(code)||!globalThis.crypto?.subtle)return false;const digest=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(code));const actual=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');unlocked=actual===expected;return unlocked;}})})();</script>
+<script src="perpetrator.js"></script>
 </body>
 </html>

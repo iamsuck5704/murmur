@@ -22,7 +22,8 @@
     "test:permissions": "node scripts/test-permission-onboarding.cjs",
     "test:spoilers": "node scripts/test-spoilers.cjs",
     "test:sensors": "node scripts/test-native-sensors.cjs",
-    "test:native-content": "node scripts/test-native-content.cjs"
+    "test:native-content": "node scripts/test-native-content.cjs",
+    "build:tester": "node scripts/build-tester.cjs"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",

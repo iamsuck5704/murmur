@@ -1,0 +1,1051 @@
+<!doctype html><html lang="zh-Hant" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="google" content="notranslate"><meta name="color-scheme" content="dark"><title>Murmur · 7f3 終端機 v1.5.1</title><style>/* Murmur 7f3 archive: CMD-inspired touch UI, fictional system, no remote resources. */
+body.murmur-backup-active{overflow:hidden}
+#backupRoot[hidden]{display:none!important}
+#backupRoot{--cmd-bg:#080d0d;--cmd-panel:#0c1513;--cmd-hover:#14251e;--cmd-border:#315344;--cmd-text:#dfebe3;--cmd-muted:#9ab0a4;--cmd-green:#a2edb9;--cmd-amber:#e5c589;--cmd-red:#e4a4a0;position:fixed;inset:0;z-index:1200;overflow:auto;overscroll-behavior:contain;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);-webkit-overflow-scrolling:touch;background:var(--cmd-bg);color:var(--cmd-text);font:14px/1.7 'Courier New','Liberation Mono','DejaVu Sans Mono','Noto Sans Mono CJK TC',monospace}
+#backupRoot *{box-sizing:border-box}
+#backupRoot button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#backupRoot button:active:not(:disabled){background-color:#244631!important;color:#effff2}
+#backupRoot button:disabled{opacity:.75;cursor:not-allowed}
+#backupRoot button:focus-visible,#backupRoot input:focus-visible{outline:2px solid var(--cmd-green);outline-offset:3px}
+#backupRoot .bp-shell{max-width:720px;min-height:100%;margin:auto;padding:0 16px max(48px,calc(28px + env(safe-area-inset-bottom,0px))); border-inline:1px solid #182c23;background:linear-gradient(180deg,#0c1512 0,#080e0c 340px,#080d0d 100%)}
+#backupRoot .bp-windowline{display:flex;gap:10px;align-items:center;margin:0 -16px;padding:14px 16px;border-bottom:1px solid #335342;background:#15221b;font:11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.045em;color:#c5dbc9}
+#backupRoot .bp-windowline .bp-square{display:inline-grid;place-items:center;width:17px;height:17px;border:1px solid #6c9878;color:var(--cmd-green);font-size:12px;line-height:1}
+#backupRoot .bp-windowline .bp-windowname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#backupRoot .bp-windowline .bp-version{margin-left:auto;color:#9cb9a3;white-space:nowrap}
+#backupRoot .bp-top{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:14px 0 7px}
+#backupRoot .bp-top button{min-height:52px;border:1px solid #416451;background:#12221a;border-radius:2px;color:var(--cmd-green);padding:12px 13px;font:13px/1.35 'IBM Plex Mono','Noto Sans Mono CJK TC','Noto Sans CJK TC',monospace}
+#backupRoot .bp-top button:hover:not(:disabled){background:var(--cmd-hover)}
+#backupRoot .bp-status{font:10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.05em;color:#9dc3a9;text-align:center}
+#backupRoot .bp-commandbar{margin:16px 0 12px;padding:12px 11px;border-left:3px solid var(--cmd-green);background:#0e1914;color:var(--cmd-green);font:13px/1.6 'IBM Plex Mono','Noto Sans Mono CJK TC','Noto Sans CJK TC',monospace;overflow-wrap:anywhere}
+#backupRoot .bp-commandbar .bp-cursor{margin-left:6px;opacity:.9}
+#backupRoot .bp-meta{font:11px/1.5 'IBM Plex Mono',monospace;color:#9bbca9;margin:12px 0 8px;letter-spacing:.02em}
+#backupRoot .bp-title{font-size:clamp(20px,5.2vw,24px);font-weight:700;line-height:1.45;letter-spacing:.02em;color:var(--cmd-text);margin:0 0 14px;outline:0;font-family:'IBM Plex Mono','Noto Sans TC',monospace}
+#backupRoot .bp-title:before{content:'> ';color:var(--cmd-green);font:700 22px 'IBM Plex Mono',monospace}
+#backupRoot .bp-copy{color:#c8d9ce;line-height:1.95;margin:11px 0;font-size:clamp(13px,3.5vw,15px);font-family:'IBM Plex Mono','Noto Sans TC',monospace}
+#backupRoot .bp-demo{border:1px solid #516046;border-left:3px solid var(--cmd-amber);background:#201e13;color:#e9d5a5;padding:11px 12px;border-radius:2px;font-size:12px;line-height:1.8}
+#backupRoot .bp-demo:before{content:'[SIMULATION MODE]  ';font:700 11px 'IBM Plex Mono',monospace}
+#backupRoot .bp-section-heading{display:flex;align-items:center;justify-content:space-between;gap:6px;border-bottom:1px dashed #456553;margin:29px 0 12px;padding-bottom:8px}
+#backupRoot .bp-section-heading h2,#backupRoot .bp-tasks h2{font-size:13px;letter-spacing:.03em;margin:0;font-weight:600}
+#backupRoot .bp-section-heading h2:before{content:':: ';color:var(--cmd-green);font:700 14px 'IBM Plex Mono',monospace}
+#backupRoot .bp-section-heading>span{font:11px 'IBM Plex Mono',monospace;color:#a5c0ab;white-space:nowrap}
+/* A real CMD-style DIR listing, not a two-column mobile app grid. */
+#backupRoot .bp-directory{border-top:1px solid #406a51;border-bottom:1px solid #406a51;background:rgba(7,18,12,.7);margin-top:8px}
+#backupRoot .bp-dir-head{display:flex;justify-content:space-between;gap:10px;padding:13px 12px 11px;border-bottom:1px dashed #3f634b;color:#a3c8ac;font:12px/1.4 'IBM Plex Mono',monospace}
+#backupRoot .bp-dir-row{display:grid;grid-template-columns:clamp(45px,14vw,58px) minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:74px;padding:14px 12px;color:var(--cmd-text);background:transparent;border:0;border-bottom:1px solid #253b2c;text-align:left;font-size:14px;line-height:1.5}
+#backupRoot .bp-dir-row:last-child{border-bottom:0}
+#backupRoot .bp-dir-row:not(:disabled):hover{background:#193025}
+#backupRoot .bp-dir-row:not(:disabled):active{background:#244631}
+#backupRoot .bp-dir-type{font:12px/1.4 'IBM Plex Mono',monospace;color:var(--cmd-green);white-space:nowrap}
+#backupRoot .bp-dir-row:disabled .bp-dir-type{color:var(--cmd-amber)}
+#backupRoot .bp-dir-main{display:flex;flex-direction:column;min-width:0;gap:3px}
+#backupRoot .bp-dir-code{display:block;overflow-wrap:anywhere;color:#d6eadb;font:500 clamp(13px,3.5vw,15px)/1.5 'IBM Plex Mono','Noto Sans CJK TC',monospace}
+#backupRoot .bp-dir-label{display:block;font-size:14px;color:#b6c9ba;overflow-wrap:anywhere}
+#backupRoot .bp-dir-state{color:var(--cmd-green);font:12px/1.4 'IBM Plex Mono',monospace;white-space:nowrap;padding-left:2px;text-align:right}
+#backupRoot .bp-dir-row:disabled .bp-dir-code{color:#8d9d91}
+#backupRoot .bp-dir-row:disabled .bp-dir-state{color:var(--cmd-amber)}
+#backupRoot .bp-dir-foot{border-top:1px dashed #3f634b;padding:13px 12px;color:#a1c1a8;font:12px/1.7 'IBM Plex Mono',monospace}
+#backupRoot .bp-dir-foot:after{content:' _';color:var(--cmd-green)}
+#backupRoot .bp-chapters{display:grid;gap:0;border:1px solid #355545;background:#0d1511}
+#backupRoot .bp-chapter{min-height:70px;width:100%;background:transparent;border:0;border-bottom:1px solid #284533;text-align:left;display:flex;gap:12px;justify-content:space-between;align-items:center;color:var(--cmd-text);padding:15px 14px;font-size:14px;line-height:1.6}
+#backupRoot .bp-chapter:last-child{border-bottom:0}
+#backupRoot .bp-chapter:not(:disabled):hover{background:#1a2b20}
+#backupRoot .bp-chapter .bp-chapter-name{flex:1;min-width:0}
+#backupRoot .bp-chapter .bp-chapter-name:before{content:'> ';color:var(--cmd-green);font-family:'IBM Plex Mono',monospace}
+#backupRoot .bp-chapter:disabled .bp-chapter-name:before{content:'× ';color:var(--cmd-amber)}
+#backupRoot .bp-tag{color:#a8c2ab;font:11px/1.7 'IBM Plex Mono','Noto Sans Mono CJK TC','Noto Sans CJK TC',monospace;letter-spacing:.01em}
+#backupRoot .bp-chapter .bp-tag{white-space:nowrap;text-align:right;color:#a5c2ae}
+#backupRoot .bp-chapter:disabled .bp-tag{color:var(--cmd-amber)}
+#backupRoot .bp-panel{border:1px solid #375640;border-radius:2px;background:#0d1812;padding:16px;margin:16px 0}
+#backupRoot .bp-panel>.bp-tag:first-child{color:var(--cmd-green)}
+#backupRoot .bp-placeholder{border:1px dashed #4f7359;color:#b1cab8;border-radius:2px;padding:24px 12px;display:grid;gap:10px;margin:18px 0 0;min-height:145px;align-content:center;text-align:center;font-size:13px;line-height:1.7}
+#backupRoot .bp-placeholder:before{content:'[FILE CONTENT REDACTED · PLACEHOLDER]';color:#91bd9e;font:10px/1.6 'IBM Plex Mono',monospace}
+#backupRoot .bp-tasks{background:#0c1813;border:1px solid #3a5947;border-radius:2px;padding:15px;margin:15px 0}
+#backupRoot .bp-tasks h2:before{content:'>> ';color:var(--cmd-green);font-family:'IBM Plex Mono',monospace}
+#backupRoot .bp-tasks p{margin:4px 0 12px;color:#abbea9;font-size:12px}
+#backupRoot .bp-task{width:100%;background:#12201a;color:#d4e5d7;border:1px solid #385743;border-radius:2px;min-height:64px;text-align:left;display:flex;align-items:center;gap:10px;padding:10px 12px;margin:7px 0}
+#backupRoot .bp-task:hover{background:#1b3325}
+#backupRoot .bp-task span:last-child{margin-left:auto;color:var(--cmd-green)}
+#backupRoot .bp-checkmark{font:18px 'IBM Plex Mono',monospace;color:var(--cmd-green)}
+#backupRoot .bp-actions{display:flex;flex-wrap:wrap;gap:9px;margin:20px 0}
+#backupRoot .bp-primary,#backupRoot .bp-ghost,#backupRoot .bp-danger{display:inline-block;border-radius:2px;min-height:54px;padding:13px 14px;font:13px/1.6 'IBM Plex Mono','Noto Sans Mono CJK TC','Noto Sans CJK TC',monospace}
+#backupRoot .bp-primary{background:var(--cmd-green);color:#0b2114;font-weight:700;border:1px solid var(--cmd-green)}
+#backupRoot .bp-primary:disabled{background:#355747;color:#a6c4ac;border-color:#4b6253}
+#backupRoot .bp-ghost{background:#12231a;color:#c5efcd;border:1px solid #4f8360}
+#backupRoot .bp-ghost:hover:not(:disabled){background:#23402a}
+#backupRoot .bp-danger{background:#241412;color:var(--cmd-red);border:1px solid #9d5f5c;margin-top:9px}
+#backupRoot .bp-note{font-size:12px;line-height:1.8;color:#a9c4b2}
+#backupRoot .bp-entry{width:100%;background:transparent;border:0;border-bottom:1px solid #2d4c39;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;padding:16px 10px;color:var(--cmd-text);min-height:76px}
+#backupRoot .bp-entry:hover{background:#183021}
+#backupRoot .bp-entry:last-child{border-bottom:none}
+#backupRoot .bp-entry small{display:block;color:#a3bda9;font:11px/1.5 'IBM Plex Mono','Noto Sans Mono CJK TC','Noto Sans CJK TC',monospace;margin-bottom:4px}
+#backupRoot .bp-entry strong{display:block;font-weight:500;font-size:14px;font-family:'IBM Plex Mono','Noto Sans TC',monospace}
+#backupRoot .bp-entry .bp-filearrow{font:16px 'IBM Plex Mono',monospace;color:var(--cmd-green)}
+#backupRoot .bp-document h2{font-size:16px;line-height:1.6;font-family:'IBM Plex Mono','Noto Sans TC',monospace}
+#backupRoot .bp-document>p{white-space:pre-line;line-height:2;color:#d5e3d8}
+#backupRoot .bp-long-sample{border-left:2px solid #607b61;padding-left:12px;font:13px/2 'IBM Plex Mono','Noto Sans Mono CJK TC','Noto Sans CJK TC',monospace}
+#backupRoot .bp-check{display:flex;align-items:flex-start;gap:12px;padding:16px 0;min-height:68px;border-bottom:1px solid #304c39}
+#backupRoot .bp-check:last-of-type{border:0}
+#backupRoot .bp-check input{width:23px;height:23px;margin-top:3px;flex:0 0 23px;accent-color:#99e1ad}
+#backupRoot .bp-check span{display:flex;flex-direction:column}
+#backupRoot .bp-check b{font-size:14px}
+#backupRoot .bp-check small{font-size:12px;color:#b1c7b5;line-height:1.7}
+#backupRoot .bp-footer{text-align:center;color:#a0b9a2;font:10px/1.7 'IBM Plex Mono',monospace;letter-spacing:.05em;margin-top:40px;padding-top:16px;border-top:1px dashed #365542}
+/* Small phones: never shrink touch rows. Use wrapping instead. */
+@media(max-width:380px){
+ #backupRoot .bp-shell{padding-inline:11px}
+ #backupRoot .bp-windowline{margin-inline:-11px;padding-inline:11px}
+ #backupRoot .bp-status{display:none}
+ #backupRoot .bp-top button{min-height:52px;padding-inline:10px}
+ #backupRoot .bp-dir-row{min-height:74px;grid-template-columns:45px minmax(0,1fr) auto;padding:14px 9px;gap:6px}
+ #backupRoot .bp-chapter{min-height:70px;padding:15px 10px}
+ #backupRoot .bp-tag{overflow-wrap:anywhere}
+}
+@media(max-width:320px){
+ #backupRoot .bp-dir-row{grid-template-columns:42px minmax(0,1fr) auto;gap:4px}
+ #backupRoot .bp-dir-state{font-size:11px}
+ #backupRoot .bp-top{gap:5px}
+ #backupRoot .bp-top button{padding-inline:7px;font-size:12px}
+}
+@media(min-width:720px){
+ #backupRoot .bp-shell{padding-inline:28px}
+ #backupRoot .bp-windowline{margin-inline:-28px;padding-inline:28px}
+ #backupRoot .bp-dir-row{min-height:70px}
+}
+@media(orientation:landscape) and (max-height:480px){
+ #backupRoot .bp-shell{padding-bottom:max(30px,env(safe-area-inset-bottom,0px))}
+ #backupRoot .bp-top{padding-top:8px}
+ #backupRoot .bp-commandbar{margin-top:8px}
+}
+@media(prefers-contrast:more){
+ #backupRoot .bp-dir-row,#backupRoot .bp-chapter,#backupRoot .bp-entry{border-color:#6b9980}
+ #backupRoot .bp-dir-label{color:#d7e6dc}
+}
+@media(prefers-reduced-motion:reduce){#backupRoot *,#backupRoot *::before,#backupRoot *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* Legacy single-file CSS may give display:flex/grid to hidden overlays: preserve hidden behavior. */
+[hidden]{display:none!important}
+
+/* Prevent legacy theme style leaks and text zoom horizontal clipping. */
+#backupRoot{overflow-x:hidden;text-size-adjust:100%;-webkit-text-size-adjust:100%}
+#backupRoot .bp-shell,#backupRoot .bp-panel,#backupRoot .bp-directory{min-width:0}
+#backupRoot .bp-top button,#backupRoot .bp-primary,#backupRoot .bp-ghost,#backupRoot .bp-danger{overflow-wrap:anywhere}
+#backupRoot .bp-entry span:first-child,#backupRoot .bp-chapter-name{min-width:0;overflow-wrap:anywhere}
+#backupRoot .bp-top button,#backupRoot .bp-dir-row,#backupRoot .bp-chapter,#backupRoot .bp-entry,#backupRoot .bp-task,#backupRoot .bp-primary,#backupRoot .bp-ghost{touch-action:manipulation}
+
+#backupRoot .bp-dir-label small{display:block;color:#8fa99b;font:10px/1.4 'IBM Plex Mono',monospace;margin-top:2px}
+#backupRoot .bp-outline{display:grid;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed #426250;color:#c5d8ca;font:12px/1.75 'IBM Plex Mono','Noto Sans TC',monospace}
+#backupRoot .bp-outline span{color:#97ddb0}
+#backupRoot .bp-task span:nth-child(2){display:flex;flex-direction:column;min-width:0}
+#backupRoot .bp-task b{font-size:13px;font-weight:600;color:#d9ece0}
+#backupRoot .bp-task small{font-size:11px;color:#a5c0ab;line-height:1.55}
+#backupRoot .bp-docbody{white-space:pre-wrap;line-height:2.02;color:#d5e3d8;font:clamp(14px,3.65vw,16px)/1.85 'Courier New','Liberation Mono','DejaVu Sans Mono','Noto Sans Mono CJK TC',monospace;word-break:break-word}
+#backupRoot .bp-docbody del{color:#a5b4aa;text-decoration-color:#d28d8a;text-decoration-thickness:1.5px}
+#backupRoot .bp-rule{border:0;border-top:1px dashed #496a56;margin:12px 0}
+#backupRoot .bp-sort{display:grid;gap:10px}
+#backupRoot .bp-sort-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid #355545;padding:12px;background:#0b1510;min-height:72px}
+#backupRoot .bp-sort-text{font:13px/1.8 'IBM Plex Mono','Noto Sans TC',monospace;color:#dbe7de}
+#backupRoot .bp-sort-ctrl{display:grid;gap:8px}
+#backupRoot .bp-sort-ctrl button{min-width:44px;min-height:44px;border:1px solid #4a735c;background:#102018;color:#a2edb9;font:16px/1 'IBM Plex Mono',monospace}
+#backupRoot .bp-sort-ctrl button:hover:not(:disabled){background:#1b3325}
+#backupRoot .bp-reveal{border-top:1px dashed #4b6c58;padding-top:12px;margin-top:8px}
+#backupRoot .bp-top button,#backupRoot .bp-dir-row,#backupRoot .bp-chapter,#backupRoot .bp-entry,#backupRoot .bp-task,#backupRoot .bp-primary,#backupRoot .bp-ghost,#backupRoot .bp-danger{border-radius:0}
+
+/* v0.6: All UI glyphs use local system monospace, with no remote CSS/font dependencies. */
+#backupRoot{
+ --term-font:'Courier New','Liberation Mono','DejaVu Sans Mono','Noto Sans Mono CJK TC',monospace;
+ font-family:var(--term-font);font-weight:400;letter-spacing:0;
+}
+#backupRoot :is(.bp-title,.bp-windowline,.bp-top button,.bp-status,.bp-commandbar,.bp-meta,.bp-dir-head,.bp-dir-row,.bp-dir-code,.bp-dir-label,.bp-dir-state,.bp-dir-foot,.bp-chapter,.bp-tag,.bp-copy,.bp-entry,.bp-entry strong,.bp-entry small,.bp-panel,.bp-document h2,.bp-section-heading,.bp-section-heading h2,.bp-task,.bp-task b,.bp-task small,.bp-note,.bp-footer,.bp-demo,.bp-primary,.bp-ghost,.bp-danger,.bp-actions button,.bp-docbody,.bp-file-nav button,.bp-read-status){font-family:var(--term-font)}
+#backupRoot :is(.bp-title,.bp-document h2){font-weight:400;letter-spacing:0;font-size:clamp(15px,3.8vw,18px)}
+#backupRoot .bp-document h2{border-bottom:1px dashed var(--cmd-border);padding-bottom:12px}
+#backupRoot .bp-panel{border-radius:0;padding:clamp(12px,3vw,18px);background:#070f0b}
+#backupRoot .bp-dir-row{min-height:76px}
+#backupRoot .bp-chapter{min-height:74px}
+#backupRoot .bp-entry{min-height:78px}
+#backupRoot .bp-commandbar{background:#09150e;border-left:2px solid var(--cmd-green);border-radius:0}
+#backupRoot .bp-top button{background:transparent;border:1px solid #315b3b}
+#backupRoot .bp-primary,#backupRoot .bp-ghost,#backupRoot .bp-danger{background:#08120c;border:1px solid #4d8660;color:var(--cmd-green);font-weight:400;text-align:left;min-height:58px}
+#backupRoot .bp-primary:not(:disabled):before{content:'> ';}
+#backupRoot .bp-ghost:not(:disabled):before{content:'$ ';}
+#backupRoot .bp-primary:disabled{background:#0a130e;color:#7d9c86;opacity:0.7}
+#backupRoot .bp-read-status{display:flex;justify-content:space-between;gap:8px;color:#99cca4;font-size:12px;margin:10px 0}
+#backupRoot .bp-docbody{line-height:1.85;overflow-wrap:anywhere;word-break:normal}
+#backupRoot .bp-line{white-space:pre-wrap;min-height:1.85em}
+#backupRoot .bp-paragraph-space{height:1.15em}
+#backupRoot .bp-stage-empty-page{height:clamp(240px,42vh,420px)}
+#backupRoot .bp-stage-date-only{height:clamp(200px,34vh,330px)}
+#backupRoot .bp-stage-pagebreak{height:36px;border-top:1px dashed #2a4d36;margin-top:40px;padding-top:10px}
+#backupRoot .bp-stage-bottom-gap{height:clamp(90px,20vh,180px)}
+#backupRoot .bp-stage-lower-gap{height:clamp(52px,12vh,110px)}
+#backupRoot .bp-neat{letter-spacing:0.04em}
+#backupRoot .bp-stage-crossout{padding:10px 0;color:#92a595}
+#backupRoot .bp-docbody del,#backupRoot .bp-stage-crossout del{color:#9ca79d;text-decoration:line-through;text-decoration-color:#ce9388;text-decoration-thickness:2px}
+#backupRoot .bp-stage-repetition{display:grid;gap:2px;overflow:hidden;padding:14px 0 20px}
+#backupRoot .bp-repeat-line{font-size:clamp(9px,calc(15px - var(--repeat)*0.33px),15px);line-height:1.8;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:clip;opacity:calc(1 - var(--repeat)*0.024)}
+#backupRoot .bp-seal{display:grid;gap:8px;border:1px solid #9b635a;background:#21110e;color:#e7b5a9;padding:18px 12px;margin:18px 0;font-size:13px}
+#backupRoot .bp-seal span{color:#ca817c;font-family:var(--term-font);font-size:12px}
+#backupRoot .bp-seal strong{font-weight:400}
+#backupRoot .bp-file-deleted{color:#9fa799;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:56px;border-bottom:1px dashed #355343}
+#backupRoot .bp-deleted-mark{display:inline-block;width:52px;height:14px;background:repeating-linear-gradient(90deg,#76554f 0px,#76554f 5px,transparent 5px,transparent 8px);opacity:0.75}
+#backupRoot .bp-empty-record{color:#aab9a8;display:grid;gap:8px;padding:12px 0;border-bottom:1px dashed #355343}
+#backupRoot .bp-empty-mark{display:block;width:100%;height:56px;border:1px dotted #33513d;background:#071009}
+#backupRoot .bp-file-nav{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;margin:15px 0}
+#backupRoot .bp-file-nav button{display:flex;flex-direction:column;justify-content:center;gap:5px;text-align:left;min-width:0;min-height:72px;padding:12px;border:1px solid #4d8660;border-radius:0;background:#07140b;color:#a9e2b7;touch-action:manipulation}
+#backupRoot .bp-file-nav button:last-child{text-align:right;align-items:flex-end}
+#backupRoot .bp-file-nav button:disabled{opacity:.35;border-color:#385146}
+#backupRoot .bp-file-nav button:not(:disabled):active{background:#213c2a}
+#backupRoot .bp-nav-code{font-size:13px;font-weight:700;line-height:1.4}
+#backupRoot .bp-nav-caption{font-size:13px;line-height:1.4;color:#b2d5b9}
+#backupRoot .bp-cli-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#backupRoot .bp-cli-actions button{width:100%;min-height:60px;font-size:12px;overflow-wrap:anywhere}
+#backupRoot .bp-copy,#backupRoot .bp-document>p{font-size:14px}
+#backupRoot .bp-windowline{font-size:11px}
+@media(max-width:340px){
+ #backupRoot .bp-cli-actions{grid-template-columns:1fr}
+ #backupRoot .bp-file-nav button{min-height:72px}
+}
+@media(prefers-reduced-motion:reduce){#backupRoot *{scroll-behavior:auto!important}}
+
+/* Source-specified writing effects, with no fast flashing. */
+#backupRoot .bp-pronoun-rewrite{position:relative;min-height:2em;width:max-content;max-width:100%;color:#b1e6b5}
+#backupRoot .bp-pronoun-original{position:absolute;inset:0 auto auto 0;white-space:nowrap;animation:cmd-old-pronoun 1.5s steps(1,end) both}
+#backupRoot .bp-pronoun-new{white-space:nowrap;animation:cmd-new-pronoun 1.5s steps(1,end) both}
+@keyframes cmd-old-pronoun{0%,46%{opacity:1}47%,100%{opacity:0}}
+@keyframes cmd-new-pronoun{0%,58%{opacity:0}59%,100%{opacity:1}}
+#backupRoot .bp-timed-log .bp-line{animation:cmd-log-appear .24s ease-out both;animation-delay:calc(min(var(--line-delay),30)*0.08s)}
+@keyframes cmd-log-appear{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){
+ #backupRoot .bp-pronoun-original{display:none!important}
+ #backupRoot .bp-pronoun-new{opacity:1!important}
+ #backupRoot .bp-timed-log .bp-line{opacity:1!important;transform:none!important}
+}
+
+/* v0.6.1: staged small handwriting, without printing the editorial direction. */
+#backupRoot .bp-small-line{font-size:.82em;line-height:1.9;letter-spacing:.015em;color:#a9b9aa}
+
+#backupRoot .bp-table-scroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;margin:12px 0 20px;border:1px solid #365745}
+#backupRoot .bp-record-table{border-collapse:collapse;min-width:600px;width:100%;font:12px/1.65 var(--term-font),monospace;color:#d5e3d8}
+#backupRoot .bp-record-table th,#backupRoot .bp-record-table td{padding:11px 9px;border-bottom:1px solid #304b3b;text-align:left;vertical-align:top}
+#backupRoot .bp-record-table th{color:#9de4b0;background:#102019;font-weight:600}
+#backupRoot .bp-record-code{white-space:pre;overflow-x:auto;padding:12px;background:#07110a;color:#c0dcc8;font:12px/1.9 var(--term-font),monospace}
+
+/* v0.6.2: extended repetition and scroll-reactive terminal ink. */
+#backupRoot .bp-stage-repetition{display:grid;gap:5px;padding:22px 0 38px;overflow:visible}
+#backupRoot .bp-repeat-line{font-size:clamp(11px,calc(16px - var(--repeat)*.115px),16px);line-height:1.9;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;opacity:1;min-height:1.9em;transition:color .14s linear}
+#backupRoot .bp-repeat-line:nth-child(n+22){letter-spacing:-.025em}
+#backupRoot .bp-repeat-line:nth-child(n+35){letter-spacing:-.04em}
+@media(prefers-reduced-motion:reduce){#backupRoot .bp-repeat-line{transition:none}}
+
+/* v0.8: CRT wake / mid-open horizontal signal offset, no strobe. */
+#backupRoot .bp-document{position:relative;isolation:isolate;overflow:hidden}
+#backupRoot .bp-document.bp-crt-boot{animation:murmur-crt-wake .72s cubic-bezier(.21,.7,.2,1) both;transform-origin:50% 50%}
+#backupRoot .bp-document.bp-crt-boot::before{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;background:linear-gradient(transparent 47%,rgba(167,237,188,.13) 49%,rgba(167,237,188,.2) 50%,transparent 53%);animation:murmur-crt-scan .72s ease-out both}
+@keyframes murmur-crt-wake{0%{clip-path:inset(49.8% 0);filter:brightness(2)}18%{clip-path:inset(42% 0);filter:brightness(1.7)}40%{clip-path:inset(26% 0);transform:translateX(0)}47%{clip-path:inset(22% 0);transform:translateX(5px) skewX(.65deg);filter:brightness(1.35)}55%{clip-path:inset(16% 0);transform:translateX(-3px) skewX(-.4deg)}70%{clip-path:inset(7% 0);transform:none;filter:brightness(1.1)}100%{clip-path:inset(0);transform:none;filter:none}}
+@keyframes murmur-crt-scan{0%{opacity:.75}50%{opacity:.85;transform:translateX(3px)}100%{opacity:0}}
+#backupRoot .bp-type-cursor{color:#c7f6cf;display:inline-block;animation:murmur-cursor .85s steps(1,end) infinite}
+@keyframes murmur-cursor{50%{opacity:.15}}
+#backupRoot .bp-skip-type{display:block;width:100%;min-height:44px;text-align:left;background:#112019;color:#a6e4b9;border:1px solid #4c6e55;font:13px/1.6 'Courier New',monospace;margin:8px 0 12px;padding:7px 10px}
+#backupRoot .bp-stage-0409{margin:26px 0 12px}
+#backupRoot .bp-stage-longing{margin:14px 0}
+#backupRoot .bp-longing{font-size:clamp(13px,3.2vw,15px);line-height:2.0}
+#backupRoot .bp-surge-sentinel{height:8px}
+#backupRoot .bp-surge{padding:12px 0;overflow:hidden;animation:murmur-surge .38s ease-out both}
+#backupRoot .bp-surge-line{font:clamp(12px,3.15vw,15px)/1.65 'Courier New',monospace;word-break:break-all;color:#a5383c;letter-spacing:-.02em}
+#backupRoot .bp-surge-line:nth-child(3n){color:#b75a55}
+#backupRoot .bp-stage-0409-tail{padding:22px 0 50px}
+#backupRoot .bp-stage-0409-tail .bp-line:last-child{color:#d1b2a7}
+@keyframes murmur-surge{0%{opacity:.2;transform:translateY(8px)}100%{opacity:1;transform:none}}
+#backupRoot .bp-story-toast{position:sticky;bottom:16px;z-index:10;background:#101b16;border:1px solid #9b6868;color:#d5d0c8;padding:14px 18px;margin:8px 12px;font:14px/1.65 'Courier New',monospace;box-shadow:0 6px 25px #0009}
+@media(prefers-reduced-motion:reduce){#backupRoot .bp-document.bp-crt-boot{clip-path:none!important;transform:none!important;filter:none!important}#backupRoot .bp-type-cursor{animation:none!important}#backupRoot .bp-surge{animation:none!important}}
+
+/* v0.9: in-universe search, E3 integrity puzzle and reread text */
+#backupRoot .bp-search-panel{margin-block:14px}
+#backupRoot .bp-search-controls{display:flex;gap:8px;margin-top:10px}
+#backupRoot .bp-search-controls input{flex:1;min-width:0;background:#08130d;color:#d0ebd5;border:1px solid #496b52;padding:13px 11px;font:inherit;border-radius:0}
+#backupRoot .bp-search-controls button,#backupRoot .bp-search-results button,#backupRoot .bp-diff-choices button{background:#11251a;border:1px solid #496b52;color:#c9ead0;font:inherit;min-height:52px;padding:10px 12px;text-align:left;cursor:pointer}
+#backupRoot .bp-search-results,#backupRoot .bp-diff-choices{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#backupRoot .bp-search-contamination{margin-top:32px;padding:14px 8px;border-top:1px dashed #5a3e42;color:#c78083}
+#backupRoot .bp-search-contamination .bp-line{color:#bd6d73}
+#backupRoot .bp-reread{margin-top:48px;padding-top:16px;border-top:1px dashed #435d4a;color:#a8c5b0;letter-spacing:.08em}
+#backupRoot .bp-diff-choices button:focus-visible,#backupRoot .bp-search-results button:focus-visible{outline:2px solid #c3eacb;outline-offset:2px}
+@media(max-width:340px){#backupRoot .bp-search-controls{flex-direction:column}}
+
+/* v1.0: evidence-driven E4 cross-reference, accessible terminal controls */
+#backupRoot .bp-e4-puzzle{margin-top:20px;border-color:#426c50}
+#backupRoot .bp-e4-puzzle h2{font-size:17px;line-height:1.5;margin:12px 0}
+#backupRoot .bp-e4-step{padding:14px 0}
+#backupRoot .bp-e4-step p{font-size:14px;line-height:1.9;color:#d0e4d4}
+#backupRoot .bp-e4-choices{display:grid;gap:10px;margin:12px 0}
+#backupRoot .bp-e4-choices button{min-height:68px;text-align:left;padding:14px 12px;border:1px solid #55785d;background:#0c1c12;color:#d1ebd8;font:14px/1.65 var(--term-font),monospace;overflow-wrap:anywhere;touch-action:manipulation}
+#backupRoot .bp-e4-choices button:active{background:#27402c}
+#backupRoot .bp-e4-choices button:focus-visible{outline:2px solid #c6f0d1;outline-offset:3px}
+#backupRoot .bp-e4-feedback{color:#c2d3bc;font-size:13px;line-height:1.7;min-height:1.7em}
+#backupRoot .bp-e4-locked{color:#c9af93;padding:16px 0;line-height:1.8}
+#backupRoot .bp-e4-result{border-left:2px solid #6aab78;padding:14px 16px;background:#0d1d12;line-height:1.8}
+#backupRoot .bp-e4-result b{color:#9ce6ac}
+#backupRoot .bp-e4-result p{margin:8px 0 0}
+
+/* v1.1 E1/E2 verification is built from the existing E4 accessible choice components */
+#backupRoot .bp-e4-puzzle [role="status"]{overflow-wrap:anywhere}
+
+/* v1.5 forensic board: full-width touch affordances */
+#backupRoot .bp-forensics{margin-top:16px}
+#backupRoot .bp-evidence-slot{border:1px solid #385440;padding:14px 12px;margin:12px 0;background:#0c1710}
+#backupRoot .bp-evidence-slot p{line-height:1.85;margin:10px 0}
+#backupRoot .bp-forensic-label{display:block;font-size:13px;color:#9db8a5;margin:12px 0}
+#backupRoot .bp-forensic-label select{display:block;width:100%;min-height:52px;background:#101e15;border:1px solid #5b8063;color:#d4eed9;padding:10px;font:inherit;font-size:15px;margin-top:8px}
+#backupRoot .bp-evidence-slot button,#backupRoot .bp-evidence-collect button{min-height:56px;max-width:100%;white-space:normal;text-align:left}
+#backupRoot .bp-evidence-collect{border-top:1px solid #3d5744;margin-top:20px;padding-top:16px}
+#backupRoot .bp-evidence-collect small{display:block;color:#8fa895;margin-top:6px}
+#backupRoot .bp-forensic-note{color:#a9d9b0}
+
+/* v1.5.1: stable viewport CRT animation on all file types. */
+#backupRoot .bp-document.bp-crt-boot{will-change:clip-path,filter,transform}
+</style><link rel="stylesheet" href="meta-horror.css">
+</head><body><script>window.MURMUR_APP_PREVIEW=true;</script><script>
+/* Murmur v1.2 META control: optional, on-device, foreground only. No analytics or uploads. */
+(function(){'use strict';
+ const KEY='murmur_meta_v12';let prefs={camera:false,location:false,light:false,motion:false,weather:false,notifications:false,icon:false};
+ try {prefs={...prefs,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(_){ }
+ let ctx={view:'home',chapter:0,scares:true,stream:false,open:false},cameraStream=null,cameraEl=null,lightSensor=null,lastMotion=0,armedMotion=false,lastMirror=false,locationUsed=false,weatherUsed=false;
+ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(prefs))}catch(_){}};
+ const gate=()=>ctx.open&&ctx.scares&&!ctx.stream&&!document.hidden;
+ const text=(s)=>{if(!gate())return; let el=document.getElementById('murmur-meta-message');if(!el){el=document.createElement('div');el.id='murmur-meta-message';el.setAttribute('role','status');document.body.append(el)}el.textContent=s;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,6500)};
+ function stopCamera(){if(cameraStream){cameraStream.getTracks().forEach(x=>x.stop());cameraStream=null;}if(cameraEl){cameraEl.remove();cameraEl=null}}
+ async function mirror(){if(!gate()||!prefs.camera||lastMirror)return;lastMirror=true;
+  const yes=window.confirm('Murmur 鏡子演出：只在你允許時開啟前鏡頭即時預覽。畫面不錄製、不儲存、不上傳。現在開啟嗎？');if(!yes)return;
+  try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});if(!gate()){stream.getTracks().forEach(t=>t.stop());return}stopCamera();cameraStream=stream;const w=document.createElement('div');w.id='murmur-meta-mirror';w.innerHTML='<div class="murmur-mirror-head">CAMERA // LIVE PREVIEW · NOT RECORDED <button type="button" id="murmur-mirror-close">[CLOSE]</button></div><video autoplay muted playsinline></video><div class="murmur-mirror-fog" aria-hidden="true"></div><div class="murmur-mirror-caption">你看見的是誰？</div>';w.querySelector('video').srcObject=stream;w.querySelector('button').addEventListener('click',stopCamera);cameraEl=w;document.body.append(w)}catch(e){text('無法使用前鏡頭，劇情會照常繼續。')}}
+ async function region(){if(!gate()||!prefs.location||locationUsed)return;locationUsed=true;if(!navigator.geolocation){text('此裝置無法取得大略位置。');return}
+  if(!window.confirm('Murmur 定位演出：是否取得一次大略位置以顯示行政區？可能需要網路逆地理編碼；不儲存座標、不上傳至遊戲伺服器。拒絕不影響劇情。'))return;
+  navigator.geolocation.getCurrentPosition(async p=>{if(!gate())return; let label='附近';try{const u=`https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(p.coords.latitude.toFixed(2))}&lon=${encodeURIComponent(p.coords.longitude.toFixed(2))}&format=json&accept-language=zh-TW&zoom=12`;const r=await fetch(u);if(r.ok){const a=(await r.json()).address||{};label=[a.city||a.town||a.county||a.state,a.city_district||a.borough||a.district||a.suburb].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).slice(0,2).join(' ')||'附近'}}catch(_){ }text('你在'+label+'。再往下我也知道。可是我不說。')},()=>text('沒有取得位置。這份備份仍然可以閱讀。'),{enableHighAccuracy:false,timeout:10000,maximumAge:120000});}
+ async function weather(){if(!gate()||!prefs.weather||weatherUsed)return;weatherUsed=true;if(!navigator.geolocation)return;
+  if(!window.confirm('Murmur 天氣演出：是否取得一次大略位置並向 Open-Meteo 查詢當下是否下雨？位置座標會送至天氣服務，Murmur 不保存位置。'))return;
+  navigator.geolocation.getCurrentPosition(async p=>{try{const u=`https://api.open-meteo.com/v1/forecast?latitude=${p.coords.latitude.toFixed(2)}&longitude=${p.coords.longitude.toFixed(2)}&current=precipitation,rain&timezone=auto`;const r=await fetch(u);if(!r.ok)return;const d=(await r.json()).current||{};if(gate()&&(d.rain>0||d.precipitation>0))text('你那邊也在下雨。')}catch(_){}},()=>{}, {enableHighAccuracy:false,timeout:10000,maximumAge:120000})}
+ function onMotion(e){if(!gate()||!prefs.motion||ctx.chapter<4||!armedMotion)return;const a=e.accelerationIncludingGravity;if(!a)return;const len=Math.hypot(a.x||0,a.y||0,a.z||0);const now=Date.now();if(len>19&&now-lastMotion>45000){lastMotion=now;armedMotion=false;text('你嚇到了嗎。');if(navigator.vibrate)navigator.vibrate(60)}}
+ function armMotion(){armedMotion=true; text('此場景會感應自然的手部晃動。不要撞擊手機或身體。')}
+ async function permissionsMotion(){if(typeof DeviceMotionEvent!=='undefined' && typeof DeviceMotionEvent.requestPermission==='function'){const r=await DeviceMotionEvent.requestPermission();if(r!=='granted')return;}window.addEventListener('devicemotion',onMotion,{passive:true});armMotion()}
+ function light(){if(!gate()||!prefs.light||ctx.chapter<4)return;if('AmbientLightSensor' in window&&!lightSensor){try{lightSensor=new AmbientLightSensor({frequency:1});lightSensor.onreading=()=>{if(lightSensor.illuminance<8&&new Date().getHours()>=23){text('你那邊的燈關了吧。');lightSensor.stop();lightSensor=null}};lightSensor.onerror=()=>{lightSensor=null};lightSensor.start()}catch(_){text('本裝置不支援光線偵測。')}}}
+ // Native notification bridge is optional in the web preview. All scheduling is opt-in.
+ const notifApi=()=>window.Capacitor?.Plugins?.LocalNotifications||null;
+ const NOTIFICATION_IDS=[731201,731202,731203,731204];
+ async function notifyConsent(){
+   const api=notifApi();if(!api){text('只有安裝原生版並同步 Local Notifications 插件後才可排程通知。');return false}
+   let granted=await api.checkPermissions();
+   if(granted.display!=='granted')granted=await api.requestPermissions();
+   if(granted.display!=='granted'){text('通知權限未授予，遊戲仍可正常遊玩。');return false}
+   return true;
+ }
+ async function cancelNotifications(){const api=notifApi();if(!api)return;try{await api.cancel({notifications:NOTIFICATION_IDS.map(id=>({id}))})}catch(_){}}
+ async function schedule(){if(!prefs.notifications)return;if(await notifyConsent())text('通知權限已啟用。通關後會自動安排第三天的劇情通知。')}
+ async function scheduleEpilogue(){
+   if(!prefs.notifications||!await notifyConsent())return;
+   const api=notifApi();const stampKey='murmur_meta_notif_scheduled_v13';
+   if(localStorage.getItem(stampKey))return;
+   const now=new Date(), day=new Date(now.getFullYear(),now.getMonth(),now.getDate()+3);
+   const titles=['你下班了嗎','你下班了','你快到了嗎']; const hours=[[21,12],[21,31],[21,50]];
+   try{
+     await api.schedule({notifications:titles.map((body,i)=>({id:NOTIFICATION_IDS[i],title:'Murmur · mochi.alley（虛構劇情）',body,schedule:{at:new Date(day.getFullYear(),day.getMonth(),day.getDate(),hours[i][0],hours[i][1])}}))});
+     localStorage.setItem(stampKey,String(Date.now()));text('已排程通關後第三天的虛構劇情通知。');
+   }catch(err){text('無法安排劇情通知；不影響結局。')}
+ }
+ const AWAY_KEY='murmur_meta_away_notif_v13';
+ async function scheduleAway(){
+  if(!prefs.notifications||!ctx.open||ctx.chapter<4||ctx.stream||!ctx.scares)return;
+  const api=notifApi();if(!api)return;
+  try{const p=await api.checkPermissions();if(p.display!=='granted')return;
+    await api.cancel({notifications:[{id:NOTIFICATION_IDS[3]}]});
+    await api.schedule({notifications:[{id:NOTIFICATION_IDS[3],title:'Murmur · 劇情通知',body:'你不是看得很開心嗎？',schedule:{at:new Date(Date.now()+1000*60*35)}}]});
+    sessionStorage.setItem(AWAY_KEY,'1');
+  }catch(_){}
+ }
+ async function stopAway(){const api=notifApi();if(!api)return;try{await api.cancel({notifications:[{id:NOTIFICATION_IDS[3]}]})}catch(_){}}
+
+ const permissionExplanations={
+  camera:'前鏡頭鏡子：僅在指定日記內開啟即時前鏡頭預覽，關閉頁面立即停止。不拍照、不錄影、不上傳。系統可能會再詢問相機權限。拒絕不影響通關。',
+  location:'行政區演出：在指定章節會另外徵求同意，取得一次約略位置，並向 OpenStreetMap Nominatim 傳送四捨五入的座標以取得行政區。不保留精確座標。拒絕不影響通關。',
+  weather:'現實天氣：在指定章節會另外徵求同意，取得一次約略位置並送往 Open-Meteo 查雨勢。拒絕不影響通關。',
+  light:'光線偵測：僅在特定段落且裝置支援時讀取環境亮度。iOS 不提供通用環境光線 API，此選項在不支援的平台不會啟動。',
+  motion:'動作感測：啟用後仍須按 [ARM] 並在需要時接受系統授權；僅讀取自然手部晃動，不需撞擊自己或裝置。拒絕不影響通關。',
+  notifications:'劇情通知：允許後，遊戲可能在離開約 35 分鐘時及通關後第三天排程標示 Murmur 的虛構訊息；可隨時關閉並取消未發送通知。系統接著會請求通知權限。',
+  icon:'結局圖示：依平台是否支援替換 App 圖示，可能由系統彈出提示；目前沒有可切換的替代圖示，先不啟用此選項。'
+ };
+ function preConsent(key){return window.confirm('Murmur · 裝置效果授權說明\n\n'+permissionExplanations[key]+'\n\n是否啟用此項劇情效果？');}
+ const labels=[['camera','前鏡頭鏡子','04/17 日記；需點頭才開啟、不錄影'],['location','行政區演出','一次性大略定位，逆地理編碼會連至外部服務'],['weather','現實天氣','一次性大略定位，使用 Open-Meteo'],['light','光線偵測','僅支援具備 AmbientLightSensor 的裝置'],['motion','動作感測','僅自然手部晃動，絕不碰撞人或手機'],['notifications','劇情通知','通關第三天與離開遊戲後的可選本機通知'],['icon','結局圖示變化（未支援）','尚未接入原生圖示切換；無法啟用']];
+ function panel(){return `<div class="bp-panel murmur-meta-panel"><h2>META / DEVICE EFFECTS</h2><p class="bp-note">全部預設關閉。僅在 App 前景、非實況模式與特定章節作用；拒絕權限不影響通關。位置和天氣會呼叫第三方服務。</p>${labels.map(([key,label,desc])=>`<label class="bp-check"><input type="checkbox" data-meta="${key}" ${prefs[key]?'checked':''}><span><b>${label}</b><small>${desc}</small></span></label>`).join('')}<div class="bp-actions"><button type="button" data-meta-action="motion">[ARM] 手勢感應</button><button type="button" data-meta-action="notify">[CHECK] 通知權限</button><button type="button" data-meta-action="revoke">[OFF] 關閉全部裝置效果</button></div><p class="bp-note">錄影狀態與截圖事件取決於 OS/API；不能保證所有裝置偵測。錄影和通知不會偽裝成外部真人。</p></div>`}
+ document.addEventListener('change',e=>{const k=e.target?.dataset?.meta;if(k in prefs){if(e.target.checked && (k==='icon'||!preConsent(k))){e.target.checked=false;return}prefs[k]=!!e.target.checked;save();if(!prefs.camera)stopCamera();if(!prefs.light&&lightSensor){lightSensor.stop();lightSensor=null}if(!prefs.motion)armedMotion=false;if(k==='notifications'&&!prefs.notifications)cancelNotifications();if(k==='notifications'&&prefs.notifications)schedule()}},true);
+ document.addEventListener('click',async e=>{const k=e.target?.closest('[data-meta-action]')?.dataset.metaAction;if(!k)return;if(k==='motion'&&prefs.motion)await permissionsMotion();if(k==='notify')await schedule();if(k==='revoke'){Object.keys(prefs).forEach(k=>prefs[k]=false);save();cancelNotifications();stopCamera();armedMotion=false;if(lightSensor){lightSensor.stop();lightSensor=null}document.querySelectorAll('[data-meta]').forEach(el=>el.checked=false);text('已停止裝置效果並取消待發通知。若要撤銷系統權限，請前往手機設定。')}},true);
+ window.addEventListener('murmur:context',e=>{ctx=e.detail||ctx;if(!gate()||ctx.view!=='entry')stopCamera();});
+ window.addEventListener('murmur:record',e=>{const r=e.detail||{};if(!gate())return;if(r.id==='diary_68'&&prefs.camera)mirror();if(ctx.chapter>=4){if(prefs.light)light();if(prefs.motion&&armedMotion&&r.reads===1)text('你嚇到了嗎。');if(prefs.weather&&r.id==='diary_74')weather();if(prefs.location&&r.id==='diary_74')region();}if(r.reads>=2 && r.id==='diary_69')text('你又回來看了。')});
+ window.addEventListener('murmur:native',e=>{if(!gate())return;const type=e.detail?.type;if(type==='recording')text('你想把這些都留下來嗎。');if(type==='screenshot')text('你也想把它留下來嗎。')});
+ window.addEventListener('murmur:epilogue',()=>{scheduleEpilogue()});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){scheduleAway();stopCamera();if(lightSensor){lightSensor.stop();lightSensor=null}}else{stopAway()}});
+ window.MurmurMeta={panel,stopCamera,version:'1.4'};
+})();
+</script>
+<script>
+
+(function () {
+  'use strict';
+  const KEY = 'murmur_app_backup_preview_v5'; // progress remains compatible across v0.5/v0.6
+  const PREVIEW = window.MURMUR_APP_PREVIEW === true;
+  const ARCHIVE = {"chapters": [{"name": "E1｜被選中的人", "range": "2020-09 ～ 2020-12", "tasks": [{"id": "diary", "label": "打開至少一篇日記，確認她如何開始認定自己被選中。", "hint": "可從 2020-11-12 01:47 或 2020-12-24 開始。"}, {"id": "notes", "label": "查看〈備忘錄 · 她〉。", "hint": "這是 E1 最後一則資料。"}]}, {"name": "E2｜室友", "range": "2021-01 ～ 2021-03", "tasks": [{"id": "notes", "label": "查看〈回覆紀錄〉或〈上線紀錄〉。", "hint": "她開始記錄回覆字數與上線時間。"}, {"id": "drafts", "label": "查看〈沒送出的訊息〉。", "hint": "這裡能看到她沒有傳出去的內容。"}]}, {"name": "E3｜04-10", "range": "2021-04-01 ～ 2021-04-12", "tasks": [{"id": "messages", "label": "比較 04-10 的兩份手機備份（v2 與 v1）。", "hint": "兩份資料記錄的內容不同，請自行比對。"}, {"id": "diary", "label": "再讀 2021-04-10 23:51 之後的日記。", "hint": "閱讀時間較晚的紀錄，確認接下來的變化。"}]}, {"name": "童年插章｜舊部落格", "range": "2007 ～ 2010", "tasks": [{"id": "blog", "label": "閱讀舊部落格備份。", "hint": "至少讀到〈2007-05-11 下雨〉或〈2010-04-08〉。"}]}, {"name": "E4｜準備", "range": "2021-04-13 ～ 2021-04-22", "tasks": [{"id": "stories", "label": "查看〈小帳 · 限時動態觀看紀錄〉。", "hint": "觀看次數本身就是線索。"}, {"id": "searches", "label": "查看 04-20 搜尋紀錄。", "hint": "它對應 E4 後期的想法。"}, {"id": "drafts", "label": "查看〈草稿 · PLAN-7F3〉。", "hint": "主線已有，這裡補她寫下時的心情。"}]}, {"name": "E5｜那一晚", "range": "2021-04-23", "tasks": [{"id": "diary", "label": "閱讀 2021-04-23 20:41 的日記。", "hint": "那一晚開始前的記錄。"}, {"id": "drafts", "label": "閱讀 2021-04-23 的沒送出訊息。", "hint": "搭配〈最後一篇〉一起看。"}]}, {"name": "尾聲｜yoru 附註", "range": "END", "tasks": [{"id": "notes", "label": "閱讀 yoru 的附註。", "hint": "全部章節解開後才會出現。"}]}], "records": {"diary": [{"id": "diary_1", "heading": "日記 · 2020-09-14", "date": "2020-09-14", "title": "日記 · 2020-09-14", "chapter": 0, "body": "新公司\n隔壁的人很安靜，打字很輕，像怕吵醒誰。\n午休的時候她一個人吃布丁，用小湯匙慢慢刮杯子邊緣，刮得很乾淨，像在收拾一件很重要的東西。\n我盯著看太久了，她抬頭，我假裝在看她後面的窗戶。\n她說：「你要一個嗎，咱買兩個。」\n我說不用\n回家的路上我去買了一樣的。很甜，我不喜歡。我吃完了。"}, {"id": "diary_2", "heading": "日記 · 2020-09-22", "date": "2020-09-22", "title": "日記 · 2020-09-22", "chapter": 0, "body": "印表機卡紙，我弄了十分鐘弄不好。她走過來，說這台要先拉左邊再拉右邊。\n她把手伸進去的時候碰到我的手背。很冰，像剛從冰箱拿出來的湯匙。\n她說：「咱手一直都很冰，不好意思。」\n我說沒關係。\n我那天下午一直把那隻手放在大腿上，沒有拿起來打字。\n很蠢\n我知道很蠢。"}, {"id": "diary_3", "heading": "日記 · 2020-09-25", "date": "2020-09-25", "title": "日記 · 2020-09-25", "chapter": 0, "body": "員工證上印著她的本名。人資在早會上念了一次，她整個人往椅子裡縮了一下，像被人從背後拍了一下肩膀。\n沒有人注意到\n我注意到了\n我很會注意這種事。一個人要縮起來之前，肩膀會先停一下，我從小就看得出來。\n後來我都不叫她名字。要找她的時候，我就走過去，敲她的桌子兩下。\n敲兩下。\n她第三天開始，聽到兩下就會抬頭，對我笑。\n這是我們的暗號。只有我們知道。"}, {"id": "diary_4", "heading": "日記 · 2020-09-29", "date": "2020-09-29", "title": "日記 · 2020-09-29", "chapter": 0, "body": "她的提案被退了第五次。\n客戶的信只有一行：「感覺不對，再調整。」\n她把那封信念出來給我聽，壓低聲音，學那個客戶的語氣，念到「感覺」兩個字的時候還用手在空中畫了一個圈。\n我笑出聲音\n整個辦公室的人都轉過來看。\n她也笑，笑到趴在桌上，肩膀一直抖。\n\n後來她去茶水間待了很久。我裝作要倒水，跟過去。\n她背對著門，兩隻手縮在袖子裡，抓著袖口，像抓著兩隻不讓自己飛走的鳥。\n我問她還好嗎。\n她轉過來，臉上還是剛剛那個笑：「沒事啦。」\n\n那是我第一次聽她說沒事啦。\n我後來聽了很多次。每一次我都知道，那是她在把什麼東西塞回去。\n別人聽不出來\n只有我聽得出來。\n這件事讓我很高興，高興到我有點害怕自己。"}, {"id": "diary_5", "heading": "日記 · 2020-10-02", "date": "2020-10-02", "title": "日記 · 2020-10-02", "chapter": 0, "body": "她講話的時候會用「咱」。別人笑她像阿嬤，她也跟著笑。\n我沒有笑\n我覺得很好聽，像下雨天把窗戶關起來的聲音。\n我開始在心裡練習用她的方式講話，然後發現我不敢在她面前用。好像用了就會被發現什麼。被發現我在學她，被發現我想要一點點她。"}, {"id": "diary_6", "heading": "日記 · 2020-10-05", "date": "2020-10-05", "title": "日記 · 2020-10-05", "chapter": 0, "body": "她說她心裡有一份便利商店布丁排行榜。\n第一名是某家的焦糖布丁，「焦糖要有一點點苦，不能只有甜」。\n第二名，她說要看心情。\n我問那今天是哪一個。她想了很久，很認真，像在做一個很重要的決定：「今天是雞蛋布丁。」\n明天呢。\n「明天的事明天再說（」\n\n我回家以後在備忘錄裡開了一個新的頁面，寫她的排行榜。\n第二名那一格，我每天幫她更新。我不知道她今天的心情是什麼，所以我用猜的。\n我猜對的時候，就買那一個放在她桌上。\n她第三次收到的時候抬頭看我：「你怎麼知道咱今天想吃這個。」\n我說我猜的。\n我很會猜她。"}, {"id": "diary_7", "heading": "日記 · 2020-10-06", "date": "2020-10-06", "title": "日記 · 2020-10-06", "chapter": 0, "body": "她把第二個布丁給我了。這次我沒有說不用。\n我們坐在頂樓的逃生梯吃，她說這裡沒有人會來。\n她說她喜歡下雨天。「下雨的時候大家都很忙，忙著躲雨，就沒有人會看你。」\n我說我討厭下雨。\n她問為什麼\n我說不為什麼。\n她沒有追問\n她只是把湯匙在杯子裡轉了一圈，說：「那下次下雨，咱陪你討厭。」\n布丁很甜，我不喜歡。\n我吃完了\n這次我是因為她在看。"}, {"id": "diary_8", "heading": "日記 · 2020-10-09", "date": "2020-10-09", "title": "日記 · 2020-10-09", "chapter": 0, "body": "她問我為什麼不笑她的「咱」。\n我說因為那是妳講話的方式啊，又沒有錯。\n她看了我很久，久到我以為我講錯話了。她說：「你是第一個這樣講的人。」\n\n第一個。\n我那天回家走路的時候一直在笑，笑到經過的人看我，我還是在笑。我好久沒有這樣了。像有人把一盞燈放進我的口袋，走到哪裡都是亮的。"}, {"id": "diary_9", "heading": "日記 · 2020-10-13", "date": "2020-10-13", "title": "日記 · 2020-10-13", "chapter": 0, "body": "她的手真的一直都很冰。打字打到一半會停下來搓手。\n我買了一條護手霜，放在她桌上，沒有寫是誰放的。\n下午她拿著那條護手霜轉過來：「是你嗎？」\n我說不是。\n她說：「騙人，只有你知道咱手冰。」\n她擠了一點在手上，然後把手伸過來，說你幫咱搓一下，咱自己搓不熱。\n我握著她的手。\n她的手指很細，指節有一點紅，冰得像我把一捧雪握在手裡，我很怕它化掉，又很想它化掉。我搓了很久，搓到她說好了好了，咱熱了。\n她的手熱了\n是因為我。\n我回到座位上，手上都是她的護手霜的味道，白茶。我一整個下午沒有洗手。"}, {"id": "diary_10", "heading": "日記 · 2020-10-15", "date": "2020-10-15", "title": "日記 · 2020-10-15", "chapter": 0, "body": "早會又念了她的全名。這次是主管，在講一個專案的分工。\n她的肩膀先停了一下。我看到了。\n\n我舉手問了一個問題。問題很笨，笨到主管皺眉頭，大家的視線都轉到我身上。\n主管回答完，就忘了剛剛要念的那串名字，直接跳到下一個人。\n\n散會的時候她走在我旁邊，什麼都沒說，只是用手肘輕輕碰了我一下。\n那一下我收了很久。\n我替她擋掉了一次。\n以後我也會一直替她擋。"}, {"id": "diary_11", "heading": "日記 · 2020-10-16", "date": "2020-10-16", "title": "日記 · 2020-10-16", "chapter": 0, "body": "部門聚餐\n她喝了兩杯就醉了，回家的捷運上靠在我肩膀睡著。\n她的頭髮有洗髮精的味道，很淡，像是買了很久都沒換過的那種。\n我本來在第四站要下車。我沒有下。\n我坐到她那站，第十站，把她叫醒。她迷迷糊糊說：「欸你不是早就下車了嗎。」\n我說我剛好也要往這邊。\n我搭回去的時候已經沒有車了。我走了四十分鐘回家。\n肩膀到現在還是熱的。像有人在上面放了一個暖暖包，忘了拿走。\n我希望她永遠忘了拿走。"}, {"id": "diary_12", "heading": "日記 · 2020-10-19", "date": "2020-10-19", "title": "日記 · 2020-10-19", "chapter": 0, "body": "她給我看一張照片。一隻橘色的貓，很胖，躺在巷口的機車座墊上，肚子翻過來。\n「牠叫麻糬。\n咱取的\n」\n我說牠是橘色的。\n「對吖，可是牠又白又軟（」\n她說整條巷子的人都在餵牠，所以牠很胖。她說麻糬看到她會翻肚子，可是別人摸牠會被咬。\n「只有咱可以摸。」\n\n她講麻糬的時候，聲音會變得很軟，像把手伸進一團溫水裡。\n我有一點嫉妒那隻貓。\n這樣很奇怪\n我知道。\n我把那張照片存下來了。我想記住每一個被她取過名字的東西。"}, {"id": "diary_13", "heading": "日記 · 2020-10-21　02:14", "date": "2020-10-21 02:14", "title": "日記 · 2020-10-21　02:14", "chapter": 0, "body": "她半夜傳訊息說睡不著。室友加班還沒回來，房子太安靜。\n我打給她。\n我們講了一個多小時，講公司，講布丁，講她小時候養過一隻會咬人的倉鼠。牠叫湯圓，咬她的時候超用力，她還是每天跟牠講話。她說：「咱那時候覺得，會咬咱的東西，就是在乎咱。」\n我在電話這頭沒有說話。我把這句話也記住了。\n講到後來她不講話了，只剩下呼吸。很慢，很輕，有時候會停一下，然後再接上，像潮水退到一半又回來。\n她睡著了。\n我沒有掛。\n我把手機放在枕頭旁邊，聽到天亮。窗外的天從黑色變成灰色，變成那種洗過很多次的白，她的呼吸一直都在。\n我好久沒有在天亮的時候不害怕了。\n\n我按了一個鍵\n我想把今晚留下來。"}, {"id": "diary_14", "heading": "日記 · 2020-10-28", "date": "2020-10-28", "title": "日記 · 2020-10-28", "chapter": 0, "body": "她說我們以後睡不著就打給對方。\n「掛睡」，她說年輕人都這樣講。\n這禮拜打了四天。\n\n第三天她問我，你都不講你自己的事。\n我說我沒什麼好講的。\n她說：「騙人。」\n\n所以我講了。\n我講我媽\n講她會抱著我說媽媽只有你，然後隔天就不見了，三天、五天，有一次是十一天。講她回來的時候什麼都不解釋，只說「你最乖，你最懂媽媽」。\n講我國小的時候下雨，全班都有人來接，我在穿堂等到警衛關燈。\n我講的時候很冷靜，像在講別人家的事，像在念一份很舊的報告。\n\n她沒有說「好可憐」，也沒有說「都過去了」。\n她安靜了很久\n我以為她睡著了。\n然後她說：「那咱以後下雨都打給你。」\n\n電話那頭很安靜。我聽見她在呼吸。\n我第一次覺得，有人知道我在等。\n我把臉埋在枕頭裡，沒有讓她聽到我在哭。"}, {"id": "diary_15", "heading": "日記 · 2020-10-30", "date": "2020-10-30", "title": "日記 · 2020-10-30", "chapter": 0, "body": "她說她這禮拜被退了三次，主管說她最近狀況不好。\n我說，加油。\n她安靜了一下，然後說：「不要跟咱說加油啦（」\n我問為什麼。\n「聽起來好像大家都要走了，剩咱一個人在那邊加油。」\n\n我跟她說對不起。\n她說沒事啦。\n我那天晚上把「加油」兩個字從我的輸入法常用字裡刪掉了。\n我以後不會再讓她覺得自己一個人。"}, {"id": "diary_16", "heading": "日記 · 2020-11-03", "date": "2020-11-03", "title": "日記 · 2020-11-03", "chapter": 0, "body": "她也跟我說了一個秘密。不是那個，是另一個：她小時候偷穿她姐姐的裙子，在鏡子前面轉圈，被她爸看到。她爸什麼都沒說，只是去拿了剪刀，把裙子剪成兩半，丟進垃圾桶。\n她說：「這個咱沒跟別人講過。」\n我說：「我也是。我媽的事我也沒跟別人講過。」\n我們交換了。\n一人一個，很公平。我們是互相握著對方秘密的人。這樣誰都不會走。"}, {"id": "diary_17", "heading": "日記 · 2020-11-08", "date": "2020-11-08", "title": "日記 · 2020-11-08", "chapter": 0, "body": "下班後我帶她去逛街。她在一排裙子前面站了很久，手伸出去又縮回來，伸出去又縮回來，像在摸一隻怕被咬的貓。\n我拿了一件深藍色的，及膝的，說妳去試。\n她說不行，會被看到。\n我說試衣間有門，門關起來就沒有人看得到。\n她進去了\n過了很久都沒有出來。我敲門，敲兩下。\n門開了一條縫，她沒有讓我看，只說：「很奇怪嗎。」\n我說我看不到怎麼知道。\n她把門開大一點點。\n深藍色\n她的膝蓋很白\n她雙手抓著裙擺，像抓著一個隨時會被搶走的東西。\n我說很好看\n我說了三次。\n\n她沒有買\n她說放不了，室友會看到。\n我買了\n我說放我這裡，妳想穿的時候來穿。\n它現在掛在我的衣櫃裡，在我所有的衣服中間。\n她要穿它，就要來我這裡。"}, {"id": "diary_18", "heading": "日記 · 2020-11-12　01:47", "date": "2020-11-12 01:47", "title": "日記 · 2020-11-12　01:47", "chapter": 0, "body": "掛睡\n她快睡著的時候，含含糊糊說了一句：\n「有你真好。」\n然後就沒有聲音了，只剩呼吸。\n我沒有回\n我怕我一回，她就會醒過來，把這句收回去。\n\n那一段我剪下來了，存成另一個檔案，四秒。\n有你真好。\n四秒。"}, {"id": "diary_19", "heading": "日記 · 2020-11-15", "date": "2020-11-15", "title": "日記 · 2020-11-15", "chapter": 0, "body": "她的護手霜用完了。\n我以為她會丟掉，我以為那就是結束了。\n今天她桌上多了一條新的，同一個牌子，同一個味道，白茶。\n「咱回購了www，用習慣了。」\n\n用習慣了。\n我送的東西，變成她的習慣了。\n她每天擦手的時候，聞到的都是我挑的味道。\n她不知道\n她不用知道。\n我坐在她旁邊，聞到白茶的味道，覺得自己住進了她身上一個很小的地方。像一顆種在她皮膚裡的種子。"}, {"id": "diary_20", "heading": "日記 · 2020-11-19", "date": "2020-11-19", "title": "日記 · 2020-11-19", "chapter": 0, "body": "今天加班到十點。便利商店裡只有我們兩個，她站在冷藏櫃前面很久，冷氣把她的瀏海吹得一直動。最後她說：\n「欸，有一件事，咱想先跟你說。」\n她說她是女生\n她說她還沒跟公司的人講，連主管都不知道。\n她說：「你是第一個。」\n\n我回家以後一直想這句話。\n第一個。\n不是第二個，不是之一。\n我把這句話寫了十幾遍，字越寫越小，小到最後像一排螞蟻在爬。\n\n我問她為什麼是我。\n她想了一下說：「因為你反正會走吧，跟你講咱比較不怕。」然後她笑了，說：「開玩笑的啦，因為你不一樣。」\n我記住後面那句。\n\n我跟她說，妳在我面前不用裝。\n她笑了，眼睛紅紅的。我那時候以為，世界上只有我看過她這個樣子。\n\n> 製作註記：這篇是她寫下的版本。A 實際說的是「公司裡，你是第一個」，「公司裡」三個字被她省略了。02-15 才揭露。"}, {"id": "diary_21", "heading": "日記 · 2020-11-21", "date": "2020-11-21", "title": "日記 · 2020-11-21", "chapter": 0, "body": "她來我家\n她說想學化妝，又不敢去專櫃，怕被店員看。\n我先把那件深藍色的裙子拿出來。她看到的時候愣了一下，然後去浴室換了。\n\n我讓她坐在床邊，自己蹲在她前面。\n打底的時候我用手指，不用海綿。我跟她說用手比較服貼，其實是我想。\n她的皮膚比我想的還要薄，像煮好的布丁表面那層膜，好像用力一點就會破。眼皮底下有一點青色。我用遮瑕一點一點蓋掉，她一直閉著眼睛，睫毛在動，像兩隻停在那裡、隨時要飛走的蛾。\n畫眼線的時候我扶著她的下巴。她很乖，叫她往上看就往上看。\n口紅是我的，豆沙色。我說抿一下，她就抿一下。\n\n我把鏡子拿給她。\n她看了很久，然後哭了。妝花掉一點。\n她說：「咱看起來像咱了。」\n\n我那時候想的是：是我。\n是我讓妳看起來像妳的。\n\n她那天睡在我這裡。我們躺在同一張床上，中間隔一個枕頭的距離。半夜她翻身，手伸過來，抓住我的手腕，抓得很緊，像小孩子在人很多的地方抓住大人。然後她又睡著了。\n我一直醒著到天亮。\n我不敢動\n我怕我一動，她就會放開。\n她的手是熱的\n整晚都是。"}, {"id": "diary_22", "heading": "日記 · 2020-11-22", "date": "2020-11-22", "title": "日記 · 2020-11-22", "chapter": 0, "body": "枕頭套我沒有洗。"}, {"id": "diary_23", "heading": "日記 · 2020-11-25", "date": "2020-11-25", "title": "日記 · 2020-11-25", "chapter": 0, "body": "她跟我講她姐姐。\n家裡只有姐姐知道。姐姐是第一個，在她高中的時候。\n爸爸剪掉裙子之後，是姐姐把那兩塊布從垃圾桶撿起來，偷偷縫回去，藏在自己的衣櫃裡。\n她說連假說要回家，其實都是回姐姐家。她已經好幾年沒有回爸爸那裡了。\n\n我聽的時候一直在點頭。\n我心裡有一個地方，冷冷地，把「第一個」三個字往後挪了一格。\n姐姐是第一個。\n那我是第二個。\n第二個也很好\n第二個也很少。\n\n（下面一行，被劃掉）\n~~可是她說我是第一個。~~"}, {"id": "diary_24", "heading": "日記 · 2020-11-27", "date": "2020-11-27", "title": "日記 · 2020-11-27", "chapter": 0, "body": "她今天跟我說謝謝。她記得我不吃香菜。\n她記得。\n一個人記得另一個人不吃什麼，代表什麼？我查了很久。網路上說，代表在意。\n我把那個網頁存起來了。"}, {"id": "diary_25", "heading": "日記 · 2020-12-05", "date": "2020-12-05", "title": "日記 · 2020-12-05", "chapter": 0, "body": "我送她一支口紅。跟那天用的同一個色號，新的。\n她隔天就擦來上班了。整個辦公室只有我知道那是什麼顏色、是從哪裡來的。\n她開會的時候講話，嘴唇動一下，我就想一下：那是我的顏色。\n她像是我寫在她身上的一個字，別人都看得到，只有我讀得懂。"}, {"id": "diary_26", "heading": "日記 · 2020-12-12", "date": "2020-12-12", "title": "日記 · 2020-12-12", "chapter": 0, "body": "下班很冷，我把圍巾借她。\n今天她還我了\n裝在紙袋裡，洗過，摺得很整齊，還有一張便利貼寫「謝謝你（」。\n洗過了。\n我把臉埋進去，只有洗衣精的味道。乾淨得像什麼事都沒發生過。\n我坐在玄關很久。我不知道我在難過什麼。\n我只知道，她把我留在她身上的東西洗掉了，而且她覺得這是禮貌。"}, {"id": "diary_27", "heading": "日記 · 2020-12-18", "date": "2020-12-18", "title": "日記 · 2020-12-18", "chapter": 0, "body": "我問她週末要不要去看海，她一直說想看冬天的海。\n她說：「下次吧（」\n\n她說下次的時候，尾音會拉長一點點，像在道歉，像把一顆糖剝開一半又包回去。\n我覺得很可愛。\n我說好，下次。\n我把「冬天的海」寫進備忘錄，旁邊寫：下次。"}, {"id": "diary_28", "heading": "日記 · 2020-12-24", "date": "2020-12-24", "title": "日記 · 2020-12-24", "chapter": 0, "body": "我問她平安夜要不要來，我可以煮東西，她可以穿那件裙子。\n她說今天要跟室友吃飯，下次。\n我說好啊\n我說好好玩\n我加了一個笑臉。\n\n我一個人把裙子從衣櫃裡拿出來，攤在床上，攤成一個人躺著的形狀。\n我知道這樣很怪。我知道。\n我把燈關掉了，這樣就看不出來它只是一件裙子。"}, {"id": "diary_29", "heading": "日記 · 2020-12-31", "date": "2020-12-31", "title": "日記 · 2020-12-31", "chapter": 0, "body": "最後一天上班\n她幫我把紙箱抱到樓下，說以後還是可以約，還是可以掛睡。\n跨年的時候我傳了新年快樂，她十二點零三分回我。\n三分鐘\n我算過，她通常要二十分鐘才會回。\n她是先回我的。"}, {"id": "diary_30", "heading": "日記 · 2021-01-04", "date": "2021-01-04", "title": "日記 · 2021-01-04", "chapter": 1, "body": "約聘結束的第四天。\n不用上班的日子很長，長得像一條沒有路燈的路。我每天醒來第一件事是看她有沒有傳訊息。\n沒有\n第二件事是看她幾點上線。七點五十二。\n我媽打來，我沒接。\n我把她的號碼改成「不要接」。這樣手機亮起來的時候，我不用想就知道該怎麼辦。"}, {"id": "diary_31", "heading": "日記 · 2021-01-08", "date": "2021-01-08", "title": "日記 · 2021-01-08", "chapter": 1, "body": "她回我的話變短了。\n以前會講一整段，現在是「好」「哈哈」「下次」。\n我想了很久，然後懂了。人跟人熟到一個程度，就不需要講那麼多了。像兩個住很久的人，不用開燈也知道東西放在哪裡。\n她知道我懂。\n我們變得特別了。"}, {"id": "diary_32", "heading": "日記 · 2021-01-16", "date": "2021-01-16", "title": "日記 · 2021-01-16", "chapter": 1, "body": "我問她週末要不要來，我新買了一盤眼影，可以教她畫煙燻。裙子也還在。\n她說這週不行，下次。\n下次。\n我說好。\n我把眼影拆開，自己畫了一次。\n畫得很好\n沒有人看。\n\n枕頭套還是沒有洗。上面已經沒有她的味道了，只剩我的。\n我還是不想洗\n洗了就連「曾經有過」都沒有了。"}, {"id": "diary_33", "heading": "日記 · 2021-01-22　00:40", "date": "2021-01-22 00:40", "title": "日記 · 2021-01-22　00:40", "chapter": 1, "body": "我問她今晚要不要掛睡。\n她過了很久才回：「一直要掛睡有點累欸（」\n\n我盯著那句話看了二十分鐘。\n有點累\n累的是掛睡，還是我。\n我問：「那其他部分呢？」\n她回：「不會。」\n\n不會。\n兩個字。\n我把「一直要掛睡有點累」截掉，只截「不會」那張，存起來。\n她說不會\n她說其他部分都不會。\n所以只是掛睡的問題，不是我的問題。\n所以我只要少打一點電話，其他的都還在。\n所以我還在。\n\n我把那張截圖設成桌布。每次解鎖手機，第一眼就看到「不會」。\n像在一間正在漏水的房子裡，找到一個還乾著的角落，把自己縮進去，然後跟自己說，這間房子沒有在漏水。"}, {"id": "diary_34", "heading": "日記 · 2021-01-23", "date": "2021-01-23", "title": "日記 · 2021-01-23", "chapter": 1, "body": "她說最近很忙。\n忙的人還是會回我。她沒有回群組，可是她回了我。\n我是特別的。\n\n~~她回了我四個字。~~"}, {"id": "diary_35", "heading": "日記 · 2021-01-30　03:50", "date": "2021-01-30 03:50", "title": "日記 · 2021-01-30　03:50", "chapter": 1, "body": "她這禮拜都沒有打來。我打過去兩次，第一次她說要睡了，第二次沒接。\n\n我把十月的錄音打開來聽。\n那天她說到一半睡著，呼吸很慢，停一下，再接上。\n我把音量開到最大，把手機放在她那天睡的那個枕頭上，躺下來。\n這樣她就在了。\n\n我一共錄了二十三晚。我數過。\n還有那四秒\n有你真好\n我放了一百多次，放到那四個字不像字了，像一首只有一句的歌，像一個我自己發明出來的聲音。\n\n我知道正常人不會這樣。\n可是正常人有人會打來。"}, {"id": "diary_36", "heading": "日記 · 2021-02-15", "date": "2021-02-15", "title": "日記 · 2021-02-15", "chapter": 1, "body": "我看到了。\n不是我去找的，是她的頭貼換了。兩隻手，一隻是她的，拿著布丁的杯子。另一隻比較大，指節比較粗，扶著杯子底下。\n室友。\n她說過室友。\n我那時候聽到室友，就只聽到室友。是我自己只想聽到室友。\n\n我把那張圖放大到看得到他手背上的毛。我數了他的指節。我想知道那隻手有沒有碰過她的臉。有沒有在她閉著眼睛的時候，扶著她的下巴。\n有沒有。\n一定有。\n\n然後我想起來了。\n十一月那天在便利商店，冷藏櫃的燈嗡嗡響，她說的不是「你是第一個」。\n她說的是「**公司裡**，你是第一個」。\n\n前面那三個字是我自己刪掉的。\n我把它刪掉了，然後我就真的以為自己是第一個。我在本子上寫了十幾遍，沒有一遍寫到那三個字。我記得她說話的時候冷氣吹著她的瀏海，我記得冷藏櫃裡第三排是布丁，我記得所有的事，除了那三個字。\n\n原來刪掉一句話這麼容易。\n原來刪掉以後，剩下的那句就會變成真的。\n\n我在浴室坐了很久。地板很冰，冰得像她的手。\n我跟自己說，沒關係，那是她的生活，跟我們之間的事是兩回事。他給得了的，我也給得了。他給不了的，我給得了。\n他能教她化妝嗎？不能。\n他知道她聽到本名會縮一下嗎？不知道。\n是我\n是我教她畫眼線的。是我幫她搓熱手的。是我的裙子。"}, {"id": "diary_37", "heading": "日記 · 2021-02-16", "date": "2021-02-16", "title": "日記 · 2021-02-16", "chapter": 1, "body": "我要停下來了。\n\n我把枕頭套拿去洗了。洗衣機轉的時候，我坐在旁邊看，看它在泡沫裡翻過來又翻過去，像一個被丟進海裡的人。\n我把錄音全部刪了。二十三個檔案，還有那四秒。按下刪除的時候，手機問我「確定要刪除嗎」，我按了確定。\n我沒有傳訊息給她。\n\n我想我是可以的。\n很多人都可以。"}, {"id": "diary_38", "heading": "日記 · 2021-02-17", "date": "2021-02-17", "title": "日記 · 2021-02-17", "chapter": 1, "body": "第二天沒有傳。\n手機放在另一個房間。我每過一陣子就去看一次，像小時候每過一陣子就去門口看一次。\n她沒有傳。\n\n我告訴自己，這是在放下。\n我心裡有一個很小的聲音說：妳不是在放下，妳是在等她發現妳不見了。\n我叫那個聲音閉嘴。"}, {"id": "diary_39", "heading": "日記 · 2021-02-18", "date": "2021-02-18", "title": "日記 · 2021-02-18", "chapter": 1, "body": "第三天。\n她沒有發現。\n沒有人發現我不見了。\n這不是第一次。\n\n（這一頁其他地方是空白的。）"}, {"id": "diary_40", "heading": "日記 · 2021-02-20　03:02", "date": "2021-02-20 03:02", "title": "日記 · 2021-02-20　03:02", "chapter": 1, "body": "手機亮了。\n不是我去看的，是它自己亮的。螢幕的光把整個天花板照成藍色，像我沉在一個游泳池底下，有人從上面打開了燈。\n\n是她。\n\n她傳了一首歌\n〈雨停之前〉\n我沒聽過。\n下面一行：「妳最近還好嗎，好久沒聽到妳講話了」\n\n妳\n她用的是「妳」。\n好久沒聽到我講話了。\n她發現了\n她發現我不見了。\n\n我把那首歌聽了十一遍。有一句是：\n「謝謝你陪我躲過那場雨　雨停了　我們就各自回家」\n\n謝謝你陪我躲過那場雨。\n是我\n下雨都打給我的人是她，陪她躲雨的人是我。\n她在凌晨三點想到我，然後找了一首歌來講她講不出口的話。\n\n我回了很長一段。我說我很好，我說我只是最近有點忙，我說這首歌很好聽，我說妳也要好好睡。\n我沒有說我刪了錄音。我沒有說我洗了枕頭套。我沒有說這三天我每一個小時都去另一個房間看手機。\n\n她回了一個「晚安」。\n我在那兩個字上按了一顆愛心。"}, {"id": "diary_41", "heading": "日記 · 2021-02-20　15:40", "date": "2021-02-20 15:40", "title": "日記 · 2021-02-20　15:40", "chapter": 1, "body": "下午我傳訊息給她，說那首歌我聽了好多遍，問她是在哪裡聽到的。\n她回：「對呀」\n我問她最近公司還好嗎，講了很多我自己的事，講我在找工作。\n她回：「開心就好」\n我問她今晚要不要掛睡。\n她回：「不知道」\n\n不知道。\n\n凌晨三點的她，跟下午三點的她。\n我不知道要怎麼把她們放在同一個人身上。\n如果凌晨是真的，為什麼下午要這樣。\n如果下午是真的，凌晨為什麼要傳那首歌給我。\n她到底是在乎我，還是覺得我很煩。\n哪一個版本才是真的。\n\n我後來把那首歌的歌詞又讀了一次。\n「雨停了　我們就各自回家」。\n這句也可以是在道別。\n\n我知道。\n我知道她可能只是半夜睡不著，想到一個很久沒講話的朋友，隨便問一句好不好。任何人都會這樣問。我知道。\n\n可是我決定不要知道。\n\n我去「最近刪除」，把二十三個錄音全部救回來了，還有那四秒。它們躺在那裡，還有二十六天才會真的被刪掉，像一群被埋到一半的人，還在呼吸。\n只有枕頭套救不回來了。它已經被洗乾淨了，乾淨得像什麼都沒發生過。\n那是我這輩子親手丟掉的、唯一一個她留下來的東西。\n\n我留下凌晨三點的她。下午三點的那個，我刪掉。"}, {"id": "diary_42", "heading": "日記 · 2021-02-27", "date": "2021-02-27", "title": "日記 · 2021-02-27", "chapter": 1, "body": "我開始知道她每天幾點出門了。\n不是我故意的\n我只是剛好在那附近。我跟自己說了三次「剛好」，第三次的時候我已經在她公司對面那家日光的門口了。\n我坐了一個早上，熱美式涼了兩杯。她八點四十七分從捷運站出來，遲到了。我差點站起來跟她說早安，然後我沒有。\n我隔著便利商店的玻璃看她。玻璃上有我的倒影，疊在她身上。她走過去的時候，我的臉剛好蓋住她的臉，像兩張被疊在一起的底片。\n有一秒鐘，我分不出哪一個是她。\n\n如果我站起來，她會問我為什麼在這裡。\n我不知道要怎麼回答。\n所以我只是看\n看比較安全\n看不會被拒絕。"}, {"id": "diary_43", "heading": "日記 · 2021-03-04", "date": "2021-03-04", "title": "日記 · 2021-03-04", "chapter": 1, "body": "她在日光買了咖啡，喝完把杯子丟在門口的垃圾桶。\n我等她走遠了才過去。\n杯緣有口紅印\n豆沙色。\n我的顏色。\n\n我把杯子帶回家，放在書桌上，看了很久。\n然後我把嘴唇放在那個印子上。\n塑膠的，冷的。什麼都沒有。\n我還是沒有拿開。我想，如果我貼得夠久，塑膠會被我的嘴唇弄熱，到時候就分不出熱是從哪裡來的了。\n\n杯子現在在我書桌的抽屜裡。我沒有洗。\n我知道一個正常人不會這樣。我把抽屜關起來，就不用看到它，就可以假裝我沒有做這件事。\n晚上我又把抽屜打開了三次。"}, {"id": "diary_44", "heading": "日記 · 2021-03-08", "date": "2021-03-08", "title": "日記 · 2021-03-08", "chapter": 1, "body": "回南天。\n房子開始出汗\n牆是濕的，地板是濕的，鏡子起了一層霧，擦掉又起來。洗好的衣服晾了三天還是潮的，摸起來像一隻剛從水裡撈起來的手。\n\n我已經四天沒洗澡了。不是不想，是站起來的力氣不夠走到浴室。\n我吃了一包餅乾，不記得是早餐還是晚餐。\n\n我把手貼在牆上。涼的，濕的，像她那天的手。\n我站了很久才發現，我在等牆把我的手抓住。\n牆當然不會\n我知道一個成年人把手貼在牆上等它回應，是一件很蠢的事，蠢得像小時候對著關上的門講話。可是牆至少一直在那裡，它不會說下次，它不會到了下午就變成另一面牆。我把另一隻手也貼上去了。牆的汗沿著我的手腕流下來，流進袖子裡，流過那些我不給別人看的地方。我讓它流。"}, {"id": "diary_45", "heading": "日記 · 2021-03-09", "date": "2021-03-09", "title": "日記 · 2021-03-09", "chapter": 1, "body": "（只有日期。）"}, {"id": "diary_46", "heading": "日記 · 2021-03-10", "date": "2021-03-10", "title": "日記 · 2021-03-10", "chapter": 1, "body": "（只有日期。）"}, {"id": "diary_47", "heading": "日記 · 2021-03-11", "date": "2021-03-11", "title": "日記 · 2021-03-11", "chapter": 1, "body": "今天是她生日。\n我是從他的限動知道的。一個蛋糕，兩支叉子。\n我不知道她生日。我一直沒問，因為我想等她自己跟我說。我以為她會跟我說。\n我等了四個月。\n\n我去買了一個小蛋糕，插了一根蠟燭，關燈。\n警衛伯伯說，妹妹，妳媽媽呢。\n我替她許了願\n我許的是：讓她回來。\n我一個人把蛋糕吃完了。很甜，我不喜歡。我吃完了。"}, {"id": "diary_48", "heading": "日記 · 2021-03-15", "date": "2021-03-15", "title": "日記 · 2021-03-15", "chapter": 1, "body": "我又做了那件事。\n\n我不想寫是什麼。寫下來的東西就會變成真的，我不要它變成真的。\n它不會讓任何事變好。\n我知道\n從十四歲就知道。\n做完之後我坐在浴室的地上，回南天，地板是濕的，我分不清濕的是什麼。\n\n我把那件長袖拿出來穿。外面二十六度。\n我想，如果她看到我穿長袖，會不會問我冷不冷。\n她不會看到\n我在玻璃的這一邊。\n\n明天我還是會去日光。"}, {"id": "diary_49", "heading": "日記 · 2021-03-19", "date": "2021-03-19", "title": "日記 · 2021-03-19", "chapter": 1, "body": "我知道這樣不對。\n我知道。\n一個正常的人不會在別人公司對面的便利商店坐到店員換班。一個正常的人不會把別人的下班時間寫在備忘錄裡。一個正常的人不會從垃圾桶裡撿杯子。一個正常的人不會每天晚上聽別人睡覺的聲音才睡得著。\n可是我沒有做什麼。\n我只是看\n看又不會怎樣。\n她不知道就不會難過。\n我只是想確定她好好的。\n\n（這裡被劃掉一行，看得出是「我只是想確定她還在」。）\n\n為什麼妳看得到他，看不到我\n為什麼妳跟他在一起的時候會笑成那樣\n為什麼妳以前會跟我講一整段\n為什麼妳會讓他扶著妳的下巴\n為什麼凌晨三點的妳跟下午三點的妳不是同一個人\n為什麼\n不行，這是我的問題。她沒有做錯任何事。\n不要怪她\n妳就是太煩了，妳從小就太煩了，妳媽就是因為妳太煩才走的。\n不要\n拜託\n\n妳是不是覺得我很煩\n妳是不是後悔跟我說了\n妳是不是發現我根本沒有那麼特別\n妳是不是 妳是不是"}, {"id": "diary_50", "heading": "日記 · 2021-03-24　03:12", "date": "2021-03-24 03:12", "title": "日記 · 2021-03-24　03:12", "chapter": 1, "body": "我又夢到那天晚上。她抓著我的手腕。\n可是在夢裡她沒有睡著。她看著我，沒有放開。她的手是熱的。\n然後她的臉慢慢變了，變成我媽的臉，抓著我手腕的力氣也變了，變成那種要把我拉進房間、又隨時會把我推出去的力氣。\n我分不出來是誰。\n我也分不出來我想要她放開，還是不要放開。\n\n我醒來的時候全身都在發抖。\n我起來洗臉，洗了很久，洗到臉都紅了。\n我不敢看鏡子\n鏡子上都是霧，就算看了也看不到。\n\n我想要她碰我\n不是朋友那種\n我想要她醒著的時候也那樣抓著我，想要她知道她抓的是我。\n我想要那隻冰冰的手是熱的，是因為我。\n我想要她身上有我的味道，洗不掉的那種，像回南天的牆，擦了又滲出來。\n\n這種想法很髒。\n我知道很髒。\n我覺得自己像一個在別人家裡亂翻抽屜的小偷，翻到一半發現那是自己家，而抽屜裡全部都是我自己偷來的東西。\n我把這頁撕掉了。\n\n（下一頁，同一天）\n我把它撿回來，用膠帶黏好了。\n膠帶的邊緣黏到地上的灰，黑黑的一圈，撕不乾淨。\n因為這是真的。"}, {"id": "diary_51", "heading": "日記 · 2021-03-27", "date": "2021-03-27", "title": "日記 · 2021-03-27", "chapter": 1, "body": "她公司的電梯\n我跟在一群人後面進去，她沒有在裡面，她剛上去。\n電梯裡還有她的味道，很淡，白茶，像有人剛從房間裡走出去，門還沒關好，裡面的燈還亮著。\n我在裡面上下了四次。電梯每到一樓就吐出一口氣，她的味道就被吐掉一點。\n第二次的時候我想，我現在出去，就還是一個普通人，一個剛好搭錯電梯的普通人。\n第三次的時候我想，再一次就好，像小時候說再看一集就去睡。\n第四次就沒有了。她的味道被換成鐵的味道，冷氣的味道，最後只剩我自己的，像一件穿了太多天的衣服。\n我站在電梯裡，很生氣。不是氣她，是氣那個味道，它怎麼可以不等我，它怎麼跟她一樣。\n然後我發現我在生一個味道的氣。我笑了一下，笑聲在電梯裡撞來撞去，撞回我自己臉上。\n門開了，外面的人看了我一眼，像在看一個忘記自己要去幾樓的人。\n我沒有出去。"}, {"id": "diary_52", "heading": "日記 · 2021-03-30", "date": "2021-03-30", "title": "日記 · 2021-03-30", "chapter": 1, "body": "她穿了一件我沒看過的外套。淺灰色，很寬。\n她沒有跟我說要買新衣服。以前她買什麼都會傳照片問我。\n我在對面看了她一整個早上。那件外套很好看。是他陪她去買的嗎。\n很好看。\n很好看。\n很好看。\n是他選的嗎。\n很好看。\n\n（隔天）\n我去買了一件一樣的。淺灰色，很寬。袖子很長，長到可以蓋住手腕。\n我穿起來不好看。\n可是袖子很長。\n\n> **謎題接點**：\n> 1. 回覆紀錄 × 上線紀錄 × 沒送出的訊息：02-05 那晚 A 在線上到 01:40，她 01:12 打了「妳現在在跟誰講話」又刪掉。玩家找出時間，打開下一份文件。\n> 2. 「最近刪除」：錄音檔顯示「剩餘 26 天」，玩家要從日期算回她刪掉的那一天（02-16），作為存取碼。\n> 3. 錄音只顯示檔名和長度，不做成真的聲音。\n\n---"}, {"id": "diary_53", "heading": "日記 · 2021-04-01", "date": "2021-04-01", "title": "日記 · 2021-04-01", "chapter": 2, "body": "「不要接」打來六次。\n她回我了，只有一個字。\n「嗯」。\n我把這個字看了很久，看到它不像字，像一顆釘子，把我釘在今天。\n我很高興\n我知道我不應該為了一個字這麼高興。"}, {"id": "diary_54", "heading": "日記 · 2021-04-03", "date": "2021-04-03", "title": "日記 · 2021-04-03", "chapter": 2, "body": "我問她連假要不要出去。\n她說要回家一趟，下次吧。\n下次。\n下次。\n從一月到現在，她說了十一次下次。我有數。\n我媽也很會說下次。下次帶妳去，下次再跟妳說，下次。我後來才知道，下次是一個不會到的日子，像月曆上被撕掉的那一頁。"}, {"id": "diary_55", "heading": "日記 · 2021-04-05　01:30", "date": "2021-04-05 01:30", "title": "日記 · 2021-04-05　01:30", "chapter": 2, "body": "我傳了很多訊息。我知道我傳太多了。\n「睡了嗎」「我今天經過妳公司」「妳為什麼不回」。\n她回我「剛剛在忙（」，我問明天可以見面嗎，我說我只是想跟妳講話。她說「下次再說好不好」。\n第十二次。\n\n我只是想跟她講話。我只是想要她跟以前一樣，把頭靠在我肩膀上，坐過十個站。\n我什麼都不要\n我只要以前。\n以前很小，小到裝得進一個枕頭套裡。我只要那麼一點點。\n可是枕頭套已經被我洗掉了。"}, {"id": "diary_56", "heading": "日記 · 2021-04-07", "date": "2021-04-07", "title": "日記 · 2021-04-07", "chapter": 2, "body": "她傳訊息給我：「今天公車好擠（」\n沒有前文，沒有後文，就一句。\n她還是會想到我。擠的時候想到我，累的時候想到我。\n\n我回了很多\n她沒有再回。\n沒關係\n一句就夠了\n一句就可以撐三天。"}, {"id": "diary_57", "heading": "日記 · 2021-04-08", "date": "2021-04-08", "title": "日記 · 2021-04-08", "chapter": 2, "body": "下雨。\n我在日光，買了一把傘。結帳的時候我看到她從捷運站出來，走騎樓那邊，在日光門口停了一下。\n她沒有進來。\n過了十分鐘她傳訊息給我：「雨好大 咱在亭子下面躲一下」。\n她在公車亭\n離我兩百公尺。\n她傳給我\n她躲雨的時候想到的是我。\n她說過，下雨都打給我。她記得。\n\n我拿著傘站在門口。\n警衛伯伯把穿堂的燈關掉了。\n我想走過去，把傘撐在她頭上，跟她說妳的手又這麼冰。\n我這輩子沒有被人撐傘接過。我想當那個撐傘的人。一次就好。\n\n我沒有走過去。\n我怕她看到我的時候，表情不是我想要的那種。我怕她說「你怎麼在這裡」。我怕她的肩膀先停一下，然後縮起來，像早會上聽到她的本名那樣。\n我寧願站在這裡，當一個她不知道的人。\n\n傘我帶回家了，沒有拆封，放在玄關。像一句還沒說出口的話。"}, {"id": "diary_58", "heading": "日記 · 2021-04-09", "date": "2021-04-09", "title": "日記 · 2021-04-09", "chapter": 2, "body": "明天會下大雨\n她明天發薪水，每個月十號她都會去買一個比較好的布丁，雖然她說貴的沒有比較好吃。\n我要跟她說。\n說完就好了\n說完不管她怎麼回答，我都不用再這樣坐在對面了。\n我演練了很多次。我把要說的話寫在這裡，寫到每個字都背起來：\n我有話想跟妳說。我喜歡妳，不是朋友那種。\n就這樣\n不要多說\n多說會像在求她。\n\n（下面寫了十四次同一句。字越來越小。最後一次只寫到「我喜歡」。）"}, {"id": "diary_59", "heading": "日記 · 2021-04-10　21:45", "date": "2021-04-10 21:45", "title": "日記 · 2021-04-10　21:45", "chapter": 2, "body": "我回了「好」。\n\n好\n我不找妳了。\n我是真的這樣想的。打出那個字的時候，我是真的這樣想的。\n像把一扇門輕輕關上，不要發出聲音，不要讓裡面的人知道外面有人站過。"}, {"id": "diary_60", "heading": "日記 · 2021-04-10　23:51", "date": "2021-04-10 23:51", "title": "日記 · 2021-04-10　23:51", "chapter": 2, "body": "她說她沒有討厭我。\n\n她說\n\n> App 呈現：游標停在「她說」後面，「她」被一個字一個字刪掉，重新打成「他」。\n\n他說他不想跟我交往。\n\n他說他希望我不要再找他了。\n\n他說對不起。\n\n一個不討厭我的人為什麼要說對不起。\n\n我把「咱沒有討厭你」那句截圖，存了三張。後面那三句我沒有截。\n我把它們刪了\n從我自己的備份裡刪了。他手機裡還有，那是他的事。我這裡沒有了，我這裡的版本只有「咱沒有討厭你」。\n\n我做過了\n二月的時候，「公司裡」那三個字。凌晨三點跟下午三點，我留下凌晨。一月的時候，「其他部分呢」「不會」，我留下「不會」。\n刪掉以後，剩下的就會變成真的。\n\n這樣比較準確。\n他只是現在還沒想清楚。\n\n所以我在 23:58 傳了那句。我知道你只是現在還沒想清楚。\n九點四十分我說好。兩個小時又十八分鐘之後，我說了這句。\n那扇門我沒有關好。我知道我沒有關好。\n\n（同一頁，最下面）\n我叫他「他」了。\n我發現了\n我沒有改回來。\n\n那支口紅是我買的。\n那條眼線是我教的。\n那件裙子在我的衣櫃裡。\n那句「咱看起來像咱了」，是在我床邊說的。\n他是在我面前，才第一次變成她的。\n現在他拿著我給他的臉，去給別人看。\n\n你不要我，我就不用再照你要的方式叫你。\n我給你的東西，我可以拿回來。\n這樣很公平。\n\n（再下面一行，字比較小）\n那件事我不會再做了。\n痛不用再留在我身上了。"}, {"id": "diary_61", "heading": "日記 · 2021-04-11", "date": "2021-04-11", "title": "日記 · 2021-04-11", "chapter": 2, "body": "我昨天對他很壞。在日記裡。\n他沒有做錯什麼。我知道。\n可是我寫了「他」之後，胸口那裡就不痛了。好像他變成另一個人，一個我可以生氣的人。一個不是我教出來的人。\n像把一張照片翻過來，背面是白的，就不會痛了。\n我想了一個晚上要不要改回來。\n\n我沒有改。\n\n我傳了一則訊息給他。我想了很久，刪了七次，第八次按了送出：\n「沒關係，你去陪他吧。我只是以為我們不一樣。」\n\n我知道這句話在做什麼。\n我知道它看起來很溫柔，其實是一根針，我要他看到的時候會痛一下，痛到會想回我，會想說「不是這樣的」。\n我媽也很會說這種話。「沒關係，你去跟你爸啊，反正媽媽一個人也可以。」\n我小時候每次聽到都會哭著說不要。\n我想要他也哭著說不要。\n\n他沒有回。\n他今天提早下班。我沒有跟到。\n他說不討厭我。\n他說不討厭我。"}, {"id": "diary_62", "heading": "日記 · 2021-04-12", "date": "2021-04-12", "title": "日記 · 2021-04-12", "chapter": 2, "body": "他今天十點十二分出門。沒有走騎樓，走對面。他換了耳機，白色的。\n他換了耳機沒有跟我說。\n\n我傳訊息給他：「你今天換耳機了喔」「白色的那個比較適合你」。\n傳出去的那一秒我就知道不該傳了。像玻璃杯從桌上掉下去，還在半空中的時候就知道會破。\n可是我想讓他知道，我還在看。\n我想讓他知道，沒有人比我更清楚他。\n\n23:02，他回了：\n「你怎麼知道（」\n\n他回我了。\n兩天，他沒有回我那句「你去陪他吧」，可是他回了這一句。\n他在問我\n他好奇我\n他想知道我怎麼知道。\n有括號\n他心情好的時候才會有括號。\n他還在乎。\n\n我說我猜的。\n\n我盯著那個括號看了很久。我知道有另一種讀法：他在害怕。一個人發現自己被看著的時候，也會問「你怎麼知道」。\n我知道。\n這次我想都沒有想，就把那個讀法刪掉了。\n刪掉比上次快很多。上次我刪了三天，這次不到一秒。\n\n> **謎題接點**：\n> 1. v2 ／ v1 改用「衝突的副本」：備份資料夾裡有 `0410.bak` 和 `0410 (衝突的副本 2021-04-11 00:02).bak`，玩家從修改時間判斷哪個是原版。\n> 2. 日記列表只顯示每篇第一句，玩家找出「第一次寫他」的那一篇。\n\n---"}, {"id": "diary_63", "heading": "日記 · 2021-04-13", "date": "2021-04-13", "title": "日記 · 2021-04-13", "chapter": 4, "body": "他的限動對我隱藏了。\n主帳號點進去，什麼都沒有。灰色的圓圈。\n他開始繞路了\n多走十分鐘，走對面，沒有騎樓的那一邊。\n他以為我不知道。\n他在躲我\n一個沒想清楚的人，才需要躲。\n\n我開了一個新帳號，叫 mochi.alley。巷口那隻貓，他跟我講過的，叫麻糬，又白又軟，雖然是橘色的。\n空的帳號，沒有頭貼，只追蹤一個人。\n他不會知道是我。他不會知道我還在。\n我在他的世界裡變成一個沒有臉的人。\n這樣也好\n沒有臉的人不會被拒絕，沒有臉的人可以一直站在那裡，像一根電線桿，像一塊招牌，像任何一個不會讓人回頭的東西。"}, {"id": "diary_64", "heading": "日記 · 2021-04-14", "date": "2021-04-14", "title": "日記 · 2021-04-14", "chapter": 4, "body": "他的限動是布丁。便利商店的那種。\n焦糖的\n排行榜第一名。\n我看了十一次。\n今天的第二名是什麼，我已經猜不到了。\n我去買了三個一樣的，坐在地板上吃。地板是濕的，回南天還沒有走。\n第一個很甜\n第二個也很甜\n第三個我吃到一半就吐了。\n\n很甜，我不喜歡。\n我沒有吃完。\n這是第一次我沒有吃完。\n我坐在嘔吐物旁邊很久，想不起來我小時候為什麼一定要吃完。後來想起來了：吃完她會笑。\n現在沒有人會笑了。\n\n他今天沒有出現。我等到店員換班。"}, {"id": "diary_65", "heading": "日記 · 2021-04-15", "date": "2021-04-15", "title": "日記 · 2021-04-15", "chapter": 4, "body": "01:12　他是全世界最好的人。他是唯一一個沒有笑我的人。\n01:13　他在我床邊哭。他說下雨都會打給我。\n01:13　他是騙子。\n01:15　他從頭到尾都在騙我。他需要一個女生教他化妝，所以他找我。他需要一個人陪他掛睡，所以他找我。用完了就說下次。\n01:16　他跟我媽一模一樣。\n01:20　不是\n01:20　他不是\n01:24　他是最好的人。\n是我不夠好\n是我太煩了\n是我哪裡做錯了。\n01:31　如果我改，他就會回來。我可以少傳一點訊息。我可以不要一直問。我可以變成他想要的樣子。我很會變成別人想要的樣子。\n01:32　他是騙子。\n01:40　對不起。\n01:41　對不起。\n01:58　你是騙子。\n02:03　你是我的。\n02:03　（這一行被劃掉）\n02:10　對不起。\n\n> 這一頁在 App 裡依時間戳一行一行出現，讓玩家看見她在一個小時裡來回翻轉十幾次。"}, {"id": "diary_66", "heading": "日記 · 2021-04-16", "date": "2021-04-16", "title": "日記 · 2021-04-16", "chapter": 4, "body": "他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有機會\n他說不討厭我所以還有\n他說不討厭我所以\n他說不討厭我\n他說不\n他說\n他\n\n> 整頁寫滿，玩家要往下捲很久。最後只剩一個「他」。"}, {"id": "diary_67", "heading": "日記 · 2021-04-17　02:40", "date": "2021-04-17 02:40", "title": "日記 · 2021-04-17　02:40", "chapter": 4, "body": "睡不著\n錄音放到第十九晚，他的呼吸停了一下。\n我以為他死了。\n然後他又接上了。\n我坐起來，心跳得很快，快得像有人在我胸口裡面敲門，敲兩下，敲兩下。\n\n如果他死了，他就不會再跟別人講話了。\n\n我被這個念頭嚇到。它不是我想的，它是自己冒出來的，像牆角的黴，你不知道它什麼時候長的，等你看到的時候它已經一大片了。\n我把錄音關掉。\n過了五分鐘我又打開了。\n\n抽屜裡的杯子，口紅印只剩一層很薄的顏色，薄得像布丁表面那層膜，像一句說到一半就被吞回去的話。要斜著看才看得到。我每天斜著看，它每天都更薄一點，像退潮，像一張被太陽曬了太久的照片，臉一天一天淡下去。我知道是我弄的。是我的手指，是我的嘴唇，每碰一次就少一點。如果我不碰，它可以留很久很久，久到我老了它還在，像一塊乾掉的糖黏在桌腳，沒有人記得是誰掉的。可是不碰的話，它就只是一個印子，跟我沒有關係。碰了，它才會因為我而消失。我寧願它被我一點一點吃掉，也不要它乾乾淨淨地跟我沒有關係。\n我又碰了一下\n嘴唇上有塑膠的味道，冷的，像一個沒有人在的家。\n\n我在想你的手腕。那天晚上你抓著我的時候，你的手腕內側比手背白，薄薄的皮膚底下摸得到脈搏，一下一下，像有什麼東西在裡面敲門。\n我在想你現在是不是也這樣睡在誰旁邊。\n我在想那隻比較大的手。\n我在想那隻手是不是正放在我放過的地方。\n你的下巴\n你的臉\n我畫過的那張臉。\n我在想你睡著的時候會不會抓住那隻手，像抓住我那樣。\n我在想你醒著的時候會不會。\n我在想\n我不要想\n我在想\n\n我想要你是熱的。我想要你看著我。我想要你知道是我。\n我想要你身上全部都是我的味道，滲進去，洗不掉，像回南天的牆，擦乾了又從裡面滲出來，擦乾了又滲出來，一輩子都乾不了。\n我想要你是我的。\n不是，不是那樣，我只是\n我只是想要以前。\n以前你就是我的。你在我床邊哭，你說「咱看起來像咱了」。那個時候你是我的。是我做出來的。\n\n我起來吐了一次。\n我不知道我是在噁心你，還是在噁心我。\n吐完之後我發現我一直在寫「你」。我不知道從哪一行開始的。"}, {"id": "diary_68", "heading": "日記 · 2021-04-17　04:05", "date": "2021-04-17 04:05", "title": "日記 · 2021-04-17　04:05", "chapter": 4, "body": "我穿上那件淺灰色的外套，擦上豆沙色的口紅，照鏡子。\n鏡子起霧\n我用袖子擦出一塊，只擦得出一張臉的大小。\n那張臉很像他。\n我叫了一聲「咱」。\n鏡子裡的人也叫了一聲。\n\n我分不清楚。\n我分不清楚是我想要他，還是我想要變成他。還是我想要他變成我做出來的那個樣子，然後永遠待在我的鏡子裡，哪裡都不去，像那件裙子掛在我的衣櫃裡，哪裡都不去。\n小時候我擦我媽的口紅，想說如果我很像她，她就不會走了。\n原來我一直都在做同一件事。\n\n我把口紅擦掉\n擦到嘴唇破皮。\n霧又起來了，把那張臉慢慢吃掉。\n鏡子裡的人還是在。"}, {"id": "diary_69", "heading": "日記 · 2021-04-18", "date": "2021-04-18", "title": "日記 · 2021-04-18", "chapter": 4, "body": "我用小帳傳了訊息給他。「明天要去哪」。\n他沒有回\n他不知道是我\n他也不回陌生人。\n他對陌生人跟對我一樣。\n我變成陌生人了。\n\n我用主帳號也傳了一次。一樣的字。\n他也沒有回。\n兩個我都沒有被回。沒有臉的那個，跟有臉的那個。"}, {"id": "diary_70", "heading": "日記 · 2021-04-19", "date": "2021-04-19", "title": "日記 · 2021-04-19", "chapter": 4, "body": "他們去了咖啡廳。\n靠窗的位子\n兩杯。\n我只看了一次。\n我在對面的日光坐到天黑，熱美式沒有喝。\n他穿那件淺灰色的外套。\n我身上也是\n我們隔著一條馬路，穿著同一件衣服，他不知道。\n不適合他\n我選的話不會選那件。\n\n兩扇玻璃\n日光的玻璃，咖啡廳的玻璃。我在這一扇後面，他在那一扇後面，中間的馬路上車子一直開過去，像一條不會停的河。\n我好像一輩子都在窗的另一邊。小時候在穿堂的玻璃門後面，長大在便利商店的玻璃後面。我很會隔著玻璃看。我只會隔著玻璃看。\n\n我在日記上寫：我們那天一起待在那裡。\n我知道不是\n我寫的時候就知道不是。\n可是我十二歲就知道了：寫下來的東西，別人就會相信。寫下來的東西，就會變成真的。我媽說我們母女去台中玩，隔壁阿姨說真好。\n\n他刪我的時候，留下的是一個灰色的圓圈。\n我刪他的時候，留下的是「咱沒有討厭你」。\n我們都在做一樣的事。"}, {"id": "diary_71", "heading": "日記 · 2021-04-20", "date": "2021-04-20", "title": "日記 · 2021-04-20", "chapter": 4, "body": "我想好了。\n\n我只是要跟他好好談一次。面對面，他不能已讀不回，不能繞路，不能說對不起然後就走，不能說下次。\n他會在那裡等公車的，下雨天他一定走北邊，一定會經過那個亭子。他躲雨的時候會去那個亭子。他上次就是在那裡想到我的。\n是他告訴我的。\n\n我知道我不應該。\n我真的知道。\n我知道我在做的事有名字。我搜過那個名字。我看了一整頁，每一條都是我。\n如果他報警，如果有人把我攔下來，如果他打給我說「我們談談」，我就不去。\n我給他三天。\n三天，他只要打一通電話。\n這樣如果我去了，就不是我一個人的錯。\n\n（下面一行，被劃掉，看得出來）\n~~不是，就是我一個人的錯。~~"}, {"id": "diary_72", "heading": "日記 · 2021-04-21", "date": "2021-04-21", "title": "日記 · 2021-04-21", "chapter": 4, "body": "他是我的\n他的臉是我畫的\n他的口紅是我買的\n他的裙子在我的衣櫃\n他的手是我搓熱的\n他第一個告訴的人是我\n他在我床邊哭\n他抓著我的手\n他的呼吸在我手機裡\n他說有你真好四秒\n他是我的\n他是我做出來的\n他沒有我就不會變成她\n他不能拿著我做出來的東西去給別人\n他不能\n他不能\n他不能\n我給的我可以拿回來\n我給的我可以拿回來\n我給的我\n你是我生的你是我的\n你是我的\n你是\n\n（同一頁，最下面，字很工整）\n我知道這些都不是真的。\n他是他自己\n她本來就是她自己。我只是剛好在那裡，剛好會走，剛好安全。\n她說的是「因為你反正會走」。\n我記得\n我一直都記得\n我只是把它刪了。\n我知道。\n\n（再下面）\n可是我不想知道。"}, {"id": "diary_73", "heading": "日記 · 2021-04-22", "date": "2021-04-22", "title": "日記 · 2021-04-22", "chapter": 4, "body": "他沒有打。\n\n他的限動：辦公室的燈。「明天又要加班到九點半 QQ 誰來救我」\n我看了二十三次。\n我想回他加油\n我打了，又刪掉了。\n他不喜歡人家說加油。只有我記得。\n二十三\n跟錄音一樣多。\n誰來救我。\n他在問誰。\n他在問我。\n\n九點半下班，捷運三十分鐘，走十分鐘。\n明天會下雨\n他會走北邊\n他會一個人。\n他自己說的\n他自己貼出來的。\n\n回南天走了\n今天的牆是乾的。我把手貼上去，什麼都沒有。\n我已經不需要牆了。\n\n傘還在玄關\n四月八號買的，那天沒有拿過去。\n小時候沒有人拿傘來接我。\n明天我去接他。\n\n> **謎題接點**：限動觀看紀錄 × 行事曆。玩家找出她怎麼知道 04-23 他會一個人、加班到 21:30：04-22 那則看了 23 次的限動。存取碼可以是配字，或小帳名稱 mochi.alley。\n\n---"}, {"id": "diary_74", "heading": "日記 · 2021-04-23　20:41", "date": "2021-04-23 20:41", "title": "日記 · 2021-04-23　20:41", "chapter": 5, "body": "我比他早到。\n傘沒有打開。\n公車亭的燈是好的。我以為它壞了。\n雨很大。\n\n我很平靜。\n我好久沒有這麼平靜了。\n\n我在想他看到我的時候會說什麼。\n「你怎麼在這裡」，或是「你等很久了嗎」。\n我希望是後面那句。\n我希望他的手是冰的。這樣我就可以說：妳的手又這麼冰。\n然後把他的手放進我的口袋。冬天的海我們沒有去成。下次。\n\n（「妳」被劃掉，沒有改。）"}, {"id": "diary_75", "heading": "最後一篇（現有排序題保留）", "date": "最後一篇（現有排序題保留）", "title": "最後一篇（現有排序題保留）", "chapter": 5, "body": "> 照實際發生的順序排列。排對之後：\n\n他看到我的時候，表情跟那天說不要的時候一樣。\n不是「你怎麼在這裡」，也不是「你等很久了嗎」。\n是那天的表情。\n肩膀先停了一下。\n\n他低頭打了一則訊息。我後來才知道，他打錯了，他沒有切輸入法。\n他在跟別人說我在這裡。\n他第一個想告訴的人，不是我。\n\n我還是走過去了。\n\n（以下紀錄已由檢方扣押。）\n\n---"}], "notes": [{"id": "notes_1", "heading": "備忘錄 · 她", "date": "她", "title": "備忘錄 · 她", "chapter": 0, "body": "- 生日：還不知道（不要直接問，會很怪。等她自己說）\n- 工作：企劃。被退件會去茶水間，手縮進袖子裡\n- 喜歡：布丁（便利商店的，不要貴的。排行榜第一名焦糖，第二名看心情）、下雨天、貓（麻糬，橘色，只有她可以摸）、白茶的味道（回購了）\n- 想去：冬天的海（下次）\n- 不能說：加油\n- 「沒事啦」＝她在忍。只有我聽得出來\n- 姐姐：第一個知道的人。我是第二個\n- 不喜歡：本名\n- 下班：表定六點，通常八點以後\n- 手很冰。搓久了會熱\n- 睡覺會抓東西\n- 睡著的時候呼吸會停一下再接上\n- 口紅：豆沙色　#我的\n- 裙子：深藍色，及膝，在我這裡\n- 她說「咱」\n- 暗號：敲兩下\n- 錄音：14 晚（一直更新）\n- 「有你真好」：4 秒\n\n> **謎題接點**：訊息統計（往前補 2020-09、10）。日記存取碼「我們變得特別的那個月」（2021-01）。\n> 這一章要讓玩家相信：這兩個人曾經真的很近，而且 A 是一個很具體、很可愛的人。也要讀到一點點不對勁：數秒數、錄音、裙子「她要穿就要來我這裡」、攤成人形的裙子、「我很會猜她」、把「第一個」往後挪一格又劃掉。\n> 與主線呼應：主線的檸會主動講布丁排行榜、麻糬、倉鼠湯圓、被退件、「以前有一個朋友教咱化妝」，也會說「不要跟咱說加油啦（」。玩家玩完 DLC 回想，會發現檸說的每一件小事，7f3 都在場。\n\n---"}, {"id": "notes_2", "heading": "回覆紀錄（備忘錄 · 2021-01）", "date": "2021-01）", "title": "回覆紀錄（備忘錄 · 2021-01）", "chapter": 1, "body": "> 她開始記錄 A 每天回她的字數、間隔，以及她自己的註解。\n\n| 日期 | 我傳 | 她回 | 字數 | 間隔 | 註 |\n|---|---|---|---|---|---|\n| 01-09 | 312 字 | 「哈哈好可愛」 | 5 | 41 分 | 有「可愛」 |\n| 01-10 | 188 字 | 「對呀」 | 2 | 1 時 12 分 | ？ |\n| 01-11 | 97 字 | 「喔喔」 | 2 | 2 時 3 分 | 喔＝敷衍？ |\n| 01-12 | 41 字 | 「好喔（」 | 3 | 17 分 | 有括號。括號是她心情好的時候 |\n| 01-13 | 0 字 | — | — | — | 我沒傳。她也沒傳 |\n| 01-14 | 506 字 | 「你好認真www」 | 6 | 3 時 40 分 | 認真＝太多？ |\n\n> 最下面一行，她寫：「我傳得越多，她回得越少。我知道。我停不下來。」"}, {"id": "notes_3", "heading": "上線紀錄（備忘錄 · 2021-02）", "date": "2021-02）", "title": "上線紀錄（備忘錄 · 2021-02）", "chapter": 1, "body": "```\n02-01  07:52  12:30  18:47  23:10  23:58\n02-02  07:49  12:41  22:03  00:15\n02-03  08:01  12:33  23:47  00:31  01:02\n02-04  07:50  12:29  20:14  23:56\n02-05  07:55  13:02  21:30  23:59  00:44  01:18  01:40\n```\n最下面一行：她 00:44 到 01:40 都在線上。不是在跟我講話。"}, {"id": "notes_4", "heading": "yoru 的附註（E-ROOT 最下面，全部解完才出現）", "date": "yoru 的附註（E-ROOT 最下面，全部解完", "title": "yoru 的附註（E-ROOT 最下面，全部解完才出現）", "chapter": 6, "body": "她的備份是我拿到的。我沒有權利拿，我們沒有登記，法律上我什麼都不是。\n我拿到之後讀了很多次，想找到她哪一天可以被攔下來。\n每一天都可以。\n每一天都沒有人攔。\n包括我。\n\n她錄了二十三晚。\n我跟她住了一千多個晚上，一次都沒有錄過。\n我以為不用錄\n我以為明天她還會在。\n\n那首歌是她半夜聽到，傳給很多人的。她也傳給了我。\n我回她「好聽」，然後就睡了。\n\n---"}], "statistics": [{"id": "statistics_1", "heading": "訊息統計（系統索引）", "date": "INDEX", "title": "訊息統計（系統索引）", "chapter": 0, "body": "這個目錄保留作為系統索引。\n\n正式 v0.5 文字沒有另外拆出獨立的統計稿，因此目前不作為必要線索。"}], "drafts": [{"id": "drafts_1", "heading": "沒送出的訊息（備忘錄 · 草稿匣 · 2021-01 ～ 02）", "date": "2021-01 ～ 02）", "title": "沒送出的訊息（備忘錄 · 草稿匣 · 2021-01 ～ 02）", "chapter": 1, "body": "- 01-29 23:14　妳今天是不是很累\n- 01-29 23:20　妳今天是不是很累，我可以聽妳說\n- 01-29 23:41　沒事 晚安\n- 01-31 01:05　妳是不是覺得我很煩\n- 01-31 01:06　沒關係，妳忙妳的，我習慣一個人了\n- 01-31 01:06　（刪除）\n- 02-03 00:02　妳上次說的那家咖啡廳是哪一家\n- 02-03 00:05　我不是要跟去，只是想知道\n- 02-05 01:12　妳現在在跟誰講話\n- 02-05 01:12　（刪除）\n- 02-08 02:30　妳說過下雨都會打給我\n- 02-08 02:31　今天有下雨\n- 02-08 02:33　（刪除）\n- 02-11 22:30　妳室友對妳好嗎\n- 02-12 03:10　我只剩妳了\n- 02-12 03:10　（刪除）\n- 02-14 21:00　（空白）\n- 02-14 21:01　（空白）\n- 02-14 21:58　情人節快樂。我是說朋友的那種。\n- 02-14 22:40　妳有在過嗎"}, {"id": "drafts_2", "heading": "草稿 · PLAN-7F3（主線已有，這裡補她寫的時候的心情）", "date": "PLAN-7F3（主線已有，這裡補她寫的時候的心", "title": "草稿 · PLAN-7F3（主線已有，這裡補她寫的時候的心情）", "chapter": 4, "body": "用他的字寫\n「今天公車好擠（」「雨好大 咱在亭子下面躲一下」。\n這樣就像是他自己說的。這樣就像是他叫我去的。\n他叫我去的。\n他說過下雨都會打給我。\n他叫我去的。\n他叫我去的。"}, {"id": "drafts_3", "heading": "沒送出的訊息 · 2021-04-23", "date": "2021-04-23", "title": "沒送出的訊息 · 2021-04-23", "chapter": 5, "body": "- 21:12　你下班了嗎\n- 21:31　你下班了\n- 21:50　你快到了嗎\n- 22:01　我在亭子這邊\n- 22:03　我有帶傘\n- 22:05　這次我有帶\n- 22:07　（空白）\n- 22:08　對不起\n- 22:08　（刪除）"}], "audio": [{"id": "audio_1", "heading": "錄音列表", "date": "NO DATA", "title": "錄音列表", "chapter": 1, "body": "v0.5 正式文字草稿沒有額外錄音逐字稿。\n\n此目錄暫時保留，不影響章節解謎。"}], "deleted": [{"id": "deleted_1", "heading": "最近刪除（系統保留）", "date": "SYSTEM", "title": "最近刪除（系統保留）", "chapter": 1, "body": "目前沒有獨立拆出的「最近刪除」正文。\n\n若後續要把還原型資料做進 App，會補在這裡。"}], "messages": [{"id": "messages_1", "heading": "手機備份 · 2021-04-10（v2，她自己留下的版本）", "date": "2021-04-10", "title": "手機備份 · 2021-04-10（v2，她自己留下的版本）", "chapter": 2, "body": "> 21:31　participant_A：咱沒有討厭你\n> 21:40　participant_7f3：好"}, {"id": "messages_2", "heading": "手機備份 · 2021-04-10（v1，原始）", "date": "2021-04-10", "title": "手機備份 · 2021-04-10（v1，原始）", "chapter": 2, "body": "> 21:02　我有話想跟你說\n> 21:05　我喜歡你 不是朋友那種\n> 21:31　咱沒有討厭你\n> 21:31　可是咱不想跟你交往\n> 21:33　也希望你不要再一直找咱了（\n> 　　　　對不起\n> 21:40　好\n> 23:58　我知道你只是現在還沒想清楚"}], "blog": [{"id": "blog_1", "heading": "2007-03-02　爸爸", "date": "2007-03-02", "title": "2007-03-02　爸爸", "chapter": 3, "body": "媽媽說爸爸不會回來了。\n我問為什麼。\n媽媽說：「是你爸不要我們。」\n我那天晚上一直想，他不要的是媽媽，還是我。\n我覺得是我\n因為媽媽還在。"}, {"id": "blog_2", "heading": "2007-05-11　下雨", "date": "2007-05-11", "title": "2007-05-11　下雨", "chapter": 3, "body": "今天下大雨\n放學的時候大家的媽媽都來了，有的拿傘有的開車。\n我在穿堂等\n警衛伯伯說妹妹妳媽媽呢，我說她等一下就來了。\n後來燈關了。\n我自己走回家\n到家的時候鞋子裡面都是水，走路會發出咕嘰咕嘰的聲音，像有一隻青蛙跟著我。\n媽媽不在。"}, {"id": "blog_3", "heading": "2007-05-14", "date": "2007-05-14", "title": "2007-05-14", "chapter": 3, "body": "媽媽回來了\n她帶了一個布丁給我，抱我抱很久，說媽媽只有你。\n我問她去哪裡了。她說下次再跟你說。\n布丁很甜，我不喜歡。我吃完了。\n因為吃完她會笑。"}, {"id": "blog_4", "heading": "2007-05-15", "date": "2007-05-15", "title": "2007-05-15", "chapter": 3, "body": "隔壁阿姨問媽媽這幾天去哪裡，媽媽說：「我們母女去台中玩啊。」\n阿姨說真好。\n我站在旁邊，沒有說話。\n原來可以這樣講。原來講出來，阿姨就會說真好。"}, {"id": "blog_5", "heading": "2008-02-09", "date": "2008-02-09", "title": "2008-02-09", "chapter": 3, "body": "媽媽說我是她最懂事的小孩。她說別的小孩都不懂媽媽，只有我懂。\n所以我不能哭\n懂的人不能哭。\n\n我知道她今天心情不好，因為她把門關起來了。我把晚餐放在門口，敲了兩下。\n敲兩下是我們的暗號。她心情好的時候會開門。\n今天沒有開。\n我坐在門口等\n地板很冰。"}, {"id": "blog_6", "heading": "2008-06-20", "date": "2008-06-20", "title": "2008-06-20", "chapter": 3, "body": "媽媽喝醉了，抱著我說：「你是我生的，你是我的，誰都不能把你帶走。」\n她抱得很緊，緊到我不能呼吸。\n我好喜歡。\n我知道這樣很奇怪，可是她抱這麼緊的時候，就不會走。"}, {"id": "blog_7", "heading": "2008-11-30", "date": "2008-11-30", "title": "2008-11-30", "chapter": 3, "body": "今天我把媽媽的口紅偷擦了。\n照鏡子的時候我覺得我很像她。\n如果我很像她，她是不是就不會走了。"}, {"id": "blog_8", "heading": "2009-06-02", "date": "2009-06-02", "title": "2009-06-02", "chapter": 3, "body": "她這次走了十一天。\n我把家裡打掃得很乾淨，乾淨到看起來像沒有人住過。這樣她回來就會覺得我很乖。\n我每天晚上都打她的電話。她沒有接。\n我後來發現，電話響到最後會有一個女生說「您撥的電話未回應」。我每天晚上都聽那個女生講話，聽完才睡得著。\n至少有人在講話。"}, {"id": "blog_9", "heading": "2009-06-14", "date": "2009-06-14", "title": "2009-06-14", "chapter": 3, "body": "媽媽回來了，沒有解釋。\n我問她去哪裡了，她突然很生氣，說：「你為什麼一直問！你就跟你爸一樣，一直逼我！」\n然後她又哭了，抱著我說對不起，媽媽只有你。\n我不知道要怎麼辦。我只好說：沒關係。\n我發現只要我說沒關係，她就會停下來。"}, {"id": "blog_10", "heading": "2010-04-08", "date": "2010-04-08", "title": "2010-04-08", "chapter": 3, "body": "我今天做了一件事。我不會寫是什麼。\n媽媽不知道\n沒有人知道。\n它沒有讓任何事變好。"}, {"id": "blog_11", "heading": "2010-09-17", "date": "2010-09-17", "title": "2010-09-17", "chapter": 3, "body": "老師說我的作文寫得很好，題目是〈我的家人〉。\n我寫我媽媽很愛我，每天都會等我放學。\n老師給我九十二分。\n原來寫下來的東西，別人就會相信。\n原來寫下來的東西，就會變成真的。\n\n> **呼應清單**：爸爸「不要我們」、下雨的穿堂、布丁「很甜我不喜歡我吃完了」、「下次」、「我們母女去台中玩」（改寫現實）、敲兩下、「你是我生的，你是我的」（愛等於擁有）、擦媽媽的口紅照鏡子（變成對方就不會被丟下）、聽電話語音才睡得著、「你去跟你爸啊」式的勒索與「沒關係」、自傷的起點、「寫下來就會變成真的」。\n\n---"}], "stories": [{"id": "stories_1", "heading": "小帳 · 限時動態觀看紀錄", "date": "限時動態觀看紀錄", "title": "小帳 · 限時動態觀看紀錄", "chapter": 4, "body": "| 時間 | 他的限動 | 她看了幾次 |\n|---|---|---|\n| 04-14 12:15 | 布丁（便利商店的） | 11 |\n| 04-17 20:03 | 窗外的雨，配字「週末又要下雨」 | 4 |\n| 04-19 15:02 | 咖啡廳的窗邊，兩杯飲料 | 1 |\n| 04-22 18:55 | 辦公室的燈，配字「明天又要加班到九點半 QQ 誰來救我」 | 23 |"}], "calendar": [{"id": "calendar_1", "heading": "行事曆（系統索引）", "date": "2021-04-23", "title": "行事曆（系統索引）", "chapter": 4, "body": "04-23\n19:00　下班\n20:41　公車亭附近\n21:12　未送出訊息\n\n※ 目前先作為 E5 前的時間索引。"}], "searches": [{"id": "searches_1", "heading": "搜尋紀錄（04-20）", "date": "搜尋紀錄（04-20）", "title": "搜尋紀錄（04-20）", "chapter": 4, "body": "- 和平路 公車亭 晚上\n- 和平路 公車亭 路燈 壞\n- 新北 週五 降雨機率\n- 被拒絕 還可以 繼續嗎\n- 他說不討厭我 是什麼意思\n- 為什麼 對我好 又 不要我\n- 凌晨傳歌 代表什麼\n- 怎麼樣才算 跟蹤\n- 跟蹤 會被抓嗎\n- 如果他報警\n- 如果他報警就好了\n\n> 不放任何工具、手段相關的搜尋。她想的是時間、地點、天氣，還有心裡那一點想被攔住的念頭。"}]}};
+  const APPS = [
+    {id:'diary',name:'日記',glyph:'▤',openAt:0,desc:'按時間排列的個人日記。'},
+    {id:'notes',name:'備忘錄',glyph:'☷',openAt:0,desc:'備忘錄、回覆紀錄、上線紀錄與尾聲附註。'},
+    {id:'statistics',name:'訊息統計',glyph:'▥',openAt:0,desc:'系統索引。'},
+    {id:'drafts',name:'草稿匣',glyph:'✎',openAt:1,desc:'未送出的訊息與 PLAN-7F3。'},
+    {id:'audio',name:'錄音',glyph:'◉',openAt:1,desc:'保留目錄；目前沒有逐字稿。'},
+    {id:'deleted',name:'最近刪除',glyph:'⌫',openAt:1,desc:'保留目錄；未拆出獨立正文。'},
+    {id:'messages',name:'訊息',glyph:'▣',openAt:2,desc:'手機備份與衝突版本。'},
+    {id:'blog',name:'舊部落格',glyph:'◇',openAt:3,desc:'童年插章。'},
+    {id:'stories',name:'限動觀看紀錄',glyph:'◎',openAt:4,desc:'小帳觀看紀錄。'},
+    {id:'calendar',name:'行事曆',glyph:'▦',openAt:4,desc:'時間索引。'},
+    {id:'searches',name:'搜尋紀錄',glyph:'⌕',openAt:4,desc:'04-20 搜尋紀錄。'}
+  ];
+  const CHAPTERS = ARCHIVE.chapters;
+  const RECORDS = ARCHIVE.records;
+  const FINAL_SORT_ID = 'diary_75';
+  // E4: verification of *archived evidence*, not a diagnosis or assertion of motive.
+  const E4_REQUIRED_RECORDS=['stories_1','searches_1','drafts_2'];
+  const E4_QUESTIONS=[
+    {title:'01 / 觀看紀錄', prompt:'04/22 18:55 的限動，在備份中記錄了多少次觀看？',
+      choices:[['4','4 次'],['11','11 次'],['23','23 次']], answer:'23',
+      success:'已核對：04/22 18:55 的限動紀錄為 23 次。'},
+    {title:'02 / 搜尋索引', prompt:'04/20 搜尋紀錄中，哪一組詞確實出現過？',
+      choices:[['station','和平路／公車亭／路燈'],['office','辦公室／門禁卡／會議室'],['park','公園／長椅／腳踏車']], answer:'station',
+      success:'已核對：備份出現「和平路 公車亭 路燈 壞」等搜尋。'},
+    {title:'03 / 草稿語氣', prompt:'PLAN-7F3 草稿中的「咱」與「他叫我去的」，最直接支持哪個觀察？',
+      choices:[['fact','A 已明確邀請 7f3 到場'],['mimic','7f3 嘗試模仿 A 的說話方式，並把想像寫成邀請'],['none','草稿能證明 7f3 從未打算靠近']], answer:'mimic',
+      success:'已核對：草稿的語氣與主張來自 7f3 的文字，不能當成 A 的邀請證據。'}
+  ];
+  // Confirm facts from original backup entries before choosing an interpretation.
+  const E12_EVIDENCE={
+    0:['diary_18','diary_20','notes_1'],
+    1:['notes_2','notes_3','drafts_1']
+  };
+  const E12_QUESTIONS={
+    0:[
+      {title:'01 / 被選中',prompt:'11/12 凌晨掛睡時，A 實際說的是哪一句？',choices:[['promise','我會永遠在妳身邊'],['thanks','有你真好。'],['love','我只喜歡妳']],answer:'thanks',success:'原文為「有你真好」。它沒有直接承諾戀愛關係。'},
+      {title:'02 / 第一個',prompt:'11/19 的「你是第一個」，在日記裡具體指什麼？',choices:[['secret','A 首次向公司裡的人談及自己的性別身分'],['date','A 第一次向 7f3 告白'],['move','A 答應與 7f3 同居']],answer:'secret',success:'「第一個」是分享秘密的對象，不是交往承諾。'},
+      {title:'03 / 備忘錄',prompt:'將備忘錄和日記對照後，哪個結論最能區分紀錄與推測？',choices:[['proof','記住偏好就能證明 A 只喜歡 7f3'],['uncertain','備忘錄記下細節與主觀解讀，但無法證明 A 想與 7f3 交往'],['false','日記所有溫暖互動都是捏造']],answer:'uncertain',success:'互動可以是真實的，7f3 對關係的認定仍是她自己的解讀。'}
+    ],
+    1:[
+      {title:'01 / 回覆紀錄',prompt:'回覆紀錄把哪些東西整理成可比較的數據？',choices:[['counts','回覆字數與訊息間隔'],['gps','A 的精確 GPS 座標'],['photos','A 私人相簿的照片']],answer:'counts',success:'表格記錄的是字數與間隔，沒有直接記錄 A 的感情。'},
+      {title:'02 / 上線紀錄',prompt:'從上線紀錄推斷「A 故意不回 7f3」時，最重要的缺口是什麼？',choices:[['intent','上線時間無法直接證明 A 當時看到訊息或有意不回'],['time','時間表沒有任何日期'],['system','表格顯示 A 已刪除帳號']],answer:'intent',success:'上線和已讀、意圖是不同的事情，不能直接畫上等號。'},
+      {title:'03 / 草稿匣',prompt:'未送出的多個版本，最能支持哪項觀察？',choices:[['sent','這些訊息全部已經送給 A'],['rewrite','7f3 在傳送前反覆修改措辭、猶豫與懷疑'],['invite','A 親自寫了這些草稿']],answer:'rewrite',success:'草稿證明 7f3 的猶豫和反覆修訂，不代表 A 看過它們。'}
+    ]
+  };
+  // v1.5: proof-backed reconstruction. The document names are not an answer key;
+  // players archive individual records, then pair them with evidence slots.
+  const FORENSIC_CASES={
+    0:[
+      {name:'四秒語音',question:'找出「有你真好」的記錄；這句話被保存在什麼事件裡？',id:'diary_18',note:'檔案能證實這句話與錄音的存在，無法證實戀愛承諾。'},
+      {name:'第一個',question:'找出被反覆寫下「第一個」的日記，注意她省略了哪些背景。',id:'diary_20',note:'這是 7f3 寫下的版本，不能把私人日記當完整逐字稿。'},
+      {name:'私人索引',question:'哪份備忘錄把偏好細節累積成對 A 的解釋？',id:'notes_1',note:'偏好紀錄可以核對；「對方愛我」仍只是解讀。'}
+    ],
+    1:[
+      {name:'回覆變化',question:'找出記錄回覆字數與間隔的備份。',id:'notes_2',note:'時間與字數不是情緒的直接量尺。'},
+      {name:'上線時間',question:'找出她追蹤上線時間的原始紀錄。',id:'notes_3',note:'上線不等於已讀，更不能證實刻意忽略。'},
+      {name:'未寄出的版本',question:'哪份檔案保留多次改寫、卻沒送出的訊息？',id:'drafts_1',note:'草稿可以證明寫過，不能證明收件者讀過。'}
+    ],
+    2:[
+      {name:'自留版本',question:'歸檔手機備份 v2（修改版）。',id:'messages_1',note:'僅證明這個版本存在。'},
+      {name:'早期備份',question:'歸檔手機備份 v1（原始版）。',id:'messages_2',note:'比對後才能確認哪句話消失。'}
+    ],
+    4:[
+      {name:'反覆觀看',question:'找出 04/22 的限動觀看紀錄。',id:'stories_1',note:'觀看次數可以比對，但動機不能直接推定。'},
+      {name:'搜尋痕跡',question:'找出 04/20 的搜尋紀錄。',id:'searches_1',note:'搜尋詞是行為線索，不等於已執行的計畫。'},
+      {name:'未發送計畫',question:'找出 PLAN-7F3 草稿。',id:'drafts_2',note:'草稿中的宣稱並非 A 的真實邀請。'}
+    ]
+  };
+  const forensicSlots = ch => FORENSIC_CASES[ch] || [];
+  const isForensicCompleted = ch => forensicSlots(ch).every((slot,i)=>state.forensicMatches[String(ch)+':'+i]===slot.id);
+  function forensicPanel(ch){
+    const slots=forensicSlots(ch);if(!slots.length)return '';
+    const pinned=state.pinnedEvidence.filter(id=>Object.values(RECORDS).some(rows=>rows.some(rec=>rec.id===id && rec.chapter<=state.unlocked)));
+    const choices=pinned.map(id=>{const rec=Object.values(RECORDS).flat().find(r=>r.id===id);return rec?`<option value="${clean(id)}">${clean(displayRecordTitle(rec))}</option>`:'';}).join('');
+    return `<section class="bp-panel bp-forensics" aria-label="鑑識工作台"><div class="bp-tag">FORENSIC WORKBENCH / EVIDENCE BOARD</div><h2>資料重建 · ${slots.filter((_,i)=>state.forensicMatches[ch+':'+i]).length}/${slots.length}</h2>
+      <p class="bp-copy">到原始檔案按 [COLLECT] 收錄，再回這裡選擇對應的證據。只核對檔案事實，不判決人物動機。</p>
+      ${slots.map((slot,i)=>{const key=ch+':'+i,matched=state.forensicMatches[key]===slot.id;return `<div class="bp-evidence-slot"><div class="bp-tag">${String(i+1).padStart(2,'0')} / ${clean(slot.name)} ${matched?'[MATCHED]':'[UNMATCHED]'}</div><p>${clean(slot.question)}</p>${matched?`<p class="bp-forensic-note">[VERIFIED] ${clean(slot.note)}</p>`:`<label class="bp-forensic-label">證據檔案 <select data-evidence-select="${key}" aria-label="為${clean(slot.name)}選擇證據"><option value="">選擇已收錄檔案</option>${choices}</select></label><button type="button" class="bp-ghost" data-match-evidence="${key}">[VERIFY] 核對檔案</button>`}</div>`;}).join('')}
+      <p class="bp-e4-feedback" role="status">${clean(state.forensicFeedback||'')}</p><p class="bp-note">線索未列在這裡的檔案也可自行收錄。已通關的舊存檔維持通關，不強迫重新鑑識。</p></section>`;
+  }
+  const EXTENDED_0409 = "時間過去了。\n那一點熱慢慢從皮膚底下退下去。\n我以為它會消失。\n沒有。\n它只是變成了別的東西。\n現在不一樣了。\n它變得更安靜。更重。\n像有什麼東西沉在身體裡面，白天不會動，到了晚上，房間安靜下來，才一點一點浮上來。\n我把窗簾拉起來。燈只開了一盞。\n桌上放著昨天買的傘。還沒拆。\n昨天她就在兩百公尺外。走過去不用三分鐘。\n我沒有走過去。\n我現在坐在這裡，卻還是一直想，如果我那時候走過去了，她會不會笑。\n她以前會笑的。\n我不知道她是不是對每個人都這樣。\n我不想知道。\n我把手放在自己的肩膀上。\n那天捷運很擠。她喝醉了，靠在我肩上睡著。\n十個站。\n我原本第四站就該下車。\n可是她沒有醒。我也沒有動。\n下一站。下一站。再下一站。\n我那時候真的很幸福。\n不是我想像出來的。她真的靠在我肩上。那是真的。\n我把手放下來。肩膀是冷的。\n房間很安靜。\n我又想起她的手。以前她總是說手很冰。\n我幫她搓過。搓到她說好了好了，咱熱了。\n她的手是我弄熱的。\n那時候她沒有躲開。她還笑了。\n所以我不明白。\n為什麼現在連見她一面都這麼難。\n我只是想回到那個時候。\n回到她還會主動把手伸過來的時候。\n回到她還會半夜打電話給我的時候。\n回到她買了什麼都想拍給我看的時候。\n回到她還需要我的時候。\n不對。不是需要。\n我希望她想要我。\n我希望她在很開心的時候也想到我。\n不是只有難過的時候。不是只有睡不著的時候。不是只有下雨的時候。\n我希望她走到哪裡，都會覺得少了一個人。\n就像我現在這樣。\n這樣才公平。\n可是她沒有答應過。\n我知道。她沒有答應過。\n那些事情總是真的吧。\n那十個站是真的。那雙手是真的。她在電話裡睡著是真的。\n我沒有把它們編出來。\n我只是想要它們不要結束。\n";
+  const EXTENDED_0409_TAIL = "渴望回到她把頭靠在我肩上的那一秒。\n渴望回到她還會說「咱熱了」的時候。\n渴望回到她還不知道我會變成這樣的時候。\n我明天就要跟她說了。\n我有話想跟妳說。\n我喜歡妳，不是朋友那種。";
+  const FINAL_SORT_TARGET = [
+    '肩膀先停了一下。',
+    '他低頭打了一則訊息。',
+    '他在跟別人說我在這裡。',
+    '我還是走過去了。'
+  ];
+
+  const clean = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function findRecords(query) {
+    const q=query.trim().toLocaleLowerCase();
+    if(!q) return [];
+    const hits=[];
+    Object.entries(RECORDS).forEach(([app, list])=>list.forEach(rec=>{
+      if(rec.chapter<=state.unlocked && (`${rec.heading} ${rec.body}`).toLocaleLowerCase().includes(q))hits.push({app,id:rec.id,title:displayRecordTitle(rec)});
+    }));
+    return hits.slice(0,40);
+  }
+  function searchArchive(query) {
+    const q=String(query||'').trim().slice(0,80);
+    if(!q){searchResults=null;searchFeedback='請輸入關鍵字。';render();return;}
+    searchResults=findRecords(q);
+    searchFeedback=`在已解鎖備份中找到 ${searchResults.length} 筆結果。`;
+    state.searchHistory=[...state.searchHistory.filter(x=>x!==q),q].slice(-12);save();render();
+  }
+  const getApp = id => APPS.find(a => a.id === id);
+  const recordsForApp = id => (RECORDS[id] || []).filter(r => r.chapter <= state.unlocked);
+  const base = () => ({unlocked:0,completed:[],visited:{},scares:true,stream:false,typing:true,microphone:false,readCounts:{},seenRecords:[],searchHistory:[],openedDiary:false,pinnedEvidence:[],forensicMatches:{},puzzles:{finalSort:false,backupDiff:false,e4Step:0,e1Step:0,e2Step:0},sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]});
+  let state = base();
+  try {
+    const data = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (data && typeof data === 'object') {
+      state = {
+        unlocked:Math.min(CHAPTERS.length-1, Math.max(0, Number.isInteger(data.unlocked)?data.unlocked:0)),
+        completed:Array.isArray(data.completed)?data.completed.filter(n=>Number.isInteger(n)&&n>=0&&n<CHAPTERS.length):[],
+        visited:data.visited && typeof data.visited==='object' && !Array.isArray(data.visited)?data.visited:{},
+        scares:data.scares!==false,
+        stream:data.stream===true, typing:data.typing!==false, microphone:data.microphone===true, readCounts:data.readCounts && typeof data.readCounts==='object'?data.readCounts:{},seenRecords:Array.isArray(data.seenRecords)?data.seenRecords.filter(x=>typeof x==='string').slice(-300):[],searchHistory:Array.isArray(data.searchHistory)?data.searchHistory.filter(x=>typeof x==='string').slice(-12):[],openedDiary:!!data.openedDiary,pinnedEvidence:Array.isArray(data.pinnedEvidence)?data.pinnedEvidence.filter(x=>typeof x==='string').slice(-100):[],forensicMatches:data.forensicMatches && typeof data.forensicMatches==='object' && !Array.isArray(data.forensicMatches)?data.forensicMatches:{},
+        puzzles:data.puzzles && typeof data.puzzles==='object'?{finalSort:!!data.puzzles.finalSort,backupDiff:!!data.puzzles.backupDiff,e4Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e4Step)?data.puzzles.e4Step:0)),e1Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e1Step)?data.puzzles.e1Step:0)),e2Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e2Step)?data.puzzles.e2Step:0))}:{finalSort:false,backupDiff:false,e4Step:0,e1Step:0,e2Step:0},
+        sortOrder:Array.isArray(data.sortOrder)&&data.sortOrder.length===FINAL_SORT_TARGET.length?data.sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]
+      };
+    }
+  } catch (_) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {} };
+  const isNativeApp = () => !!window.Capacitor;
+  function mainIsCleared() {
+    try { const s=JSON.parse(localStorage.getItem('murmur_p01_v7')||'{}'); return !!(s && (s.cleared || s.imported)); }
+    catch (_) { return false; }
+  }
+  const canEnter = () => (isNativeApp() && mainIsCleared()) || PREVIEW;
+  const root=document.createElement('section');
+  root.id='backupRoot'; root.hidden=true; root.setAttribute('role','dialog'); root.setAttribute('aria-modal','true');
+  root.setAttribute('aria-label','Murmur 加害者篇手機備份'); document.body.appendChild(root);
+  let view='home', currentApp=null, currentChapter=0, currentItem=0;
+  let backTarget='home'; let focusBefore=null; let searchResults=null; let searchFeedback='';
+  let typingTimer=null, soundStream=null, soundContext=null, soundFrame=0, typingSkip=null;
+  let soundApprovedThisSession=false;
+  let eventToastTimer=null;
+  const motionAllowed=()=>state.scares && !state.stream && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function storyEvent(message){
+    if(root.hidden || state.stream || !state.scares)return;
+    let toast=root.querySelector('.bp-story-toast');
+    if(!toast){toast=document.createElement('div');toast.className='bp-story-toast';toast.setAttribute('role','status');root.appendChild(toast);}
+    toast.textContent=message;toast.hidden=false;
+    clearTimeout(eventToastTimer);eventToastTimer=setTimeout(()=>{toast.hidden=true;},4400);
+  }
+  let leftAt=0,lastReturnEvent=0;
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)leftAt=Date.now();});
+  window.addEventListener('murmur:native', e=>{
+    const type=e.detail && e.detail.type;
+    if(type==='foreground' && leftAt && Date.now()-leftAt>=90000 && currentChapter>=4 && Date.now()-lastReturnEvent>120000){lastReturnEvent=Date.now();storyEvent('你不是看得很開心嗎？');}
+    if(type==='screenshot')storyEvent('你也想把它留下來嗎。');
+    if(type==='recording')storyEvent('你想把這些都留下來嗎。');
+  });
+  function stopSound(){
+    if(soundFrame)cancelAnimationFrame(soundFrame);soundFrame=0;
+    if(soundStream){soundStream.getTracks().forEach(t=>t.stop());soundStream=null;}
+    if(soundContext){soundContext.close().catch(()=>{});soundContext=null;}
+  }
+  async function startSound(){
+    if(!state.microphone || !soundApprovedThisSession || state.stream || root.hidden || view!=='entry' || currentChapter<4 || document.hidden)return;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){storyEvent('此裝置不支援麥克風偵測。');return;}
+    stopSound();
+    try{
+      soundStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});
+      if(!state.microphone || state.stream || root.hidden || view!=='entry' || document.hidden){stopSound();return;}
+      soundContext=new (window.AudioContext||window.webkitAudioContext)();
+      const src=soundContext.createMediaStreamSource(soundStream), analyser=soundContext.createAnalyser();
+      analyser.fftSize=1024;src.connect(analyser);const buf=new Float32Array(analyser.fftSize);
+      let loudSince=0, triggered=false;
+      function sample(){
+        if(!soundStream || root.hidden || view!=='entry' || document.hidden){stopSound();return;}
+        analyser.getFloatTimeDomainData(buf);
+        let sum=0;for(let i=0;i<buf.length;i++)sum+=buf[i]*buf[i];
+        const rms=Math.sqrt(sum/buf.length),now=performance.now();
+        if(rms>.065){if(!loudSince)loudSince=now;if(now-loudSince>10000&&!triggered){triggered=true;storyEvent('……你是在跟別人分享嗎？');}}
+        else loudSince=0;
+        soundFrame=requestAnimationFrame(sample);
+      }
+      sample();
+    }catch(_){state.microphone=false;save();storyEvent('無法啟用麥克風。你仍可正常遊玩。');}
+  }
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopSound();else if(!root.hidden&&view==='entry'&&state.microphone&&soundApprovedThisSession)startSound();});
+  function stopTyping(){if(typingTimer)clearTimeout(typingTimer);typingTimer=null;typingSkip=null;}
+  function startRecordEffects(rec, firstRead){
+    stopTyping();
+    if(rec.id==='diary_58')attachSurge();
+    if(rec.id==='diary_67' && motionAllowed() && navigator.vibrate)navigator.vibrate([70,110,70]);
+    if(currentApp==='diary'){state.readCounts[rec.id]=(state.readCounts[rec.id]||0)+1;save();}
+    window.dispatchEvent(new CustomEvent('murmur:record',{detail:{id:rec.id,chapter:currentChapter,reads:state.readCounts[rec.id]||1,body:rec.body||'',app:currentApp}}));
+    const panel=root.querySelector('.bp-document');if(!panel)return;
+    // Every file-open action gets the same CRT boot, including notes, messages and drafts.
+    if(motionAllowed()){
+      panel.classList.add('bp-crt-boot');
+      setTimeout(()=>{if(panel.isConnected)panel.classList.remove('bp-crt-boot');},800);
+    }
+    if(currentApp==='diary' && state.readCounts[rec.id]===3 && currentChapter>=4)storyEvent('這一頁你看了 '+state.readCounts[rec.id]+' 次。');
+    if(currentApp==='diary' && rec.id==='diary_75' && new Date().getHours()===22 && new Date().getMinutes()===6 && motionAllowed())storyEvent('你下班了嗎。');
+    if(!firstRead || !state.typing || !motionAllowed() || window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const doc=panel.querySelector('.bp-docbody');if(!doc)return;
+    // Progressive reveal by complete Unicode code points, preserving original DOM structure.
+    const nodes=[];const walker=document.createTreeWalker(doc,NodeFilter.SHOW_TEXT);
+    while(walker.nextNode()){
+      const n=walker.currentNode;if(n.parentElement.closest('.bp-stage-repetition,.bp-stage-longing,.bp-surge,.bp-stage-0409,.bp-stage-0409-tail,.bp-type-cursor'))continue;
+      const chars=Array.from(n.textContent);if(chars.length)nodes.push({n,chars});
+    }
+    const total=nodes.reduce((a,x)=>a+x.chars.length,0);if(total>12000)return;
+    let ni=0, ci=0, shown=0;
+    nodes.forEach(x=>x.n.textContent='');
+    const cursor=document.createElement('span');cursor.className='bp-type-cursor';cursor.textContent='█';doc.prepend(cursor);
+    const skip=document.createElement('button');skip.type='button';skip.className='bp-skip-type';skip.textContent='[SKIP] 顯示全文';panel.prepend(skip);
+    const finish=()=>{nodes.forEach(x=>x.n.textContent=x.chars.join(''));cursor.remove();skip.remove();stopTyping();};
+    typingSkip=finish;skip.addEventListener('click',finish);
+    function tick(){
+      if(root.hidden || view!=='entry'){finish();return;}
+      const batch=nodes[ni];if(!batch){finish();return;}
+      batch.n.textContent+=batch.chars[ci++];shown++;
+      batch.n.after(cursor);
+      if(ci>=batch.chars.length){ni++;ci=0;}
+      if(shown>=Math.min(total,280)){finish();return;}
+      const last=batch.chars[ci-1]||'';
+      typingTimer=setTimeout(tick,/[。！？]/.test(last)?260:75+Math.random()*95);
+    }
+    typingTimer=setTimeout(tick,760);
+  }
+  function attachSurge(){
+    const sentinel=root.querySelector('.bp-surge-sentinel'),surge=root.querySelector('.bp-surge');
+    if(!sentinel||!surge)return;
+    const check=()=>{
+      if(root.hidden||view!=='entry'||currentApp!=='diary')return;
+      const b=sentinel.getBoundingClientRect(),r=root.getBoundingClientRect();
+      if(b.top<r.bottom-75){surge.hidden=false;surge.classList.add('bp-surge-visible');}
+    };
+    root._surgeCheck=check;requestAnimationFrame(check);
+  }
+
+
+  function markVisited(id) {
+    const key=String(currentChapter), existing=Array.isArray(state.visited[key])?state.visited[key]:[];
+    if (!existing.includes(id)) { state.visited[key]=[...existing,id]; save(); }
+  }
+  function chapterTasks(ch) { return CHAPTERS[ch].tasks || []; }
+  function requirements(ch) {
+    const seen=Array.isArray(state.visited[String(ch)])?state.visited[String(ch)]:[];
+    return chapterTasks(ch).map(t => ({ ...t,
+      done: (ch===0||ch===1) ? E12_EVIDENCE[ch].some(id=>id.startsWith(t.id+'_')) && E12_EVIDENCE[ch].filter(id=>id.startsWith(t.id+'_')).every(id=>state.seenRecords.includes(id)) : ch===4 ? E4_REQUIRED_RECORDS.some(id=>id.startsWith(t.id+'_')) &&
+        E4_REQUIRED_RECORDS.filter(id=>id.startsWith(t.id+'_')).every(id=>state.seenRecords.includes(id))
+        : seen.includes(t.id) }));
+  }
+  function chapterReady(ch) {
+    const ready = requirements(ch).every(r=>r.done);
+    if (ch === 0 || ch === 1) return state.completed.includes(ch) || (ready && isForensicCompleted(ch));
+    if (ch === 2) return state.completed.includes(ch) || (ready && isForensicCompleted(ch) && !!state.puzzles.backupDiff);
+    if (ch === 4) return state.completed.includes(ch) || (ready && isForensicCompleted(ch));
+    if (ch === 5) return ready && !!state.puzzles.finalSort;
+    return ready;
+  }
+  function top(title) {
+    const back=(view==='home')?'返回對話':(view==='entry'?'返回列表':view==='app'&&backTarget==='chapter'?'返回章節':'返回手機');
+    const location=view==='home'?'BACKUP':view==='chapter'?`CHAPTERS\\${currentChapter+1}`:view==='settings'?'CONFIG':view==='entry'?`${String(currentApp).toUpperCase()}\\FILE_${String(currentItem+1).padStart(2,'0')}`:String(currentApp).toUpperCase();
+    const directory=`C:\\7F3\\${location}>`;
+    return `<div class="bp-windowline"><span class="bp-square" aria-hidden="true">_</span><span class="bp-windowname">MURMUR / 7F3_BACKUP.CMD</span><span class="bp-version">v1.1</span></div>
+      <div class="bp-top"><button type="button" data-action="back" aria-label="${back}">[←] ${back}</button><span class="bp-status">LOCAL · READ ONLY</span><button type="button" data-action="settings">[SET]</button></div>
+      <div class="bp-commandbar" aria-label="目前所在的虛構備份目錄"><span class="bp-prompt">${clean(directory)}</span><span class="bp-cursor" aria-hidden="true">▌</span></div>
+      <div class="bp-meta">MURMUR // participant_7f3</div><h1 class="bp-title">${clean(title)}</h1>`;
+  }
+  // The v0.5 archive data is never rewritten. Render documentary stage directions as visual effects.
+  // Parentheses embedded in actual dialogue or thoughts remain unchanged.
+  const EDITORIAL_LINES = [
+    '製作註記：','**謎題接點**','謎題接點：','與主線呼應：','這一章要讓玩家相信：',
+    '1. 回覆紀錄 ×','2. 「最近刪除」','3. 錄音只顯示',
+    '1. v2 ／ v1','2. 日記列表只顯示','放在 E3 解完之後','小孩的口吻。',
+    '這一章不能讓玩家覺得','**呼應清單**','這一頁在 App 裡',
+    '整頁寫滿，玩家要往下捲','不放任何工具、手段相關','**謎題接點**：',
+    '從這裡開始，文字突然變乾。','App 呈現：','1. 限動',
+    '照實際發生的順序排列。排對之後：',
+  ];
+  function isEditorialLine(text) {
+    const value=text.trim().replace(/^>\s*/, '').trim();
+    return EDITORIAL_LINES.some(x=>value.startsWith(x)) ||
+      (value.startsWith('**謎題接點**') || value.startsWith('**呼應清單**'));
+  }
+  // Keep the source heading and body intact. Display editorial parentheticals as UI metadata.
+  const DISPLAY_HEADINGS = {
+    diary_75:['最後一篇','E5 · FINAL'],
+    notes_2:['回覆紀錄','2021-01'],
+    notes_3:['上線紀錄','2021-02'],
+    notes_4:['yoru 的附註','E-ROOT'],
+    statistics_1:['訊息統計','INDEX'],
+    drafts_1:['沒送出的訊息','2021-01 ～ 02'],
+    drafts_2:['草稿 · PLAN-7F3','PLAN-7F3'],
+    deleted_1:['最近刪除','SYSTEM'],
+    messages_1:['手機備份 · 2021-04-10 · v2','2021-04-10'],
+    messages_2:['手機備份 · 2021-04-10 · v1','2021-04-10'],
+    calendar_1:['行事曆','2021-04-23'],
+    searches_1:['搜尋紀錄','04-20']
+  };
+  const displayRecordTitle = rec => (DISPLAY_HEADINGS[rec.id] || [rec.title])[0];
+  const displayRecordDate = rec => (DISPLAY_HEADINGS[rec.id] || [rec.title,rec.date])[1];
+  const stage = name => `<div class="bp-stage bp-stage-${name}" aria-hidden="true"></div>`;
+  function renderMarkup(text,record=null) {
+    const lines=String(text).split('\n');
+    const output=[];
+    let neat=false;
+    let nextLineSmall=false;
+    let inCode=false;
+    let codeLines=[];
+    let tableRows=[];
+    function flushTable() {
+      if(!tableRows.length) return;
+      const rows=tableRows.map(x=>x.split('|').slice(1,-1).map(cell=>cell.trim()));
+      const filtered=rows.filter(row=>!row.every(cell=>/^:?-{2,}:?$/.test(cell)));
+      const table=filtered.map((row,idx)=>`<tr>${row.map(cell=>`<${idx===0?'th':'td'}>${clean(cell)}</${idx===0?'th':'td'}>`).join('')}</tr>`).join('');
+      output.push(`<div class="bp-table-scroll" role="region" aria-label="回覆紀錄表格" tabindex="0"><table class="bp-record-table">${table}</table></div>`);
+      tableRows=[];
+    }
+    for(let i=0;i<lines.length;i++) {
+      const raw=lines[i];
+      const line=raw.trim();
+      if (line.startsWith('```')) {
+        flushTable();
+        if(inCode){output.push(`<pre class="bp-record-code">${clean(codeLines.join('\n'))}</pre>`);codeLines=[];}
+        inCode=!inCode;continue;
+      }
+      if(inCode){codeLines.push(raw);continue;}
+      if(line.startsWith('|')&&line.endsWith('|')){tableRows.push(line);continue;}
+      flushTable();
+      if(isEditorialLine(line)) continue;
+      if(record && record.id==='notes_2' && line==='> 她開始記錄 A 每天回她的字數、間隔，以及她自己的註解。') continue;
+      if(record && record.id==='notes_2' && line.startsWith('> 最下面一行，她寫：')) {
+        output.push(stage('bottom-gap'));
+        output.push(`<div class="bp-line">${clean(line.replace(/^> 最下面一行，她寫：/,'').replace(/^「|」$/g,''))}</div>`);
+        continue;
+      }
+      if(record && record.id==='notes_3' && line.startsWith('最下面一行：')) {
+        output.push(stage('bottom-gap'));
+        output.push(`<div class="bp-line">${clean(line.replace(/^最下面一行：/,'').trim())}</div>`);
+        continue;
+      }
+      if(record && record.heading==='日記 · 2021-04-10　23:51' && line==='她說') {
+        output.push('<div class="bp-pronoun-rewrite" role="text" aria-label="她說被改寫為他說"><span aria-hidden="true" class="bp-pronoun-original">她說</span><span aria-hidden="true" class="bp-pronoun-new">他說</span></div>');
+        continue;
+      }
+      if (line === '（這一頁其他地方是空白的。）') {output.push(stage('empty-page'));continue;}
+      if (line === '（只有日期。）') {output.push(stage('date-only'));continue;}
+      if (line === '（下面一行，被劃掉）'||line === '（下面一行，被劃掉，看得出來）') continue;
+      if (/^(?:\d{2}:\d{2}\s*)?（這一行被劃掉）$/.test(line)) {
+        // Marks the immediately preceding 02:03 line, not this stage direction.
+        for(let j=output.length-1;j>=0;j--) {if(output[j].includes('你是我的。')){output[j]=output[j].replace('你是我的。','<del>你是我的。</del>');break;}}
+        continue;
+      }
+      if (line === '（這裡被劃掉一行，看得出是「我只是想確定她還在」。）') {
+        output.push('<div class="bp-stage-crossout"><del>我只是想確定她還在</del></div>');continue;
+      }
+      if (line === '（下一頁，同一天）'||line === '（隔天）') {output.push(stage('pagebreak'));continue;}
+      if (line === '（同一頁，最下面）') {output.push(stage('bottom-gap'));continue;}
+      if (line === '（再下面）') {output.push(stage('lower-gap'));continue;}
+      if (line === '（再下面一行，字比較小）') {output.push(stage('lower-gap'));nextLineSmall=true;continue;}
+      if (line === '（同一頁，最下面，字很工整）') {output.push(stage('bottom-gap'));neat=true;continue;}
+      if (line === '（「妳」被劃掉，沒有改。）') {
+        // Apply retroactively to the ONE intended sentence on this page.
+        for(let j=output.length-1;j>=0;j--){
+          if(output[j].includes('這樣我就可以說：妳的手又這麼冰。')) {
+            output[j]=output[j].replace('這樣我就可以說：妳的手又這麼冰。','這樣我就可以說：<del>妳</del>的手又這麼冰。');break;
+          }
+        }
+        continue;
+      }
+      if (line === '（下面寫了十四次同一句。字越來越小。最後一次只寫到「我喜歡」。）') {
+        // v0.9: extend the visible obsessive repetition at the player's request.
+        // Preserve the existing source manuscript unchanged. New lines only repeat
+        // or shorten the already-written confession; do not invent new plot facts.
+        const repeated='我有話想跟妳說。我喜歡妳，不是朋友那種。';
+        const echoes=Array.from({length:42},(_,j)=>
+          j===41 ? '我喜歡' :
+          j>=36 ? '我喜歡妳。' :
+          j>=29 ? '我喜歡妳，不是朋友那種。' : repeated
+        );
+        output.push(`<div class="bp-stage-repetition" aria-label="反覆寫下的告白，向下捲動時逐漸轉為暗紅色">${echoes.map((sentence,j)=>`<div class="bp-repeat-line" data-repeat-index="${j}" style="--repeat:${j}">${clean(sentence)}</div>`).join('')}</div>`);
+        // New, clearly separate dramatization of the original 04/09 page.
+        output.push('<div class="bp-stage-0409" aria-label="04月09日日記延伸演出">'+EXTENDED_0409.split('\n').map(x=>'<div class="bp-line">'+clean(x)+'</div>').join('')+'</div>');
+        output.push('<div class="bp-stage-longing">'+Array.from({length:64},(_,k)=>'<div class="bp-repeat-line bp-longing" style="--repeat:'+k+'">'+clean(k%11===0?'渴望回到那個距離。':k%7===0?'渴望回去。渴望回去。':'渴望回去。')+'</div>').join('')+'</div>');
+        output.push('<div class="bp-surge-sentinel" aria-hidden="true"></div><div class="bp-surge" hidden aria-live="off">'+Array.from({length:72},(_,k)=>'<div class="bp-surge-line" style="--surge:'+k+'">'+clean('我喜歡妳。'.repeat(2+(k%5)))+'</div>').join('')+'</div>');
+        output.push('<div class="bp-stage-0409-tail">'+EXTENDED_0409_TAIL.split('\n').map(x=>'<div class="bp-line">'+clean(x)+'</div>').join('')+'<div class="bp-line">我喜歡。</div><div class="bp-line">我。</div><div class="bp-line">房間很安靜。只有自己的心跳聲。</div><div class="bp-line">桌上的傘還沒拆。</div><div class="bp-line">明天會下大雨。</div><div class="bp-line">我希望她記得帶傘。</div><div class="bp-line">我希望她忘記帶傘。</div></div>');
+        continue;
+      }
+      if (line === '（以下紀錄已由檢方扣押。）') {
+        output.push('<div class="bp-seal" role="note" aria-label="檔案已封存"><span aria-hidden="true">[SEALED RECORD]</span><strong>存取受限 · 紀錄已封存</strong></div>');continue;
+      }
+      if(line === '（刪除）'||line.endsWith('　（刪除）')) {
+        const timestamp=line.replace(/（刪除）$/,'');
+        output.push(`<div class="bp-file-deleted">${clean(timestamp)}<span class="bp-deleted-mark" role="img" aria-label="已刪除的紀錄"></span></div>`);continue;
+      }
+      if(line === '（空白）'||line.endsWith('　（空白）')) {
+        const timestamp=line.replace(/（空白）$/,'');
+        output.push(`<div class="bp-empty-record"><span>${clean(timestamp)}</span><span class="bp-empty-mark" aria-label="空白欄位"></span></div>`);continue;
+      }
+      if (line === '---') {output.push('<hr class="bp-rule">');continue;}
+      if (!line) {output.push('<div class="bp-paragraph-space" aria-hidden="true"></div>');continue;}
+      let html=clean(raw)
+        .replace(/~~(.+?)~~/g,'<del>$1</del>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/^&gt;\s*/,'');
+      // Other v0.5 parentheticals, such as a spoken 「（」 or thought, remain verbatim.
+      output.push(`<div class="bp-line${neat?' bp-neat':''}${nextLineSmall?' bp-small-line':''}"${record && record.heading==='日記 · 2021-04-15' ? ` style="--line-delay:${Math.min(i,30)}"`:''}>${html}</div>`);
+      if (nextLineSmall) nextLineSmall=false;
+    }
+    flushTable();
+    if(inCode)output.push(`<pre class="bp-record-code">${clean(codeLines.join('\n'))}</pre>`);
+    return output.join('');
+  }
+  function chapterEntries(ch) {
+    const ids = new Set((CHAPTERS[ch] && CHAPTERS[ch].tasks ? CHAPTERS[ch].tasks.map(t=>t.id) : []));
+    const relevant=[];
+    Object.entries(RECORDS).forEach(([app,list]) => list.forEach(rec => { if (rec.chapter===ch) relevant.push({app,...rec}); }));
+    return relevant;
+  }
+  function home() {
+    const gallery=APPS.map(a => {
+      const locked=state.unlocked<a.openAt;
+      const count=(RECORDS[a.id] || []).filter(r=>r.chapter<=state.unlocked).length;
+      return `<button type="button" class="bp-dir-row" data-app="${a.id}" ${locked?'disabled':''} aria-label="${clean(a.name)}${locked?'（尚未解鎖）':''}">
+        <span class="bp-dir-type">${locked?'[--]':'[DIR]'} </span>
+        <span class="bp-dir-main"><span class="bp-dir-code">${a.id.toUpperCase()}\</span><span class="bp-dir-label">${clean(a.name)}${!locked?` <small>${count} 筆</small>`:''}</span></span>
+        <span class="bp-dir-state" aria-hidden="true">${locked?'[LOCK]':'[OPEN] ›'}</span>
+      </button>`;
+    }).join('');
+    const chapters=CHAPTERS.map((ch,i)=>`<button type="button" class="bp-chapter" data-chapter="${i}" ${state.unlocked<i?'disabled':''}>
+      <span class="bp-chapter-name">${clean(ch.name)}</span><span class="bp-tag">${state.unlocked<i?'[LOCKED]':state.completed.includes(i)?'[DONE]':i===state.unlocked?'[ACTIVE]':'[OPEN]'}</span>
+    </button>`).join('');
+    const searchHits = searchResults===null ? '' : '<p class="bp-note" role="status">'+clean(searchFeedback)+'</p><div class="bp-search-results">'+(searchResults.map(r=>'<button type="button" data-search-record="'+clean(r.id)+'" data-search-app="'+clean(r.app)+'">[FILE] '+clean(r.title)+'</button>').join('')||'<span class="bp-note">NO MATCH</span>')+'</div>';
+    const searchBlock='<div class="bp-panel bp-search-panel"><label for="bp-search-input" class="bp-tag">FIND / 搜尋已解鎖備份</label><div class="bp-search-controls"><input id="bp-search-input" type="search" maxlength="80" placeholder="輸入備份中的文字" autocomplete="off"><button type="button" data-action="search">[FIND]</button></div><p class="bp-note">只搜尋遊戲內資料。輸入的字會留在本機，並可能在後期的虛構搜尋紀錄出現。</p>'+searchHits+'</div>';
+    return top('7f3 // 手機備份')+
+      `
+      ${searchBlock}<div class="bp-section-heading"><h2>BACKUP DIRECTORY / 應用資料</h2><span>${APPS.filter(a=>a.openAt<=state.unlocked).length}/${APPS.length} 項可用</span></div>
+      <div class="bp-directory" role="group" aria-label="備份資料夾"><div class="bp-dir-head"><span>TYPE / DIRECTORY</span><span>STATUS</span></div>${gallery}<div class="bp-dir-foot">C:\\7F3\\BACKUP&gt;</div></div>
+      <div class="bp-section-heading"><h2>CHAPTER LOG / 章節</h2><span>${state.completed.length}/${CHAPTERS.length} 已完成</span></div>
+      <div class="bp-chapters">${chapters}</div>`;
+  }
+  function chapter() {
+    const ch=CHAPTERS[currentChapter], req=requirements(currentChapter), ready=chapterReady(currentChapter);
+    const taskBlock=req.length ? `<div class="bp-tasks"><h2>本章線索</h2>${req.map(r=>`<button type="button" class="bp-task" data-task="${r.id}"><span class="bp-checkmark">${r.done?'✓':'○'}</span><span><b>${clean(r.label)}</b><small>${clean(r.hint)}</small></span><span aria-hidden="true">›</span></button>`).join('')}${currentChapter===5?`<p class="bp-note">另外：〈最後一篇〉需要完成排序，才算完成 E5。</p>`:''}</div>` : '';
+    const e4Step=Math.max(0,Math.min(E4_QUESTIONS.length,state.puzzles.e4Step||0));
+    const e4Read=E4_REQUIRED_RECORDS.every(id=>state.seenRecords.includes(id));
+    const e4Question=E4_QUESTIONS[e4Step];
+    const e4Puzzle=currentChapter===4 ? `<div class="bp-panel bp-e4-puzzle" aria-label="E4 三份檔案交叉核對">
+      <div class="bp-tag">E4 / CROSS-REFERENCE · ${e4Step}/3 VERIFIED</div>
+      <h2>交叉核對：觀看、搜尋、草稿</h2>
+      <p class="bp-note">這裡只核對備份寫了什麼，不把 7f3 的想法當成 A 的事實。三份檔案都讀過後才可核對。</p>
+      ${e4Step===3 ? `<div class="bp-e4-result" role="status"><b>[VERIFIED] 3 / 3</b><p>三份資料已完成核對。觀看次數、搜尋詞與草稿模仿都屬於備份紀錄，不能單憑它們推定 A 的真實意圖。</p></div>` :
+        !e4Read ? `<div class="bp-e4-locked">[LOCKED] 尚需閱讀：${E4_REQUIRED_RECORDS.filter(id=>!state.seenRecords.includes(id)).map(id=>id==='stories_1'?'限動觀看紀錄':id==='searches_1'?'04/20 搜尋紀錄':'PLAN-7F3 草稿').join('、')}</div>` :
+        `<div class="bp-e4-step"><span class="bp-tag">${clean(e4Question.title)}</span><p>${clean(e4Question.prompt)}</p><div class="bp-e4-choices">${e4Question.choices.map(([id,label])=>`<button type="button" data-e4-answer="${clean(id)}">${clean(label)}</button>`).join('')}</div></div>`}
+      <p class="bp-e4-feedback" role="status">${clean(state.e4Feedback||'')}</p>
+      </div>` : '';
+    const e12Step=currentChapter===0?(state.puzzles.e1Step||0):(state.puzzles.e2Step||0);
+    const e12Required=E12_EVIDENCE[currentChapter];
+    const e12Ready=e12Required?e12Required.every(id=>state.seenRecords.includes(id)):false;
+    const e12Question=E12_QUESTIONS[currentChapter]?.[e12Step];
+    const e12Puzzle=e12Required ? `<div class="bp-panel bp-e4-puzzle" aria-label="E${currentChapter+1} 證據核對">
+      <div class="bp-tag">E${currentChapter+1} / EVIDENCE CHECK · ${e12Step}/3 VERIFIED</div>
+      <h2>${currentChapter===0?'被選中的證據':'回覆、上線、未寄出'}</h2>
+      <p class="bp-note">請根據備份回答。角色相信的事不一定是文件能證實的事。</p>
+      ${e12Step===3?'<div class="bp-e4-result" role="status"><b>[VERIFIED] 3 / 3</b><p>已核對原始紀錄與推測的差別。</p></div>':!e12Ready?
+      `<div class="bp-e4-locked">[LOCKED] 尚需閱讀：${e12Required.filter(id=>!state.seenRecords.includes(id)).map(id=>({diary_18:'11/12 01:47 日記',diary_20:'11/19 日記',notes_1:'備忘錄 · 她',notes_2:'回覆紀錄',notes_3:'上線紀錄',drafts_1:'沒送出的訊息'})[id]).join('、')}</div>`:
+      `<div class="bp-e4-step"><span class="bp-tag">${clean(e12Question.title)}</span><p>${clean(e12Question.prompt)}</p><div class="bp-e4-choices">${e12Question.choices.map(([id,label])=>`<button type="button" data-e12-answer="${clean(id)}">${clean(label)}</button>`).join('')}</div></div>`}
+      <p class="bp-e4-feedback" role="status">${clean(state.e12Feedback||'')}</p></div>`:'';
+    const backupDiff = currentChapter===2 ? `<div class="bp-panel bp-e3-puzzle"><div class="bp-tag">E3 / INTEGRITY CHECK</div><h2>兩份備份之間，消失的是哪一句？</h2><p class="bp-note">先閱讀 04-10 的 v1 與 v2，再選擇答案。這是對檔案差異的核對，不是猜測 A 的心意。</p>${state.puzzles.backupDiff?'<p class="bp-note">[VERIFIED] 已確認 v2 遺漏的拒絕訊息。</p>':(state.seenRecords.includes('messages_1')&&state.seenRecords.includes('messages_2')?`<div class="bp-diff-choices"><button type="button" data-diff="a">咱沒有討厭你</button><button type="button" data-diff="b">可是咱不想跟你交往</button><button type="button" data-diff="c">好</button></div>`:'<p class="bp-note">[LOCKED] 尚未閱讀兩個版本的備份。</p>')}<p class="bp-note" role="status">${clean(state.diffFeedback||'')}</p></div>` : '';
+    return top(ch.name)+
+      `<div class="bp-panel"><div class="bp-tag">${clean(ch.range)} · V0.5</div><p class="bp-copy">本章所有正文都已匯入原始文字。請依線索打開對應目錄。</p><div class="bp-outline">${chapterEntries(currentChapter).map(rec=>`<div><span>[${clean(getApp(rec.app)?.name || rec.app)}]</span> ${clean(displayRecordTitle(rec))}</div>`).join('')}</div></div>${taskBlock}${forensicPanel(currentChapter)}${backupDiff}
+      <div class="bp-actions"><button type="button" class="bp-primary" data-action="complete" ${!ready?'disabled':''}>${currentChapter===CHAPTERS.length-1?'完成尾聲':'完成本章，解鎖下一章'} →</button><button type="button" class="bp-ghost" data-action="home">回手機桌面</button></div>
+      ${!ready?'<p class="bp-note">先依序查看本章指定資料，再回到這裡繼續。</p>':''}`;
+  }
+  function appIndex() {
+    const a=getApp(currentApp);
+    const records=recordsForApp(a.id);
+    return top(a.name)+`<p class="bp-copy">${clean(a.desc)}</p><div class="bp-panel bp-list"><div class="bp-tag">DIR / ${a.id.toUpperCase()} · ${records.length} RECORDS</div>${records.map((rec,i)=>`<button type="button" class="bp-entry" data-item="${i}"><span><small>${clean(displayRecordDate(rec))} · ${clean(CHAPTERS[rec.chapter].name)}</small><strong>${clean(displayRecordTitle(rec))}</strong></span><span class="bp-filearrow" aria-hidden="true">&gt;</span></button>`).join('') || '<p class="bp-note">目前沒有可讀資料。</p>'}</div><button type="button" class="bp-ghost" data-action="chapter">返回目前章節</button>`;
+  }
+  function renderFinalSort(body) {
+    const solved = !!state.puzzles.finalSort;
+    const items = state.sortOrder.map((line, idx)=>`<div class="bp-sort-row"><span class="bp-sort-text">${clean(line)}</span><div class="bp-sort-ctrl"><button type="button" data-sort="up" data-idx="${idx}" ${idx===0?'disabled':''}>↑</button><button type="button" data-sort="down" data-idx="${idx}" ${idx===state.sortOrder.length-1?'disabled':''}>↓</button></div></div>`).join('');
+    return `<div class="bp-sort"><p class="bp-note">照實際發生的順序排列。排對之後會顯示原文。</p>${items}<button type="button" class="bp-primary" data-action="check-sort">確認順序</button>${solved?`<div class="bp-reveal">${renderMarkup(body)}</div>`:''}${state.sortFeedback?`<p class="bp-note">${clean(state.sortFeedback)}</p>`:''}</div>`;
+  }
+  function entry() {
+    const a=getApp(currentApp); const rec=recordsForApp(currentApp)[currentItem];
+    if (!rec) return top(a.name)+`<p class="bp-note">找不到這筆資料。</p>`;
+    const list=recordsForApp(currentApp);
+    const prev=currentItem>0, next=currentItem<list.length-1;
+    const contamination = rec.id==='searches_1' && state.searchHistory.length ? `<div class="bp-search-contamination"><div class="bp-tag">[LOCAL CACHE / 未知來源]</div>${state.searchHistory.map(q=>`<div class="bp-line">- ${clean(q)}</div>`).join('')}</div>` : '';
+    const reread = currentApp==='diary' && (state.readCounts[rec.id]||0)>=1 && rec.id!=='diary_75' && rec.id!=='diary_58' && currentChapter>=4 && state.scares && !state.stream ? '<div class="bp-reread" aria-label="重讀時新增的文字">你又回來看了。</div>' : '';
+    const body = rec.id===FINAL_SORT_ID ? renderFinalSort(rec.body) : `<div class="bp-docbody${rec.heading==='日記 · 2021-04-15'?' bp-timed-log':''}">${renderMarkup(rec.body,rec)}${contamination}${reread}</div>`;
+    return top(a.name)+`<div class="bp-read-status" aria-label="第 ${currentItem+1} 筆，共 ${list.length} 筆"><span>[FILE ${String(currentItem+1).padStart(2,'0')} / ${String(list.length).padStart(2,'0')}]</span><span>READ ONLY</span></div>
+      <div class="bp-panel bp-document"><div class="bp-tag">${clean(displayRecordDate(rec))} · ${clean(CHAPTERS[rec.chapter].name)}</div><h2>${clean(displayRecordTitle(rec))}</h2>${body}<div class="bp-evidence-collect"><button type="button" class="bp-ghost" data-collect-evidence="${clean(rec.id)}">${state.pinnedEvidence.includes(rec.id)?'[COLLECTED] 已收錄到證據庫':'[COLLECT] 收錄這份紀錄'}</button><small>證據可在章節頁的鑑識工作台選用</small></div></div>
+      <nav class="bp-file-nav" aria-label="閱讀上一筆或下一筆紀錄">
+        <button type="button" data-action="prev-item" ${prev?'':'disabled'}><span class="bp-nav-code">&lt; PREV</span><span class="bp-nav-caption">上一筆</span></button>
+        <button type="button" data-action="next-item" ${next?'':'disabled'}><span class="bp-nav-code">NEXT &gt;</span><span class="bp-nav-caption">下一筆</span></button>
+      </nav>
+      <div class="bp-actions bp-cli-actions"><button type="button" class="bp-ghost" data-action="app">&lt; DIR　返回列表</button><button type="button" class="bp-ghost" data-action="chapter">&gt; CHAPTER　返回章節</button></div>`;
+  }
+  function settings() {
+    return top('顯示與隱私')+`<div class="bp-panel"><label class="bp-check"><input type="checkbox" data-toggle="scares" ${state.scares?'checked':''}><span><b>驚嚇效果</b><small>關閉後停用驚嚇演出、CRT 扭曲及劇情提示。</small></span></label>
+      <label class="bp-check"><input type="checkbox" data-toggle="stream" ${state.stream?'checked':''}><span><b>實況模式</b><small>開啟後隱藏部分個人化演出及環境聲音效果。</small></span></label></div>
+      <div class="bp-panel"><label class="bp-check"><input type="checkbox" data-toggle="typing" ${state.typing?'checked':''}><span><b>日記逐字輸出</b><small>每篇首次閱讀時模擬真人打字，可按 SKIP 跳過。</small></span></label>
+      <label class="bp-check"><input type="checkbox" data-toggle="microphone" ${state.microphone?'checked':''}><span><b>麥克風（選用）</b><small>僅在 App 前景及需要時分析即時音量，不辨識、不儲存、不上傳聲音；使用前另行確認。</small></span></label></div>
+      <button type="button" class="bp-ghost" data-action="sound-consent">[ALLOW] 本次遊玩允許環境聲量演出</button>
+      <div class="bp-panel"><b>目前權限狀態</b><p class="bp-copy">麥克風僅在玩家主動啟用後、特定章節閱讀期間存取。相機、位置與通知尚未在本版本啟用。原生截圖與錄影事件依平台支援。</p><p class="bp-note">字型會隨 App 本機封裝；系統開啟「減少動態效果」時會停用動畫。</p></div>
+      ${window.MurmurMeta ? window.MurmurMeta.panel() : ''}
+      <button type="button" class="bp-ghost" data-action="clear-search">[CLEAR] 清除本機搜尋紀錄</button><button type="button" class="bp-danger" data-action="reset">清除加害者篇進度</button><p class="bp-note">只清除這個虛擬手機的閱讀與章節進度，不影響第一、第二周目。</p>`;
+  }
+  function updateRepetitionColors() {
+    const group=root.querySelector('.bp-stage-repetition');
+    if (!group) return;
+    const rows=group.querySelectorAll('.bp-repeat-line');
+    const box=group.getBoundingClientRect();
+    const viewport=root.getBoundingClientRect();
+    // Progress changes as the player scrolls through the repetition block.
+    const travel=Math.max(1,box.height+viewport.height*.45);
+    const progress=Math.max(0,Math.min(1,(viewport.bottom*.75-box.top)/travel));
+    rows.forEach((line,i)=>{
+      const pos=rows.length>1?i/(rows.length-1):0;
+      const heat=Math.max(0,Math.min(1,Math.pow(pos,1.12)*.79+progress*.21));
+      // Muted terminal green -> rust -> unsettling dark crimson, without flashes.
+      const stops=[[0,[172,219,181]],[.48,[194,146,124]],[1,[184,59,65]]];
+      const a=heat<.48?stops[0]:stops[1], b=heat<.48?stops[1]:stops[2];
+      const f=(heat-a[0])/(b[0]-a[0]);
+      const rgb=a[1].map((v,k)=>Math.round(v+(b[1][k]-v)*f));
+      line.style.color=`rgb(${rgb.join(',')})`;
+    });
+  }
+  let repeatScrollFrame=0;
+  root.addEventListener('scroll',()=>{
+    if(repeatScrollFrame)return;
+    repeatScrollFrame=requestAnimationFrame(()=>{repeatScrollFrame=0;updateRepetitionColors();if(root._surgeCheck)root._surgeCheck();});
+  },{passive:true});
+  window.addEventListener('resize',updateRepetitionColors,{passive:true});
+  let pendingEntryOpen=false;
+  function render() {
+    const content=view==='home'?home():view==='chapter'?chapter():view==='app'?appIndex():view==='entry'?entry():settings();
+    window.dispatchEvent(new CustomEvent('murmur:context',{detail:{view,chapter:currentChapter,scares:state.scares,stream:state.stream,open:!root.hidden}}));
+    root.innerHTML=`<div class="bp-shell">${content}<footer class="bp-footer">MURMUR · FICTIONAL DEVICE ARCHIVE / CMD v1.5.1<br>LOCAL STORY · NO CLOUD SYNC</footer></div>`;
+    root._surgeCheck=null;root.scrollTop=0; const heading=root.querySelector('h1'); if(heading) heading.setAttribute('tabindex','-1');
+    updateRepetitionColors();
+    if(view==='entry'){
+      const rec=recordsForApp(currentApp)[currentItem];
+      const firstRead=!!rec && !state.seenRecords.includes(rec.id);
+      if(firstRead){state.seenRecords.push(rec.id);save();}
+      // A refresh to collect evidence is not another file open.
+      if(rec && pendingEntryOpen)startRecordEffects(rec,firstRead);
+      pendingEntryOpen=false;
+      if(state.microphone && soundApprovedThisSession && !state.stream && currentChapter>=4)startSound();
+    }
+  }
+  function changeView(next) { if(typingSkip)typingSkip();stopTyping();stopSound();view=next; pendingEntryOpen=(next==='entry'); render(); const el=root.querySelector('h1'); if(el) el.focus({preventScroll:true}); }
+  function open() { if(!canEnter()) return false; focusBefore=document.activeElement; root.hidden=false; document.body.classList.add('murmur-backup-active'); changeView('home'); return true; }
+  function close() { if(typingSkip)typingSkip();stopTyping();stopSound();root.hidden=true; document.body.classList.remove('murmur-backup-active'); if(focusBefore && focusBefore.isConnected) focusBefore.focus({preventScroll:true}); }
+  function back() { if(view==='home'){close();return;} if(view==='entry'){changeView('app');return;} if(view==='app'&&backTarget==='chapter'){changeView('chapter');return;} changeView('home'); }
+  function openApp(id, returnTo='home') { const a=getApp(id); if(!a || a.openAt>state.unlocked) return; currentApp=id; backTarget=returnTo; changeView('app'); }
+
+  root.addEventListener('click', e => {
+    const b=e.target.closest('button'); if(!b || b.disabled) return;
+    const action=b.dataset.action;
+    if(action==='back'){back();return;}
+    if(action==='settings'){changeView('settings');return;}
+    if(action==='home'){changeView('home');return;}
+    if(action==='chapter'){changeView('chapter');return;}
+    if(action==='app'){changeView('app');return;}
+    if(action==='prev-item'||action==='next-item'){
+      const list=recordsForApp(currentApp);
+      const nextIndex=currentItem+(action==='prev-item'?-1:1);
+      if(nextIndex<0||nextIndex>=list.length)return;
+      currentItem=nextIndex;
+      
+      markVisited(currentApp);
+      changeView('entry');return;
+    }
+    if(b.dataset.collectEvidence!==undefined){
+      const id=b.dataset.collectEvidence;const rec=recordsForApp(currentApp)[currentItem];
+      if(!rec || rec.id!==id)return;
+      if(!state.pinnedEvidence.includes(id))state.pinnedEvidence.push(id);
+      save();render();storyEvent('檔案已加入證據庫。');return;
+    }
+    if(b.dataset.matchEvidence!==undefined){
+      const key=b.dataset.matchEvidence;
+      const m=/^(0|1|2|4):([0-9]+)$/.exec(key);
+      if(!m || Number(m[1])!==currentChapter)return;
+      const slot=forensicSlots(currentChapter)[Number(m[2])];if(!slot)return;
+      const select=root.querySelector('[data-evidence-select="'+key+'"]');const id=select?.value||'';
+      if(!id || !state.pinnedEvidence.includes(id)){state.forensicFeedback='[NO EVIDENCE] 請先收錄一份檔案。';}
+      else if(id===slot.id){state.forensicMatches[key]=id;state.forensicFeedback='[VERIFIED] 這份檔案與核對目標相符。';}
+      else {state.forensicFeedback='[MISMATCH] 檔案存在，但不符合目前的核對目標。請再比較。';}
+      save();render();return;
+    }
+    if(b.dataset.e12Answer!==undefined){
+      if(currentChapter!==0&&currentChapter!==1)return;
+      if(!E12_EVIDENCE[currentChapter].every(id=>state.seenRecords.includes(id)))return;
+      const key=currentChapter===0?'e1Step':'e2Step';
+      const step=state.puzzles[key]||0;
+      const q=E12_QUESTIONS[currentChapter][step];
+      if(!q)return;
+      if(b.dataset.e12Answer===q.answer){state.puzzles[key]=step+1;state.e12Feedback=q.success;}
+      else state.e12Feedback='[MISMATCH] 這是推測，不是備份能直接證實的內容。';
+      save();render();return;
+    }
+    if(b.dataset.e4Answer!==undefined){
+      if(currentChapter!==4 || !E4_REQUIRED_RECORDS.every(id=>state.seenRecords.includes(id)))return;
+      const step=state.puzzles.e4Step||0;
+      if(step>=E4_QUESTIONS.length)return;
+      const q=E4_QUESTIONS[step];
+      if(b.dataset.e4Answer===q.answer){
+        state.puzzles.e4Step=step+1;
+        state.e4Feedback=q.success;
+      }else{
+        state.e4Feedback='[MISMATCH] 這個答案與備份不符。請返回三份資料重新核對。';
+      }
+      save();render();return;
+    }
+    if(b.dataset.diff){
+      if(currentChapter!==2 || !state.seenRecords.includes('messages_1') || !state.seenRecords.includes('messages_2'))return;
+      state.puzzles.backupDiff=b.dataset.diff==='b';
+      state.diffFeedback=state.puzzles.backupDiff?'比對成功：原始備份明確寫著 A 不想交往。':'這句不是 v2 刪掉的關鍵內容，請再比較一次。';
+      save();render();return;
+    }
+    if(action==='search'){searchArchive(root.querySelector('#bp-search-input')?.value);return;}
+    if(action==='clear-search'){state.searchHistory=[];searchResults=null;save();render();return;}
+    if(b.dataset.searchRecord){
+      const app=b.dataset.searchApp;const records=recordsForApp(app);const idx=records.findIndex(r=>r.id===b.dataset.searchRecord);
+      if(idx<0)return;currentApp=app;currentItem=idx;backTarget='home';markVisited(app);changeView('entry');return;
+    }
+    if(action==='sound-consent'){
+      if(!state.microphone){storyEvent('請先啟用環境音量演出。');return;}
+      if(!window.confirm('Murmur · 麥克風權限說明\n\n僅在 App 前景、需要此功能的閱讀畫面判斷環境音量持續時間，不辨識語音、不儲存、不上傳；離開頁面就停止。系統接下來可能詢問麥克風權限。\n\n要允許本次遊玩使用此效果嗎？'))return;
+      soundApprovedThisSession=true;
+      // Request on explicit user action. No recording or uploads.
+      if(currentChapter<4)storyEvent('已允許本次遊玩使用選用的麥克風功能。');
+      else startSound();
+      return;
+    }
+    if(action==='reset'){ if(!window.confirm('清除加害者篇進度？第一、第二周目不受影響。')) return; state=base(); save(); currentChapter=0; changeView('home'); return; }
+    if(action==='complete'){ if(currentChapter>state.unlocked || !chapterReady(currentChapter)) return; if(!state.completed.includes(currentChapter)) state.completed.push(currentChapter); state.unlocked=Math.min(CHAPTERS.length-1, Math.max(state.unlocked, currentChapter+1)); save(); if(currentChapter===CHAPTERS.length-1)window.dispatchEvent(new CustomEvent('murmur:epilogue')); changeView('home'); return; }
+    if(action==='check-sort'){ const ok = JSON.stringify(state.sortOrder)===JSON.stringify(FINAL_SORT_TARGET); state.puzzles.finalSort=ok; state.sortFeedback = ok ? '排序正確。已顯示原文。' : '順序不對，請再比對一次。'; save(); render(); return; }
+    if(b.dataset.sort){ const idx=Number(b.dataset.idx); if(!Number.isInteger(idx)) return; const arr=[...state.sortOrder]; const dir=b.dataset.sort; const swap=dir==='up'?idx-1:idx+1; if(swap<0||swap>=arr.length) return; [arr[idx],arr[swap]]=[arr[swap],arr[idx]]; state.sortOrder=arr; state.sortFeedback=''; save(); render(); return; }
+    if(b.dataset.app){ openApp(b.dataset.app); return; }
+    if(b.dataset.chapter!==undefined){ const idx=Number(b.dataset.chapter); if(!Number.isInteger(idx)||idx<0||idx>state.unlocked) return; currentChapter=idx; changeView('chapter'); return; }
+    if(b.dataset.task){ openApp(b.dataset.task,'chapter'); return; }
+    if(b.dataset.item!==undefined){ const idx=Number(b.dataset.item); const list=recordsForApp(currentApp); if(!Number.isInteger(idx)||idx<0||idx>=list.length) return; currentItem=idx;  markVisited(currentApp); changeView('entry'); return; }
+  });
+  root.addEventListener('keydown',e=>{if(e.key==='Enter' && e.target?.id==='bp-search-input'){e.preventDefault();searchArchive(e.target.value);}});
+  root.addEventListener('change', e => { const k=e.target.dataset.toggle;
+    if(['scares','stream','typing','microphone'].includes(k)){
+      state[k]=!!e.target.checked;save();
+      if(k==='microphone'&&!state.microphone){soundApprovedThisSession=false;stopSound();}
+      if(k==='stream'&&state.stream)stopSound();
+    }
+  });
+  document.addEventListener('click', e=>{ const b=e.target.closest && e.target.closest('#mE, #openNativeArchive'); if(!b) return; if(open()){ e.preventDefault(); e.stopImmediatePropagation(); const menu=document.getElementById('menu'); if(menu) menu.hidden=true; if(b.id==='openNativeArchive'){ const sheet=document.getElementById('sheet'); if(sheet) sheet.hidden=true; } } }, true);
+  document.addEventListener('keydown', e=>{ if(root.hidden || e.key!=='Escape') return; e.preventDefault(); back(); });
+  if(PREVIEW) requestAnimationFrame(()=>open());
+  window.MurmurBackupPreview=Object.freeze({open,close,getStatus:()=>({unlocked:state.unlocked,completed:[...state.completed],visited:structuredClone(state.visited),puzzles:structuredClone(state.puzzles)})});
+})();
+
+</script></body></html>
