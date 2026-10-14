@@ -494,6 +494,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 </div>
 <!-- 她每次醒來都會問同一件事。 -->
 
+<script>window.MURMUR_TESTER_WEB=true;window.MURMUR_APP_PREVIEW=true;window.MURMUR_TESTER_AUTO_OPEN=false;window.MurmurTesterGate=(()=>{let unlocked=false;const expected='83df2d1a5992ca5625d7b975ef231bf6a1c87c88e03cff752d492c53fcdbec57';return Object.freeze({isUnlocked:()=>unlocked,verify:async code=>{if(!/^MURMUR-QA-[A-Z0-9]{12,40}$/.test(code)||!globalThis.crypto?.subtle)return false;const digest=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(code));const actual=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');unlocked=actual===expected;return unlocked;}})})();</script>
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
@@ -3366,7 +3367,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 </script>
 
 <script src="meta-horror.js"></script>
-<script>window.MURMUR_TESTER_WEB=true;window.MURMUR_APP_PREVIEW=true;window.MURMUR_TESTER_AUTO_OPEN=false;window.MurmurTesterGate=(()=>{let unlocked=false;const expected='83df2d1a5992ca5625d7b975ef231bf6a1c87c88e03cff752d492c53fcdbec57';return Object.freeze({isUnlocked:()=>unlocked,verify:async code=>{if(!/^MURMUR-QA-[A-Z0-9]{12,40}$/.test(code)||!globalThis.crypto?.subtle)return false;const digest=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(code));const actual=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');unlocked=actual===expected;return unlocked;}})})();</script>
 <script src="perpetrator.js"></script>
 </body>
 </html>

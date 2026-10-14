@@ -28,7 +28,11 @@ let html = index;
 const qaCode = 'MURMUR-QA-123012301230';
 const qaHash = crypto.createHash('sha256').update(qaCode).digest('hex');
 const bootstrap = `<script>window.MURMUR_TESTER_WEB=true;window.MURMUR_APP_PREVIEW=true;window.MURMUR_TESTER_AUTO_OPEN=false;window.MurmurTesterGate=(()=>{let unlocked=false;const expected='${qaHash}';return Object.freeze({isUnlocked:()=>unlocked,verify:async code=>{if(!/^MURMUR-QA-[A-Z0-9]{12,40}$/.test(code)||!globalThis.crypto?.subtle)return false;const digest=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(code));const actual=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');unlocked=actual===expected;return unlocked;}})})();</script>`;
-html = html.replace('<script src="perpetrator.js"></script>', bootstrap + '\n<script src="perpetrator.js"></script>');
+// The game executes in an inline script before perpetrator.js is loaded.
+// Initialize the QA gate before the inline game reads MURMUR_TESTER_WEB.
+const mainScriptMarker = '<script>\n(() => {';
+if (!html.includes(mainScriptMarker)) throw new Error('Main game bootstrap marker missing');
+html = html.replace(mainScriptMarker, bootstrap + '\n' + mainScriptMarker);
 for (const name of ['perpetrator.js','perpetrator.css','meta-horror.js','meta-horror.css']) {
   fs.copyFileSync(path.join(src,name),path.join(out,name));
 }
