@@ -100,6 +100,37 @@
       ${slots.map((slot,i)=>{const key=ch+':'+i,matched=state.forensicMatches[key]===slot.id;return `<div class="bp-evidence-slot"><div class="bp-tag">${String(i+1).padStart(2,'0')} / ${clean(slot.name)} ${matched?'[MATCHED]':'[UNMATCHED]'}</div><p>${clean(slot.question)}</p>${matched?`<p class="bp-forensic-note">[VERIFIED] ${clean(slot.note)}</p>`:`<label class="bp-forensic-label">證據檔案 <select data-evidence-select="${key}" aria-label="為${clean(slot.name)}選擇證據"><option value="">選擇已收錄檔案</option>${choices}</select></label><button type="button" class="bp-ghost" data-match-evidence="${key}">[VERIFY] 核對檔案</button>`}</div>`;}).join('')}
       <p class="bp-e4-feedback" role="status">${clean(state.forensicFeedback||'')}</p><p class="bp-note">線索未列在這裡的檔案也可自行收錄。已通關的舊存檔維持通關，不強迫重新鑑識。</p></section>`;
   }
+  // Hint levels are revealed per chapter; no puzzle progress is changed by reading them.
+  const CHAPTER_HINTS = [
+    [
+      ['先從 2020-11-12 的日記、2020-11-19 的日記，以及〈備忘錄 · 她〉找起。', '閱讀這三份資料後，在每份檔案底部按 [COLLECT]。回章節的鑑識工作台核對。', '鑑識順序：四秒語音 → diary_18；「第一個」→ diary_20；私人索引 → notes_1。完成本章線索及三個核對欄位後即可進入下一章。'],
+    ],
+    [
+      ['先讀〈回覆紀錄〉、〈上線紀錄〉與〈沒送出的訊息〉。', '三份資料分別在 NOTES、NOTES、DRAFTS。閱讀後收錄檔案並完成鑑識核對。', '回覆變化 → notes_2；上線時間 → notes_3；未寄出的版本 → drafts_1。時間排序由早到晚是 01-14 → 02-05 → 02-08。'],
+    ],
+    [
+      ['找到 04-10 的兩份手機備份，注意 v1 和 v2 的差異。', '閱讀兩份後收錄到證據庫，於鑑識工作台核對。再在版本差異頁選出能釐清雙方意願的句子。', '自留版本 → messages_1；早期備份 → messages_2。版本差異選 21:31「可是咱不想跟你交往」，該句在 v2 中被省略。'],
+    ],
+    [
+      ['這是童年插章，先閱讀舊部落格的紀錄。', '在 BLOG 資料夾找到〈2007-05-11 下雨〉或〈2010-04-08〉。', '閱讀指定的舊部落格紀錄，回到章節頁按「完成本章」。本章沒有額外排序或鑑識題。'],
+    ],
+    [
+      ['先看限動觀看紀錄、04-20 搜尋紀錄與 PLAN-7F3 草稿。', '三份資料都要讀過並按 [COLLECT]，再完成鑑識核對與三欄交叉核對。', '鑑識：stories_1、searches_1、drafts_2。交叉核對依序填「23」、「和平路 公車亭」、「他叫我去的」。這句話只是草稿中的宣稱，不代表 A 確實邀請。'],
+    ],
+    [
+      ['閱讀 04-23 20:41 的日記與當天沒送出的訊息。', '在日記〈最後一篇〉裡，利用 ↑↓ 調整四句話的順序，再按「確認順序」。', '正確順序：①肩膀先停了一下。②他低頭打了一則訊息。③他在跟別人說我在這裡。④我還是走過去了。之後回章節頁完成本章。'],
+    ],
+    [
+      ['最後一章只需要閱讀 yoru 的附註。', '回到 NOTES，找到〈yoru 的附註〉，閱讀後返回章節頁。', '閱讀 notes_4，然後按「完成尾聲」。'],
+    ]
+  ].map(group=>group[0]);
+  let hintReturnView='chapter';
+  function hintPage(){
+    const level=Math.max(0,Math.min(3,Number(state.hintLevels[String(currentChapter)]||0)));
+    const hints=CHAPTER_HINTS[currentChapter]||CHAPTER_HINTS[0];
+    const body=level?Array.from({length:level},(_,i)=>`<div class="bp-hint-step"><div class="bp-tag">[HINT ${i+1}/3] ${i===2?'完整解法':i===1?'具體方向':'輕度提示'}</div><p>${clean(hints[i])}</p></div>`).join(''):'<p class="bp-note">提示共三階段。每次只揭露下一階段，不會修改解謎進度。</p>';
+    return top('HINT / '+CHAPTERS[currentChapter].name)+`<section class="bp-panel bp-hint-panel"><div class="bp-tag">LOCAL GUIDE / ${level}/3</div>${body}${level<3?`<button type="button" class="bp-primary" data-action="hint-next">${level===2?'顯示完整解法':'查看下一階段提示'}</button>`:'<p class="bp-note">已顯示完整解法。</p>'}<button type="button" class="bp-ghost" data-action="hint-back">返回原頁面</button></section>`;
+  }
   const EXTENDED_0409 = "時間過去了。\n那一點熱慢慢從皮膚底下退下去。\n我以為它會消失。\n沒有。\n它只是變成了別的東西。\n現在不一樣了。\n它變得更安靜。更重。\n像有什麼東西沉在身體裡面，白天不會動，到了晚上，房間安靜下來，才一點一點浮上來。\n我把窗簾拉起來。燈只開了一盞。\n桌上放著昨天買的傘。還沒拆。\n昨天她就在兩百公尺外。走過去不用三分鐘。\n我沒有走過去。\n我現在坐在這裡，卻還是一直想，如果我那時候走過去了，她會不會笑。\n她以前會笑的。\n我不知道她是不是對每個人都這樣。\n我不想知道。\n我把手放在自己的肩膀上。\n那天捷運很擠。她喝醉了，靠在我肩上睡著。\n十個站。\n我原本第四站就該下車。\n可是她沒有醒。我也沒有動。\n下一站。下一站。再下一站。\n我那時候真的很幸福。\n不是我想像出來的。她真的靠在我肩上。那是真的。\n我把手放下來。肩膀是冷的。\n房間很安靜。\n我又想起她的手。以前她總是說手很冰。\n我幫她搓過。搓到她說好了好了，咱熱了。\n她的手是我弄熱的。\n那時候她沒有躲開。她還笑了。\n所以我不明白。\n為什麼現在連見她一面都這麼難。\n我只是想回到那個時候。\n回到她還會主動把手伸過來的時候。\n回到她還會半夜打電話給我的時候。\n回到她買了什麼都想拍給我看的時候。\n回到她還需要我的時候。\n不對。不是需要。\n我希望她想要我。\n我希望她在很開心的時候也想到我。\n不是只有難過的時候。不是只有睡不著的時候。不是只有下雨的時候。\n我希望她走到哪裡，都會覺得少了一個人。\n就像我現在這樣。\n這樣才公平。\n可是她沒有答應過。\n我知道。她沒有答應過。\n那些事情總是真的吧。\n那十個站是真的。那雙手是真的。她在電話裡睡著是真的。\n我沒有把它們編出來。\n我只是想要它們不要結束。\n";
   const EXTENDED_0409_TAIL = "渴望回到她把頭靠在我肩上的那一秒。\n渴望回到她還會說「咱熱了」的時候。\n渴望回到她還不知道我會變成這樣的時候。\n我明天就要跟她說了。\n我有話想跟妳說。\n我喜歡妳，不是朋友那種。";
   const FINAL_SORT_TARGET = [
@@ -128,7 +159,7 @@
   }
   const getApp = id => APPS.find(a => a.id === id);
   const recordsForApp = id => (RECORDS[id] || []).filter(r => r.chapter <= state.unlocked);
-  const base = () => ({unlocked:0,completed:[],visited:{},scares:true,stream:false,typing:true,microphone:false,readCounts:{},seenRecords:[],searchHistory:[],openedDiary:false,pinnedEvidence:[],forensicMatches:{},puzzles:{finalSort:false,backupDiff:false,e4Correlation:false,e2Timeline:false,e4Step:0,e1Step:0,e2Step:0},e2TimelineOrder:[...E2_INITIAL],sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]});
+  const base = () => ({unlocked:0,completed:[],visited:{},scares:true,stream:false,typing:true,microphone:false,readCounts:{},seenRecords:[],searchHistory:[],openedDiary:false,pinnedEvidence:[],forensicMatches:{},puzzles:{finalSort:false,backupDiff:false,e4Correlation:false,e2Timeline:false,e4Step:0,e1Step:0,e2Step:0},e2TimelineOrder:[...E2_INITIAL],sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]],hintLevels:{}});
   let state = base();
   try {
     const data = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -141,6 +172,7 @@
         stream:data.stream===true, typing:data.typing!==false, microphone:data.microphone===true, readCounts:data.readCounts && typeof data.readCounts==='object'?data.readCounts:{},seenRecords:Array.isArray(data.seenRecords)?data.seenRecords.filter(x=>typeof x==='string').slice(-300):[],searchHistory:Array.isArray(data.searchHistory)?data.searchHistory.filter(x=>typeof x==='string').slice(-12):[],openedDiary:!!data.openedDiary,pinnedEvidence:Array.isArray(data.pinnedEvidence)?data.pinnedEvidence.filter(x=>typeof x==='string').slice(-100):[],forensicMatches:data.forensicMatches && typeof data.forensicMatches==='object' && !Array.isArray(data.forensicMatches)?data.forensicMatches:{},
         puzzles:data.puzzles && typeof data.puzzles==='object'?{finalSort:!!data.puzzles.finalSort,backupDiff:!!data.puzzles.backupDiff,e4Correlation:!!data.puzzles.e4Correlation,e2Timeline:!!data.puzzles.e2Timeline,e4Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e4Step)?data.puzzles.e4Step:0)),e1Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e1Step)?data.puzzles.e1Step:0)),e2Step:Math.max(0,Math.min(3,Number.isInteger(data.puzzles.e2Step)?data.puzzles.e2Step:0))}:{finalSort:false,backupDiff:false,e4Correlation:false,e2Timeline:false,e4Step:0,e1Step:0,e2Step:0},
         e2TimelineOrder:Array.isArray(data.e2TimelineOrder)&&data.e2TimelineOrder.length===3&&new Set(data.e2TimelineOrder).size===3&&data.e2TimelineOrder.every(id=>E2_TARGET.includes(id))?data.e2TimelineOrder:[...E2_INITIAL],
+        hintLevels:data.hintLevels && typeof data.hintLevels==='object' && !Array.isArray(data.hintLevels)?Object.fromEntries(Object.entries(data.hintLevels).filter(([k,v])=>/^[0-6]$/.test(k)&&Number.isInteger(v)).map(([k,v])=>[k,Math.max(0,Math.min(3,v))])):{},
         sortOrder:Array.isArray(data.sortOrder)&&data.sortOrder.length===FINAL_SORT_TARGET.length?data.sortOrder:[FINAL_SORT_TARGET[2], FINAL_SORT_TARGET[0], FINAL_SORT_TARGET[3], FINAL_SORT_TARGET[1]]
       };
     }
@@ -281,10 +313,10 @@
   }
   function top(title) {
     const back=(view==='home')?'返回對話':(view==='entry'?'返回列表':view==='app'&&backTarget==='chapter'?'返回章節':'返回手機');
-    const location=view==='home'?'BACKUP':view==='chapter'?`CHAPTERS\\${currentChapter+1}`:view==='settings'?'CONFIG':view==='entry'?`${String(currentApp).toUpperCase()}\\FILE_${String(currentItem+1).padStart(2,'0')}`:String(currentApp).toUpperCase();
+    const location=view==='home'?'BACKUP':view==='chapter'?`CHAPTERS\\${currentChapter+1}`:view==='settings'?'CONFIG':view==='hint'?'HELP':view==='entry'?`${String(currentApp).toUpperCase()}\\FILE_${String(currentItem+1).padStart(2,'0')}`:String(currentApp).toUpperCase();
     const directory=`C:\\7F3\\${location}>`;
     return `<div class="bp-windowline"><span class="bp-square" aria-hidden="true">_</span><span class="bp-windowname">MURMUR / 7F3_BACKUP.CMD</span><span class="bp-version">LOCAL</span></div>
-      <div class="bp-top"><button type="button" data-action="back" aria-label="${back}">[←] ${back}</button><span class="bp-status">LOCAL · READ ONLY</span><button type="button" data-action="settings">[SET]</button></div>
+      <div class="bp-top"><button type="button" data-action="back" aria-label="${back}">[←] ${back}</button><span class="bp-status">LOCAL · READ ONLY</span><span class="bp-top-tools"><button type="button" data-action="hint">[HINT]</button><button type="button" data-action="settings">[SET]</button></span></div>
       <div class="bp-commandbar" aria-label="目前所在的虛構備份目錄"><span class="bp-prompt">${clean(directory)}</span><span class="bp-cursor" aria-hidden="true">▌</span></div>
       <div class="bp-meta">MURMUR // participant_7f3</div><h1 class="bp-title">${clean(title)}</h1>`;
   }
@@ -534,7 +566,7 @@
   window.addEventListener('resize',updateRepetitionColors,{passive:true});
   let pendingEntryOpen=false;
   function render() {
-    const content=view==='home'?home():view==='chapter'?chapter():view==='app'?appIndex():view==='entry'?entry():settings();
+    const content=view==='home'?home():view==='chapter'?chapter():view==='app'?appIndex():view==='entry'?entry():view==='hint'?hintPage():settings();
     window.dispatchEvent(new CustomEvent('murmur:context',{detail:{view,chapter:currentChapter,scares:state.scares,stream:state.stream,open:!root.hidden}}));
     root.innerHTML=`<div class="bp-shell">${content}<footer class="bp-footer">MURMUR · DEVICE ARCHIVE / CMD<br>LOCAL STORY · NO CLOUD SYNC</footer></div>`;
     root._surgeCheck=null;root.scrollTop=0; const heading=root.querySelector('h1'); if(heading) heading.setAttribute('tabindex','-1');
@@ -620,7 +652,7 @@
     }
   });
   function close() { if(typingSkip)typingSkip();stopTyping();stopSound();root.hidden=true; window.dispatchEvent(new CustomEvent('murmur:context',{detail:{view:'closed',chapter:currentChapter,scares:state.scares,stream:state.stream,open:false}})); document.body.classList.remove('murmur-backup-active'); if(focusBefore && focusBefore.isConnected) focusBefore.focus({preventScroll:true}); }
-  function back() { if(view==='home'){close();return;} if(view==='entry'){changeView('app');return;} if(view==='app'&&backTarget==='chapter'){changeView('chapter');return;} changeView('home'); }
+  function back() { if(view==='hint'){changeView(hintReturnView);return;} if(view==='home'){close();return;} if(view==='entry'){changeView('app');return;} if(view==='app'&&backTarget==='chapter'){changeView('chapter');return;} changeView('home'); }
   function openApp(id, returnTo='home') { const a=getApp(id); if(!a || a.openAt>state.unlocked) return; currentApp=id; backTarget=returnTo; changeView('app'); }
 
   root.addEventListener('click', e => {
@@ -628,6 +660,9 @@
     const action=b.dataset.action;
     if(action==='back'){back();return;}
     if(action==='settings'){changeView('settings');return;}
+    if(action==='hint'){hintReturnView=view==='hint'?'chapter':view;changeView('hint');return;}
+    if(action==='hint-back'){changeView(hintReturnView);return;}
+    if(action==='hint-next'){const key=String(currentChapter);state.hintLevels[key]=Math.min(3,(state.hintLevels[key]||0)+1);save();render();return;}
     if(action==='home'){changeView('home');return;}
     if(action==='chapter'){changeView('chapter');return;}
     if(action==='app'){changeView('app');return;}

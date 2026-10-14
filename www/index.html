@@ -3247,8 +3247,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (!b) return;
     const k = b.dataset.hint; S.helpSeen = S.helpSeen || {};
     const lv = S.helpSeen[k] || 0;
-    if (lv === 2 && S.helpArm !== k) { S.helpArm = k; S.helpOpen = k; save(); showView(); return; }
-    S.helpArm = null; S.helpOpen = k; S.helpSeen[k] = Math.min(3, lv + 1); save(); showView();
+    const previousScroll = body.scrollTop;
+    const refreshHelp = () => { showView(); body.scrollTop = previousScroll; };
+    if (lv === 2 && S.helpArm !== k) { S.helpArm = k; S.helpOpen = k; save(); refreshHelp(); return; }
+    S.helpArm = null; S.helpOpen = k; S.helpSeen[k] = Math.min(3, lv + 1); save(); refreshHelp();
   });
 
   /* ===== 測試選單 ===== */

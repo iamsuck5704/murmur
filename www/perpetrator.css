@@ -350,3 +350,11 @@ body.murmur-backup-active{overflow:hidden}
 #backupRoot .bp-consent-actions button{flex:1 1 165px;min-height:64px}
 #backupRoot .bp-consent-actions[hidden]{display:none!important}
 #backupRoot #bp-consent-status{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* v1.8.5: chapter-scoped progressive hints */
+#backupRoot .bp-top-tools{display:flex;gap:6px;align-items:center;flex-shrink:0}
+#backupRoot .bp-hint-panel{display:flex;flex-direction:column;gap:12px}
+#backupRoot .bp-hint-step{padding:14px 12px;border:1px solid #315b3b;background:#0b1710}
+#backupRoot .bp-hint-step p{white-space:pre-line;line-height:1.8;margin:10px 0 0;overflow-wrap:anywhere}
+#backupRoot .bp-hint-panel button{min-height:56px}
+@media(max-width:390px){#backupRoot .bp-top-tools{gap:4px}#backupRoot .bp-top button{font-size:11px;padding-inline:6px}}
