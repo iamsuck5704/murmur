@@ -12,6 +12,7 @@ xcodebuild -version
 xcrun simctl list devices available
 
 echo "== Generate Capacitor iOS project =="
+npm run build:native
 if [[ ! -d ios/App/App.xcodeproj ]]; then
   npx --no-install cap add ios
 fi

@@ -38,6 +38,11 @@ const legalDir = path.join(root, 'legal');
 fs.mkdirSync(path.join(out, 'legal'), { recursive: true });
 for (const name of ['privacy.html', 'terms.html', 'disclaimer.html']) {
   fs.copyFileSync(path.join(legalDir, name), path.join(out, 'legal', name));
+  // Clean, independent public URL for each legal document.
+  const slug = name.slice(0, -5);
+  const routeDir = path.join(out, slug);
+  fs.mkdirSync(routeDir, { recursive: true });
+  fs.copyFileSync(path.join(legalDir, name), path.join(routeDir, 'index.html'));
 }
 fs.writeFileSync(path.join(out, '_headers'),
   '/index.html\n  Cache-Control: no-cache\n\n/*\n  X-Content-Type-Options: nosniff\n', 'utf8');

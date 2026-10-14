@@ -32,6 +32,8 @@ jobs:
       - name: Run offline regression tests
         run: |
           npm run build:web
+          npm run build:native
+          npm run test:native-content
           npm run test:release
           npm run test:individual
           npm run test:smoke-config

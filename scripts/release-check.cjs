@@ -13,13 +13,14 @@ if(version.versionName!==pkg.version || !Number.isInteger(version.buildNumber) |
 if(dev.appId!==cap.appId)issues.push('Developer profile appId mismatch');
 if(!/^[a-z][\w]*(\.[a-z][\w]*){2,}$/.test(cap.appId))issues.push('Invalid native appId');
 if(cap.appId!=='app.murmur.story')issues.push('App ID differs from current Android/iOS signing setup');
-if(cap.webDir!=='www')issues.push('Native webDir must remain www');
+if(cap.webDir!=='dist/native')issues.push('Native webDir must be dist/native');
 if(!fs.existsSync(path.join(root,'package-lock.json')))warnings.push('Missing package-lock.json: generate using npm install and commit; CI is not reproducible yet');
 else { try { const lock=JSON.parse(read('package-lock.json')); if(lock.packages?.['']?.version!==pkg.version)warnings.push('package-lock version differs from package.json'); } catch(e){issues.push('Invalid package-lock.json');} }
 for(const f of ['legal/privacy.html','legal/terms.html','legal/disclaimer.html']){
  const s=read(f);
  if(/【[^】]*(待填|開發者|信箱|上架日期|聯絡|客服)[^】]*】/.test(s))issues.push(`${f}: unresolved developer/contact placeholders`);
  if(/草案/.test(s))warnings.push(`${f}: still describes a draft`);
+ if(/正式發行前依適用法規補充|正式上架前仍須核對/.test(s))warnings.push(`${f}: legal identity/disclosure needs human review before store submission`);
  const kind=path.basename(f,'.html');
  const body=s.match(/<main(?:\s[^>]*)?>([\s\S]*?)<\/main>/i)?.[1]?.trim();
  const modal=read('www/index.html').match(new RegExp(`<section data-sec="${kind}"(?: hidden)?>([\\s\\S]*?)<\\/section>`))?.[1]?.trim();
